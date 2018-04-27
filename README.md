@@ -71,6 +71,9 @@ so that the history of each *IndexMaster* is recorded.
     - usage: `./manage.py es_activate [req IndexMaster name] [opt IndexInstance number]`
         - if no IndexInstance is specified, the latest is activated
     - example: `./manage.py es_activate course_search-1`
+    - flag: `--all-latest` - ensure all IndexMasters are activated at the
+      latest available IndexInstance (called after deploy, before
+      making a new release public)
 
 - `./manage.py es_update [req IndexMaster name] [opt IndexInstance number] `
     - help: Update the documents in the specified *IndexInstance*.
