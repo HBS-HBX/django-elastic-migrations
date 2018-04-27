@@ -89,32 +89,35 @@ so that the history of each *IndexMaster* is recorded.
     - help: Drop the documents from the specified IndexInstance index
     - usage `./manage.py es_drop [req IndexMaster name] [req IndexInstance number]`
 
+- `./manage.py es_makemigrations [req IndexMaster name]`
+    - help: create a migration that will add a new *IndexInstance* (and
+      its *IndexMaster* if necessary), update it, and activate it.
+
 
 ### Deployment Flow
 
 #### Pre-deployment
 - `course_search-1` is currently being used in prod
-- login to template server, check out new codebase,
-  run `./manage.py es_create course_search`
-    - creates `course_search-2` with new settings and NO CHANGE to
-      `course_search-1`
 
-- `./manage.py es_update course_search --latest`
-    - updates `course_search-2`, with NO CHANGE to `course_search-1`
-    - takes potentially a longer time
+- login to template server, check out new codebase,
+  run `./manage.py es_create course_search`. This creates
+  `course_search-2` with new settings (with no change to `course_search-1`)
+
+- `./manage.py es_update course_search --latest`. This updates
+  `course_search-2` index (with no change to `course_search-1`).
 
 #### Deployment
 A django migration runs the following:
-- `./manage.py es_create course_search 2`
-    - no change to index, because schema is already in index
+- `./manage.py es_create course_search 2`, which does not make a change
+  since index 2 is already created
 
-- `./manage.py es_update course_search 2`
-    - updates those docs that have changed since earlier in the day
-    - fast, since most of the docs have been indexed
+- `./manage.py es_update course_search 2` updates those docs that have
+  changed since earlier in the day. Potentially quite fast, since most
+  of the docs have been indexed.
 
-- `./manage.py es_activate course_search`
-    - activates latest index. All further changes get done to
-      this new index
+- `./manage.py es_activate course_search` activates the latest index.
+  All further changes and signal handlers events are sent to this
+  new index.
 
 
 ### Installation
