@@ -101,12 +101,18 @@ so that the history of each *IndexMaster* is recorded.
 ### Deployment Flow
 
 #### Development Time
-- Developer changes the schema of a `DocType` associated with an
-  `IndexMaster`, say, the `course_search` index.
+- Developer (in the past) has subclassed `IndexMaster`, including a link
+  to a `elasticsearch_dsl.document.DocType` for their schema as well
+  as a base name for the index, e.g. `course_search`. See installation
+  below for more information.
+
+- Developer (now) changes the schema of a `elasticsearch_dsl.document.DocType`
+  associated with an `IndexMaster`, say, the `course_search` index.
 
 - Developer runs `./manage.py es_makemigrations course_search`, which
-  adds a new index, and commits it into the pull request that contains
-  the index schema changes.
+  will, when it is run, create a new *IndexInstance* with the new schema.
+  Developer commits it into the pull request that contains the index
+  schema changes.
 
 #### Pre-deployment
 - `course_search-1` is currently being used in prod
