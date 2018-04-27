@@ -94,7 +94,7 @@ so that the history of each *IndexMaster* is recorded.
 
 - `./manage.py es_makemigrations [req IndexMaster name]`
     - help: Creates a migration that will add a new *IndexInstance* (and
-      its *IndexMaster* if necessary), update it, and activate it.
+      its *IndexMaster* if necessary) and update it.
 
 - `./manage.py predeploy`
     - help: find all schemas that have changed, and for each, create
