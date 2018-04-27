@@ -62,17 +62,18 @@ These management commands add an Action record in the database,
 so that the history of each *IndexMaster* is recorded.
 
 - `./manage.py es_create`
-    - help: If configuration has changed, create a new IndexInstance
+    - help: If configuration has changed, create a new *IndexInstance*
+      record as well as a new index in Elasticsearch
     - usage: `./manage.py es_create [req IndexMaster name]`
     - example: ./manage.py es_create course_search
 
 - `./manage.py es_activate`
-    - help: Activate the specified IndexInstance
+    - help: Activate the specified *IndexInstance* or activate all latest *IndexInstances*
     - usage: `./manage.py es_activate [req IndexMaster name] [opt IndexInstance number]`
         - if no IndexInstance is specified, the latest is activated
     - example: `./manage.py es_activate course_search-1`
     - flag: `--all-latest` - ensure all *IndexMasters* are activated at the
-      latest available IndexInstance (called after deploy, before
+      latest available *IndexInstance* (called after deploy, before
       making a new release public)
 
 - `./manage.py es_update [req IndexMaster name] [opt IndexInstance number] `
