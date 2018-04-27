@@ -17,9 +17,9 @@ Technically you can do everything you need with these, but any
 application using more than one index or deploying changes to schemas
 will need a consistent way to create, rebuild, update, activate
 and drop their indexes over time. In addition, if you use AWS
-Elasticsearch, you will find that you cannot stop and apply a new mapping
-to your schema, so you must create a new index with a new schema and
-then reindex into that schema, which requires extra care.
+Elasticsearch, you will find that you cannot stop and apply a new
+mapping to your index, so you must create a new index with a new schema
+and then reindex into that schema, which requires extra care.
 
 Django Elastic Migrations provides Django management commands for
 performing these actions, records a history of the actions performed,
