@@ -101,10 +101,11 @@ so that the history of each *IndexMaster* is recorded.
 ### Deployment Flow
 
 #### Development Time
-- Developer (in the past) has subclassed `IndexMaster`, including a link
-  to a `elasticsearch_dsl.document.DocType` for their schema as well
-  as a base name for the index, e.g. `course_search`. See installation
-  below for more information.
+- Developer (in the past) has subclassed
+  `django_elastic_migrations.ESSearchIndex`, associating it with a
+  `elasticsearch_dsl.document.DocType` schema as well as a base name
+  for the index, e.g. `course_search`. See *installation* section below
+  for more information.
 
 - Developer (now) changes the schema of a `elasticsearch_dsl.document.DocType`
   associated with an `IndexMaster`, say, the `course_search` index.
