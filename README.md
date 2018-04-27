@@ -150,16 +150,19 @@ A django migration runs the following:
    ```
    DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "path.to.your.singleton.ES_CLIENT"
     ```
-4. Create an IndexMaster:
+4. Create the `django_elastic_migrations` tables by running `./manage.py migrate`
+5. Create an `ESSearchIndex`:
    ```
-   from django_elastic_migrations.indexes import IndexMaster
+   from django_elastic_migrations import ESSearchIndex
 
-   class CourseSearch(IndexMaster):
+   class CourseSearch(ESSearchIndex):
+
        name = 'course_search'
+
        # must be subtype of elasticsearch_dsl.document.DocType
        doc_type = CourseSearchDoc
    ```
-3. Run `./manage.py migrate` to create the initial database tables
+6. Run `./manage.py es_list` to see the index as available
 
 
 ## Development
