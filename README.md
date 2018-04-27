@@ -135,9 +135,10 @@ A django migration runs the following:
 
 - `./manage.py es_update course_search 2`, *which updates those docs
   that have changed since earlier in the day*. Potentially quite fast,
-  since most of the docs have been indexed.
+  if most of the docs have been indexed in pre-deployment.
 
-- `./manage.py es_activate course_search` activates the latest index.
+#### Post-deployment, before the flip
+- `./manage.py es_activate --all-latest` activates the latest indexes.
   All further changes and signal handlers events are sent to this
   new index.
 
