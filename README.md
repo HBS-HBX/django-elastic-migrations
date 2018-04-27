@@ -165,6 +165,12 @@ A django migration runs the following:
 
        # must be subtype of elasticsearch_dsl.document.DocType
        doc_type = CourseSearchDoc
+
+       @classmethod
+       def get_updated_docs_since(cls, date_time):
+           """Returns DocTypes that have been modified after date_time"""
+           changed_teis = TeachingElementInstance.objects.filter(
+           ...
    ```
 6. Run `./manage.py es_list` to see the index as available
 
