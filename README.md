@@ -143,8 +143,7 @@ A django migration runs the following:
 
 #### Post-deployment, before the flip
 - `./manage.py es_activate --all-latest` activates the latest indexes.
-  All further changes and signal handlers events are sent to this
-  new index.
+  All further reindexing events are sent to the latest *IndexInstances*.
 
 
 ## Installation
