@@ -1,0 +1,6 @@
+# Core requirements for using this application
+
+Django                    # Web application framework
+django-model-utils        # Provides TimeStampedModel abstract base class
+elasticsearch-dsl         # Used for connecting to elasticsearch
+texttable                 # Printing tabular data from management commands
