@@ -45,7 +45,7 @@ Django Elastic Migrations provides comes with three models:
 
 - **IndexAction** - an action that impacts an *IndexMaster* or its
   children, such as updating the index or changing which *IndexInstance*
-  is active.
+  is active in an *IndexMaster*.
 
 ### Management Commands
 
