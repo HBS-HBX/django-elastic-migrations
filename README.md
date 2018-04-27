@@ -90,21 +90,35 @@ so that the history of each *IndexMaster* is recorded.
     - usage `./manage.py es_drop [req IndexMaster name] [req IndexInstance number]`
 
 - `./manage.py es_makemigrations [req IndexMaster name]`
-    - help: create a migration that will add a new *IndexInstance* (and
+    - help: Creates a migration that will add a new *IndexInstance* (and
       its *IndexMaster* if necessary), update it, and activate it.
+
+- `./manage.py predeploy`
+    - help: find all schemas that have changed, and for each, create
+      a new *IndexInstance* and begin reindexing.
 
 
 ### Deployment Flow
+
+#### Development Time
+- Developer changes the schema of a `DocType` associated with an
+  `IndexMaster`, say, the `course_search` index.
+
+- Developer runs `./manage.py es_makemigrations course_search`, which
+  adds a new index, and commits it into the pull request that contains
+  the index schema changes.
 
 #### Pre-deployment
 - `course_search-1` is currently being used in prod
 
 - login to template server, check out new codebase,
-  run `./manage.py es_create course_search`. This creates
-  `course_search-2` with new settings (with no change to `course_search-1`)
-
-- `./manage.py es_update course_search --latest`. This updates
-  `course_search-2` index (with no change to `course_search-1`).
+  run `./manage.py predeploy`. Behind the scenes, this is the same as
+  calling:
+    - `./manage.py es_create course_search`, which creates
+      `course_search-2` with new settings (with no change to
+      `course_search-1`, which is still in use)
+    - `./manage.py es_update course_search --latest`. This updates
+      `course_search-2` index (with no change to `course_search-1`).
 
 #### Deployment
 A django migration runs the following:
