@@ -124,7 +124,7 @@ so that the history of each *IndexMaster* is recorded.
       `course_search-2` with new settings (with no change to
       `course_search-1`, which is still in use)
     - `./manage.py es_update course_search --latest`. This updates
-      the latest course_search index, `course_search-2` (with no change
+      the latest course_search index, `course_search-2` (also no change
       to `course_search-1`).
 
 #### Deployment
