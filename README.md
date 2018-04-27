@@ -111,9 +111,9 @@ so that the history of each *IndexMaster* is recorded.
   associated with an `IndexMaster`, say, the `course_search` index.
 
 - Developer runs `./manage.py es_makemigrations course_search`, which
-  will, when it is run, is responsible for the *IndexInstance* preparation
-  and activation (see below). Developer commits it into
-  the pull request that contains the index schema changes.
+  will, when it is run, is responsible for the *IndexInstance* preparation.
+  (see below). Developer commits it into the pull request that contains
+  the index schema changes.
 
 #### Pre-deployment (optional performance optimization)
 - `course_search-1` is the ES index currently being used in prod.
