@@ -110,37 +110,38 @@ so that the history of each *IndexMaster* is recorded.
   associated with an `IndexMaster`, say, the `course_search` index.
 
 - Developer runs `./manage.py es_makemigrations course_search`, which
-  will, when it is run, create a new *IndexInstance* with the new schema.
-  Developer commits it into the pull request that contains the index
-  schema changes.
+  will, when it is run, is responsible for the *IndexInstance* preparation
+  and activation (see below). Developer commits it into
+  the pull request that contains the index schema changes.
 
-#### Pre-deployment
-- `course_search-1` is currently being used in prod
+#### Pre-deployment (optional performance optimization)
+- `course_search-1` is the ES index currently being used in prod.
 
-- login to template server, check out new codebase,
-  run `./manage.py predeploy`. Behind the scenes, this is the same as
+- Login to the template server, check out the new codebase,
+  and run `./manage.py predeploy`. Behind the scenes, this is the same as
   calling:
     - `./manage.py es_create course_search`, which creates
       `course_search-2` with new settings (with no change to
       `course_search-1`, which is still in use)
     - `./manage.py es_update course_search --latest`. This updates
-      `course_search-2` index (with no change to `course_search-1`).
+      the latest course_search index, `course_search-2` (with no change
+      to `course_search-1`).
 
 #### Deployment
 A django migration runs the following:
-- `./manage.py es_create course_search 2`, which does not make a change
-  since index 2 is already created
+- `./manage.py es_create course_search 2`, *which does not in this case
+  make a change since index 2 was manually created*
 
-- `./manage.py es_update course_search 2` updates those docs that have
-  changed since earlier in the day. Potentially quite fast, since most
-  of the docs have been indexed.
+- `./manage.py es_update course_search 2`, *which updates those docs
+  that have changed since earlier in the day*. Potentially quite fast,
+  since most of the docs have been indexed.
 
 - `./manage.py es_activate course_search` activates the latest index.
   All further changes and signal handlers events are sent to this
   new index.
 
 
-### Installation
+## Installation
 1. Put a reference to this package in your `requirements.txt`
 2. Add `django_elastic_migrations` to `INSTALLED_APPS` in your Django
    settings file
