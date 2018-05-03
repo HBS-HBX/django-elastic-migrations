@@ -1,5 +1,6 @@
 from django.core.management import call_command
 
+from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
 
 
@@ -8,7 +9,7 @@ class Command(ESCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'index', nargs='*',
+            'index', nargs='+',
             help='Name of an index'
         )
         parser.add_argument(
@@ -17,5 +18,12 @@ class Command(ESCommand):
         )
 
     def handle(self, *args, **options):
-        if 'list_available' in options:
+        if options.get('list_available'):
             call_command('es_list')
+        indexes_to_create = options.get('index', [])
+        if indexes_to_create:
+            for index_name in indexes_to_create:
+                DEMIndexManager.create_index(index_name)
+
+
+        breakpoint = None

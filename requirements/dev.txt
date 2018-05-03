@@ -13,8 +13,7 @@ click==6.7                # via pip-tools
 configparser==3.5.0       # via pydocstyle
 diff-cover==1.0.2
 distlib==0.2.7            # via caniusepython3
-django-model-utils==3.1.1
-django==1.11.12
+django==1.9.8
 elasticsearch-dsl==6.1.0
 elasticsearch==6.2.0      # via elasticsearch-dsl
 first==2.0.1              # via pip-tools
@@ -27,7 +26,7 @@ jinja2-pluralize==0.3.0   # via diff-cover
 jinja2==2.10              # via diff-cover, jinja2-pluralize
 markupsafe==1.0           # via jinja2
 packaging==17.1           # via caniusepython3
-pip-tools==2.0.1
+pip-tools==2.0.2
 pluggy==0.6.0             # via tox
 py==1.5.3                 # via tox
 pycodestyle==2.4.0
@@ -35,7 +34,6 @@ pydocstyle==2.1.1
 pygments==2.2.0           # via diff-cover
 pyparsing==2.2.0          # via packaging
 python-dateutil==2.7.2    # via elasticsearch-dsl
-pytz==2018.4              # via django
 requests==2.18.4          # via caniusepython3
 six==1.11.0               # via diff-cover, elasticsearch-dsl, packaging, pip-tools, pydocstyle, python-dateutil, tox
 snowballstemmer==1.2.1    # via pydocstyle

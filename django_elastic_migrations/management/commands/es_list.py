@@ -1,6 +1,6 @@
 from django.core.management import BaseCommand
 
-from django_elastic_migrations import ESIndexManager
+from django_elastic_migrations import DEMIndexManager
 
 from texttable import Texttable
 
@@ -17,11 +17,11 @@ class Command(ESCommand):
         )
 
     def handle(self, *args, **options):
-        print("Available ESSearchIndex Definitions:")
+        print("Available DEMIndex Definitions:")
 
         table = Texttable()
         table.add_row(["Index Name", "Schema Number", "Created", "Activated"])
-        for index in ESIndexManager.list_indexes():
+        for index in DEMIndexManager.get_indexes():
             row = [index.get_index_name()]
             model = index.model
             if model:

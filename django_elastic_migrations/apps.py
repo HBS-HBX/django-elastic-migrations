@@ -23,6 +23,3 @@ class DjangoElasticMigrationsConfig(AppConfig):
         self.stream = logging.StreamHandler()
         self.stream.setLevel(logging.INFO)
         log.addHandler(self.stream)
-
-        from django_elastic_migrations import ESIndexManager
-        ESIndexManager.initialize_indexes()

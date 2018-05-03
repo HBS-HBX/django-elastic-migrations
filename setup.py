@@ -48,7 +48,7 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        "Django>=1.8,<2.1", "django-model-utils>=2.0", "elasticsearch-dsl>=6.0.0", "texttable>=1.2.1"
+        "Django>=1.8,<2.1", "elasticsearch-dsl>=6.0.0", "texttable>=1.2.1"
     ],
     zip_safe=False,
     keywords='Django Elasticsearch',

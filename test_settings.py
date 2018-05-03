@@ -20,7 +20,7 @@ def root(*args):
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'default.db',
+        'NAME': 'old.db',
         'USER': '',
         'PASSWORD': '',
         'HOST': '',

@@ -15,7 +15,7 @@ Elastic has given us the basic tools needed to configure search indexes:
 
 Technically you can do everything you need with these, but any
 application using more than one index or deploying changes to schemas
-will need a consistent way to create, rebuild, update, activate
+will want a *consistent* way to create, rebuild, update, activate
 and drop their indexes over time. In addition, if you use AWS
 Elasticsearch, you will find that you cannot stop and apply a new
 mapping to your index, so you must create a new index with a new schema
@@ -29,93 +29,93 @@ greater.
 
 ### Models
 Django Elastic Migrations provides comes with three models:
-**IndexMaster**, **IndexInstance**, and **IndexAction**:
+**Index**, **IndexVersion**, and **IndexAction**:
 
-- **IndexMaster** - the parent of a series of *IndexInstances* with
+- **Index** - the parent of a series of *IndexVersions* with
   a single name, e.g. `course_search`. This isn't actually an Elasticsearch
-  index itself, but every *IndexInstance* is, and points to to a single
-  *IndexMaster*. In addition, each *IndexMaster* has at
-  most one **active** *IndexInstance*.
+  index itself, but every *IndexVersion* is, and points to to a single
+  *Index*. In addition, each *Index* has at most one **active**
+  *IndexVersion*.
 
-- **IndexInstance** - an Elasticsearch index, configured with a schema
+- **IndexVersion** - an Elasticsearch index, configured with a schema
     at the time of creation. The Elasticsearch index name is
-    the name of the *IndexMaster* plus the id of the *IndexInstance*
+    the name of the *Index* plus the id of the *IndexVersion*
     model: `course_search-1`. When the schema is changed, a new
-    *IndexInstance* is added with name `course_search-2`, etc.
+    *IndexVersion* is added with name `course_search-2`, etc.
 
-- **IndexAction** - an action that impacts an *IndexMaster* or its
-  children, such as updating the index or changing which *IndexInstance*
-  is active in an *IndexMaster*.
+- **IndexAction** - an action that impacts an *Index* or its
+  children, such as updating the index or changing which *IndexVersion*
+  is active in an *Index*.
 
 ### Management Commands
 
 #### Read Only Commands
 
 - `./manage.py es_list`
-    - help: For each *IndexMaster*, list activation status and doc
-      count for each of its *IndexInstances*
+    - help: For each *Index*, list activation status and doc
+      count for each of its *IndexVersions*
     - usage: `./manage.py es_list`
 
 #### Action Commands
 
 These management commands add an Action record in the database,
-so that the history of each *IndexMaster* is recorded.
+so that the history of each *Index* is recorded.
 
 - `./manage.py es_create`
-    - help: If configuration has changed, create a new *IndexInstance*
+    - help: If configuration has changed, create a new *IndexVersion*
       record as well as a new index in Elasticsearch
-    - usage: `./manage.py es_create [req IndexMaster name]`
+    - usage: `./manage.py es_create [req Index name]`
     - example: ./manage.py es_create course_search
 
 - `./manage.py es_activate`
-    - help: Activate the specified *IndexInstance* or activate all latest *IndexInstances*
-    - usage: `./manage.py es_activate [req IndexMaster name] [opt IndexInstance number]`
-        - if no IndexInstance is specified, the latest is activated
+    - help: Activate the specified *IndexVersion* or activate all latest *IndexVersions*
+    - usage: `./manage.py es_activate [req Index name] [opt IndexVersion number]`
+        - if no *IndexVersion* is specified, the latest is activated
     - example: `./manage.py es_activate course_search-1`
-    - flag: `--all-latest` - ensure all *IndexMasters* are activated at the
-      latest available *IndexInstance* (called after deploy, before
+    - flag: `--all-latest` - ensure all *Indexes* are activated at the
+      latest available *IndexVersion* (called after deploy, before
       making a new release public)
 
-- `./manage.py es_update [req IndexMaster name] [opt IndexInstance number] `
-    - help: Update the documents in the specified *IndexInstance*.
-      If *IndexInstance* is not supplied, updates the *active* index.
+- `./manage.py es_update [req Index name] [opt IndexVersion number] `
+    - help: Update the documents in the specified *IndexVersion*.
+      If *IndexVersion* is not supplied, updates the *active* index.
       By default, only indexes those documents that have changed
       since the last reindexing.
     - alternate usage: `./manage.py es_update --all-active`
-        - update all active IndexInstances
+        - update all active IndexVersions
     - flag: `--full` - do a full update of all documents in the
       index, rather than just the ones that have changed since
       the last update.
-    - flag: `[req IndexMaster name] --last` - update the index
-      of the *last* index in the given *IndexMaster*
+    - flag: `[req Index name] --last` - update the index
+      of the *last* index in the given *Index*
 
 - `./manage.py es_drop`
-    - help: Drop the documents from the specified IndexInstance index
-    - usage `./manage.py es_drop [req IndexMaster name] [req IndexInstance number]`
+    - help: Drop the documents from the specified IndexVersion index
+    - usage `./manage.py es_drop [req Index name] [req IndexVersion number]`
 
-- `./manage.py es_makemigrations [req IndexMaster name]`
-    - help: Creates a migration that will add a new *IndexInstance* (and
-      its *IndexMaster* if necessary) and update it.
+- `./manage.py es_makemigrations [req Index name]`
+    - help: Creates a migration that will add a new *IndexVersion* (and
+      its *Index* if necessary) and update it.
 
 - `./manage.py predeploy`
     - help: find all schemas that have changed, and for each, create
-      a new *IndexInstance* and begin reindexing.
+      a new *IndexVersion* and begin reindexing.
 
 
 ### Deployment Flow
 
 #### Development Time
 - Developer (in the past) has subclassed
-  `django_elastic_migrations.ESSearchIndex`, associating it with a
+  `django_elastic_migrations.DEMIndex`, associating it with a
   `elasticsearch_dsl.document.DocType` schema as well as a base name
   for the index, e.g. `course_search`. See *installation* section below
   for more information.
 
 - Developer (now) changes the schema of a `elasticsearch_dsl.document.DocType`
-  associated with an `IndexMaster`, say, the `course_search` index.
+  associated with an `Index`, say, the `course_search` index.
 
 - Developer runs `./manage.py es_makemigrations course_search`, which
-  will, when it is run, is responsible for the *IndexInstance* preparation.
+  will, when it is run, is responsible for the *IndexVersion* preparation.
   (see below). Developer commits it into the pull request that contains
   the index schema changes.
 
@@ -123,7 +123,7 @@ so that the history of each *IndexMaster* is recorded.
 - `course_search-1` is the ES index currently being used in prod.
 
 - Login to the template server, check out the new codebase,
-  and run `./manage.py predeploy`. Behind the scenes, this is the same as
+  and run `./manage.py es_predeploy`. Behind the scenes, this is the same as
   calling:
     - `./manage.py es_create course_search`, which creates
       `course_search-2` with new settings (with no change to
@@ -143,7 +143,7 @@ A django migration runs the following:
 
 #### Post-deployment, before the flip
 - `./manage.py es_activate --all-latest` activates the latest indexes.
-  All further reindexing events are sent to the latest *IndexInstances*.
+  All further reindexing events are sent to the latest *IndexVersions*.
 
 
 ## Installation
@@ -155,7 +155,7 @@ A django migration runs the following:
    DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "path.to.your.singleton.ES_CLIENT"
     ```
 4. Create the `django_elastic_migrations` tables by running `./manage.py migrate`
-5. Create an `ESSearchIndex`:
+5. Create an `DEMIndex`:
    ```
    from django_elastic_migrations import ESSearchIndex
 
@@ -191,3 +191,17 @@ with `make upgrade`.
 ### Updating Egg Info
 
 To update the `egg-info` directory, run `python setup.py egg_info`
+
+
+
+# Ideas, Considerations, etc.
+
+## Ideas
+
+1. `./manage.py es_activate --update` flag could update and then activate
+   when the last docs have been activated. This could be
+
+## Considerations
+
+1. If the `./manage.py predeploy` indexes without running prior,
+   unapplied migrations, it could lead to unexpected behavior
