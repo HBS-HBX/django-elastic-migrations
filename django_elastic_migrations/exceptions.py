@@ -19,3 +19,15 @@ class DEMIndexNotFound(DjangoElasticMigrationsException):
     importable somewhere.
     """
     pass
+
+
+class NoActiveIndexVersion(DjangoElasticMigrationsException):
+    """
+    Raised when updating an index that has no index version
+    """
+
+
+class NoCreatedIndexVersion(DjangoElasticMigrationsException):
+    """
+    Raised when attempting to activate an index that has no index version
+    """

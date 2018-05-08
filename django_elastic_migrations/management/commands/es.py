@@ -15,12 +15,27 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--create", action='store_true', default=False,
-            help='List the available named indexes'
+            help='Create the named index'
         )
+        parser.add_argument(
+            "--update", action='store_true', default=False,
+            help='Update the named index'
+        )
+        parser.add_argument(
+            "--activate", action='store_true', default=False,
+            help='Activate the latest version of the named index'
+        )
+
 
     def handle(self, *args, **options):
         if 'list_available' in options:
-            call_command('es_list')
+            call_command('es_list', *args, **options)
+        if 'create' in options:
+            call_command('es_create', *args, **options)
+        if 'update' in options:
+            call_command('es_update', *args, **options)
+        if 'activate' in options:
+            call_command('activate', *args, **options)
 
 
 ESCommand = Command

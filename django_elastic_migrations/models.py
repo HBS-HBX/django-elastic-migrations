@@ -5,12 +5,16 @@ Database models for django_elastic_migrations.
 
 from __future__ import absolute_import, unicode_literals
 
+import traceback
+
 from django.db import models
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
+from elasticsearch.helpers import bulk
 from elasticsearch_dsl import Index as ES_DSL_Index
 
 from django_elastic_migrations import codebase_id, es_client
+from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
@@ -134,6 +138,12 @@ class IndexVersion(models.Model):
 
         return self.json_md5 == doc_type_hash
 
+    def get_last_time_update_called(self):
+        last_update = self.indexaction_set.filter(action=IndexAction.ACTION_UPDATE_INDEX).last()
+        if last_update:
+            return last_update.last_modified
+        return None
+
 
 @python_2_unicode_compatible
 class IndexAction(models.Model):
@@ -149,11 +159,14 @@ class IndexAction(models.Model):
     STATUS_QUEUED = 'queued'
     STATUS_IN_PROGRESS = 'in_progress'
     STATUS_COMPLETE = 'complete'
-    STATUSES_ALL = {STATUS_QUEUED, STATUS_IN_PROGRESS, STATUS_COMPLETE}
+    STATUS_ABORTED = 'aborted'
+    STATUSES_ALL = {STATUS_QUEUED, STATUS_IN_PROGRESS, STATUS_COMPLETE, STATUS_ABORTED}
     STATUSES_ALL_CHOICES = [(i, i) for i in STATUSES_ALL]
 
     ACTION_CREATE_INDEX = 'create_index'
-    ACTIONS_ALL = {ACTION_CREATE_INDEX}
+    ACTION_UPDATE_INDEX = 'update_index'
+    ACTION_ACTIVATE_INDEX = 'activate_index'
+    ACTIONS_ALL = {ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX}
     ACTIONS_ALL_CHOICES = [(i, i) for i in ACTIONS_ALL]
 
     DEFAULT_ACTION = ACTION_CREATE_INDEX
@@ -208,13 +221,36 @@ class IndexAction(models.Model):
             self.end = timezone.now()
             self.save()
 
+    def to_aborted(self):
+        self.status = self.STATUS_ABORTED
+        self.end = timezone.now()
+        self.save()
+
     def start_action(self, dem_index, *args, **kwargs):
         self._dem_index = dem_index
         index_name = dem_index.get_index_name()
         index_instance, _ = Index.objects.get_or_create(name=index_name)
         self.index = index_instance
         self.to_in_progress()
-        self.perform_action(dem_index, *args, **kwargs)
+        try:
+            self.perform_action(dem_index, *args, **kwargs)
+        except Exception as ex:
+            log_params = {
+                "action": self.action,
+                "doc": ex.__doc__ or "",
+                "msg": ex.message,
+                "stack": u''.join(traceback.format_stack())
+            }
+            msg = (
+                u"While completing {action}, encountered exception: "
+                u"\n - message: {msg} "
+                u"\n - exception doc: {doc} "
+                u"\n - exception stack: {stack} ".format(**log_params)
+            )
+            self.add_log(msg)
+            self.to_aborted()
+            raise ex
+
         self.to_complete()
 
     @classmethod
@@ -266,3 +302,76 @@ class CreateIndexAction(IndexAction):
 
         if msg:
             self.add_log(msg.format(index_name=self.index.name, index_version=self.index_version.name), True)
+
+
+class UpdateIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_UPDATE_INDEX
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        active_version = self.index.active_version
+        if not active_version:
+            msg = (
+                "You must have an active version of the '{index_name}' index "
+                "to call update index. Please activate an index and try again.".format(
+                    index_name=self.index.name
+                )
+            )
+            raise NoActiveIndexVersion(msg)
+
+        self.index_version = active_version
+        last_update = active_version.get_last_time_update_called()
+        msg_params = {
+            "index_version_name": active_version.name,
+            "last_update": "never"
+        }
+        if last_update:
+            msg_params.update({"last_update": str(last_update)})
+
+        self.add_log(
+            "Checking the last time update was called: "
+            u"\n - index version: {index_version_name} "
+            u"\n - update date: {last_update} ".format(**msg_params)
+        )
+
+        self.add_log("Getting Reindex Iterator...")
+        reindex_iterator = dem_index.get_reindex_iterator(last_update)
+
+        # testing
+        from itertools import islice
+        reindex_iterator = list(islice(reindex_iterator, 3))
+
+        self.add_log("Calling bulk reindex...")
+        bulk(client=es_client, actions=reindex_iterator, refresh=True)
+
+        self.add_log("Completed with indexing {index_version_name}".format(**msg_params))
+
+
+class ActivateIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        latest_version = self.index.get_latest_version()
+        msg_params = {"index_name": self.index.name}
+
+        if not latest_version:
+            raise NoCreatedIndexVersion(
+                "You must have created a version of the '{index_name}' index "
+                "to call activate index. Please create an index and "
+                "try again.".format(**msg_params)
+            )
+
+        self.index.active_version = latest_version
+        self.index_version = latest_version
+        msg_params.update({"index_version_name": latest_version.name})
+        self.index.save()
+
+        self.add_log("Active version for {index_name} has been set "
+                     "to {index_version_name}.".format(**msg_params))

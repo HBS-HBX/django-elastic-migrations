@@ -1,11 +1,11 @@
 from django.core.exceptions import ImproperlyConfigured
-from elasticsearch_dsl import DocType, Index
+from elasticsearch_dsl import DocType, Index as ES_DSL_Index
 
 from django_elastic_migrations.exceptions import DEMIndexNotFound
+from django_elastic_migrations import es_client
 
 
-
-class DEMIndex(object):
+class DEMIndex(ES_DSL_Index):
     """
     Class that the end user subclasses to specify what the base name
     of their index is and what the doc type instance is
@@ -15,8 +15,8 @@ class DEMIndex(object):
 
     doc_type = None
 
-    def __init__(self, model=None):
-        self.model = model
+    def __init__(self, name, using=es_client):
+        super(DEMIndex, self).__init__(name, using)
 
     @classmethod
     def get_index_name(cls):
@@ -128,5 +128,31 @@ class DEMIndexManager(object):
         if index_class:
             from django_elastic_migrations.models import CreateIndexAction
             CreateIndexAction().start_action(dem_index=index_class)
+        else:
+            raise DEMIndexNotFound(index_name)
+
+    @classmethod
+    def update_index(cls, index_name):
+        """
+        Given the named index, update the documents
+        :param index_name:
+        :return:
+        """
+        dem_index = cls.get_dem_index(index_name)
+        if dem_index:
+            from django_elastic_migrations.models import UpdateIndexAction
+            UpdateIndexAction().start_action(dem_index=dem_index)
+        else:
+            raise DEMIndexNotFound(index_name)
+
+    @classmethod
+    def activate_index(cls, index_name):
+        """
+        Given the named index, activate the latest version of the index
+        """
+        dem_index = cls.get_dem_index(index_name)
+        if dem_index:
+            from django_elastic_migrations.models import ActivateIndexAction
+            ActivateIndexAction().start_action(dem_index=dem_index)
         else:
             raise DEMIndexNotFound(index_name)
