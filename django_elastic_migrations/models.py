@@ -5,11 +5,8 @@ Database models for django_elastic_migrations.
 
 from __future__ import absolute_import, unicode_literals
 
-import datetime
-import hashlib
-import json
-
 from django.db import models
+from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch_dsl import Index as ES_DSL_Index
 
@@ -65,7 +62,8 @@ class IndexVersion(models.Model):
     """
     index = models.ForeignKey(Index)
     json = models.TextField(verbose_name="Elasticsearch Index JSON", blank=True)
-    json_md5 = models.CharField(verbose_name="Elasticsearch Index JSON hash", db_index=True, max_length=32, editable=False)
+    json_md5 = models.CharField(verbose_name="Elasticsearch Index JSON hash", db_index=True, max_length=32,
+                                editable=False)
     tag = models.CharField(verbose_name="Codebase Git Tag", max_length=64, blank=True)
     inserted = models.DateTimeField(auto_now_add=True)
 
@@ -99,12 +97,42 @@ class IndexVersion(models.Model):
             self._es_dsl_index = ES_DSL_Index(name=self.name, using=es_client)
         return self._es_dsl_index
 
-    def add_doc_type(self, doc_type, save=False):
+    def add_doc_type(self, doc_type, save=False, create=False):
+        """
+        Generate an elasticsearch Index instance associated with this
+        index versions's name, and add the given doc_type to it.
+        """
         index = self.get_es_index()
         index.doc_type(doc_type)
         if save:
             self.json_md5, self.json = get_index_hash_and_json(index)
             self.save()
+        if create:
+            index.create()
+
+    def get_index_hash_and_json(self):
+        return get_index_hash_and_json(self.get_es_index())
+
+    def doc_type_matches_hash(self, doc_type):
+        es_index = ES_DSL_Index(name=self.name, using=es_client)
+
+        # back up the index already associated with the given doc_type (if any)
+        index_backup = None
+        _doc_type = getattr(doc_type, '_doc_type', None)
+        _existing_index = None
+        if _doc_type:
+            _existing_index = getattr(_doc_type, 'index', None)
+            if _existing_index:
+                index_backup = None
+
+        es_index.doc_type(doc_type)
+        doc_type_hash, _ = get_index_hash_and_json(es_index)
+
+        if _doc_type and _existing_index and index_backup:
+            # restore the index already associated with the gijven doc type
+            doc_type._doc_type.index = index_backup
+
+        return self.json_md5 == doc_type_hash
 
 
 @python_2_unicode_compatible
@@ -177,7 +205,7 @@ class IndexAction(models.Model):
     def to_complete(self):
         if self.status == self.STATUS_IN_PROGRESS:
             self.status = self.STATUS_COMPLETE
-            self.end = datetime.datetime.now()
+            self.end = timezone.now()
             self.save()
 
     def start_action(self, dem_index, *args, **kwargs):
@@ -211,46 +239,31 @@ class CreateIndexAction(IndexAction):
         proxy = True
 
     def perform_action(self, dem_index, *args, **kwargs):
-        """
-        This is where subclasses implement the functionality that changes the index
-        :return:
-        """
         latest_version = self.index.get_latest_version()
-        index_version = None
-        created_new = False
+        new_version = None
+        doc_type = dem_index.doc_type()
+        doc_type_changed = False
         if latest_version:
-            index_version = latest_version
+            doc_type_changed = not latest_version.doc_type_matches_hash(doc_type)
+            self.index_version = latest_version
         else:
-            created_new = True
-            index_version = self.index.get_new_version()
-
-        self.index_version = index_version
-        index_version.add_doc_type(dem_index.doc_type())
-        es_index = index_version.get_es_index()
-
-        schema_hash, _ = get_index_hash_and_json(es_index)
+            new_version = self.index.get_new_version()
+            self.index_version = new_version
 
         msg = ""
 
-        if created_new:
-            # https://elasticsearch-py.readthedocs.io/en/master/api.html#elasticsearch.client.IndicesClient.create
-            es_index.create()
+        if new_version or doc_type_changed:
+            # TODO: it shouldn't happen, but check for TransportError(400, u'resource_already_exists_exception') anyway
+            self.index_version.add_doc_type(doc_type, save=True, create=True)
             msg = (
-                "The schema for {name} changed; created a new "
-                "index in elasticsearch."
-            )
-
-        if latest_version.json_md5 != schema_hash:
-            es_index.create()
-            msg = (
-                "The schema for {name} changed; created a new "
+                "The doc type for {name} changed; created a new "
                 "index in elasticsearch."
             )
         else:
             msg = (
-                "the index schema has not changed since {name} "
+                "The index doc type has not changed since {name} "
                 "was created; not creating a new index."
             )
 
         if msg:
-            self.add_log(msg.format(name=index_version.name), True)
+            self.add_log(msg.format(name=self.index_version.name), True)
