@@ -243,27 +243,27 @@ class CreateIndexAction(IndexAction):
         new_version = None
         doc_type = dem_index.doc_type()
         doc_type_changed = False
-        if latest_version:
-            doc_type_changed = not latest_version.doc_type_matches_hash(doc_type)
+
+        if latest_version and latest_version.doc_type_matches_hash(doc_type):
             self.index_version = latest_version
-        else:
+        if not self.index_version:
             new_version = self.index.get_new_version()
             self.index_version = new_version
 
         msg = ""
 
-        if new_version or doc_type_changed:
+        if new_version:
             # TODO: it shouldn't happen, but check for TransportError(400, u'resource_already_exists_exception') anyway
-            self.index_version.add_doc_type(doc_type, save=True, create=True)
+            new_version.add_doc_type(doc_type, save=True, create=True)
             msg = (
-                "The doc type for {name} changed; created a new "
-                "index in elasticsearch."
+                "The doc type for {index_name} changed; created a new "
+                "index version {index_version} in elasticsearch."
             )
         else:
             msg = (
-                "The index doc type has not changed since {name} "
-                "was created; not creating a new index."
+                "The index doc type for {index_name} has not changed since {index_version}; "
+                "not creating a new index."
             )
 
         if msg:
-            self.add_log(msg.format(name=self.index_version.name), True)
+            self.add_log(msg.format(index_name=self.index.name, index_version=self.index_version.name), True)
