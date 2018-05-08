@@ -253,15 +253,14 @@ class CreateIndexAction(IndexAction):
         msg = ""
 
         if new_version:
-            # TODO: it shouldn't happen, but check for TransportError(400, u'resource_already_exists_exception') anyway
             new_version.add_doc_type(doc_type, save=True, create=True)
             msg = (
-                "The doc type for {index_name} changed; created a new "
+                "The doc type for index {index_name} changed; created a new "
                 "index version {index_version} in elasticsearch."
             )
         else:
             msg = (
-                "The index doc type for {index_name} has not changed since {index_version}; "
+                "The doc type for index {index_name} has not changed since {index_version}; "
                 "not creating a new index."
             )
 
