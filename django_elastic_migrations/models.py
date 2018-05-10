@@ -11,11 +11,9 @@ from django.db import models
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch.helpers import bulk
-from elasticsearch_dsl import Index as ES_DSL_Index
 
 from django_elastic_migrations import codebase_id, es_client
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion
-from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
 @python_2_unicode_compatible
@@ -46,12 +44,15 @@ class Index(models.Model):
         """
         return self.indexversion_set.last()
 
-    def get_new_version(self):
+    def get_new_version(self, dem_index=None):
         """
-        Create a new version associated with this index
-        :return: version
+        Create a new version associated with this index.
+        If a dem_index is supplied, use that dem index's
+        json and hash.
         """
         version = IndexVersion(index=self, tag=codebase_id[:63])
+        if dem_index:
+            version.json_md5, version.json = dem_index.get_index_hash_and_json()
         version.save()
         return version
 
@@ -65,11 +66,16 @@ class IndexVersion(models.Model):
     index is created with that schema.
     """
     index = models.ForeignKey(Index)
+    # store the JSON sent to Elasticsearch to configure the index
+    # note: the index name field in this field does NOT include the IndexVersion id
     json = models.TextField(verbose_name="Elasticsearch Index JSON", blank=True)
+    # store an MD5 of the JSON field above, so as to compare equality
     json_md5 = models.CharField(verbose_name="Elasticsearch Index JSON hash", db_index=True, max_length=32,
                                 editable=False)
     tag = models.CharField(verbose_name="Codebase Git Tag", max_length=64, blank=True)
     inserted = models.DateTimeField(auto_now_add=True)
+    # TODO: add this deleted field in
+    deleted_time = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         get_latest_by = "id"
@@ -86,63 +92,22 @@ class IndexVersion(models.Model):
 
     @property
     def is_active(self):
-        return self.id == self.index.active_version.id
+        active_ver = self.index.active_version
+        return active_ver and active_ver.id == self.id
 
     @property
     def name(self):
         return "{base_name}-{id}".format(base_name=self.index.name, id=self.id)
-
-    def get_es_index(self):
-        if not self.index:
-            raise ValueError("get_es_index requires an Index to be associated with the IndexVersion")
-        if not self.id:
-            raise ValueError("get_es_index is only available on an IndexVersion that has been saved")
-        if not self._es_dsl_index:
-            self._es_dsl_index = ES_DSL_Index(name=self.name, using=es_client)
-        return self._es_dsl_index
-
-    def add_doc_type(self, doc_type, save=False, create=False):
-        """
-        Generate an elasticsearch Index instance associated with this
-        index versions's name, and add the given doc_type to it.
-        """
-        index = self.get_es_index()
-        index.doc_type(doc_type)
-        if save:
-            self.json_md5, self.json = get_index_hash_and_json(index)
-            self.save()
-        if create:
-            index.create()
-
-    def get_index_hash_and_json(self):
-        return get_index_hash_and_json(self.get_es_index())
-
-    def doc_type_matches_hash(self, doc_type):
-        es_index = ES_DSL_Index(name=self.name, using=es_client)
-
-        # back up the index already associated with the given doc_type (if any)
-        index_backup = None
-        _doc_type = getattr(doc_type, '_doc_type', None)
-        _existing_index = None
-        if _doc_type:
-            _existing_index = getattr(_doc_type, 'index', None)
-            if _existing_index:
-                index_backup = None
-
-        es_index.doc_type(doc_type)
-        doc_type_hash, _ = get_index_hash_and_json(es_index)
-
-        if _doc_type and _existing_index and index_backup:
-            # restore the index already associated with the gijven doc type
-            doc_type._doc_type.index = index_backup
-
-        return self.json_md5 == doc_type_hash
 
     def get_last_time_update_called(self):
         last_update = self.indexaction_set.filter(action=IndexAction.ACTION_UPDATE_INDEX).last()
         if last_update:
             return last_update.last_modified
         return None
+
+    def delete(self, using=None, keep_parents=False):
+        self.deleted_time = timezone.now()
+        self.save()
 
 
 @python_2_unicode_compatible
@@ -228,7 +193,7 @@ class IndexAction(models.Model):
 
     def start_action(self, dem_index, *args, **kwargs):
         self._dem_index = dem_index
-        index_name = dem_index.get_index_name()
+        index_name = dem_index.get_index_base_name()
         index_instance, _ = Index.objects.get_or_create(name=index_name)
         self.index = index_instance
         self.to_in_progress()
@@ -277,27 +242,19 @@ class CreateIndexAction(IndexAction):
     def perform_action(self, dem_index, *args, **kwargs):
         latest_version = self.index.get_latest_version()
         new_version = None
-        doc_type = dem_index.doc_type()
-        doc_type_changed = False
-
-        if latest_version and latest_version.doc_type_matches_hash(doc_type):
-            self.index_version = latest_version
-        if not self.index_version:
-            new_version = self.index.get_new_version()
-            self.index_version = new_version
 
         msg = ""
-
-        if new_version:
-            new_version.add_doc_type(doc_type, save=True, create=True)
+        if latest_version and dem_index.hash_matches(latest_version.json_md5):
+            self.index_version = latest_version
+            msg = (
+                "The doc type for index {index_name} has not changed "
+                "since {index_version}; not creating a new index."
+            )
+        else:
+            self.index_version = dem_index.create()
             msg = (
                 "The doc type for index {index_name} changed; created a new "
                 "index version {index_version} in elasticsearch."
-            )
-        else:
-            msg = (
-                "The doc type for index {index_name} has not changed since {index_version}; "
-                "not creating a new index."
             )
 
         if msg:
@@ -338,9 +295,9 @@ class UpdateIndexAction(IndexAction):
         )
 
         self.add_log("Getting Reindex Iterator...")
-        reindex_iterator = dem_index.get_reindex_iterator(last_update)
+        reindex_iterator = dem_index.doc_type().get_reindex_iterator(last_update=last_update)
 
-        # testing
+        # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
         from itertools import islice
         reindex_iterator = list(islice(reindex_iterator, 3))
 

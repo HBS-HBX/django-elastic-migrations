@@ -31,3 +31,10 @@ class NoCreatedIndexVersion(DjangoElasticMigrationsException):
     """
     Raised when attempting to activate an index that has no index version
     """
+
+
+class IndexNamePropertyCannotBeSet(DjangoElasticMigrationsException):
+    """
+    Raised when attempting to set the self._name property on an
+    Elasticsearch Index.
+    """

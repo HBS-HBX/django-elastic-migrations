@@ -21,13 +21,16 @@ class Command(ESCommand):
 
         table = Texttable()
         table.add_row(["Index Name", "Schema Number", "Created", "Activated"])
-        for index in DEMIndexManager.get_indexes():
-            row = [index.get_index_name()]
-            model = index.model
-            if model:
-                row += [model.id, True, model.is_active]
-            else:
+        for dem_index in DEMIndexManager.get_indexes():
+            row = [dem_index.get_index_base_name()]
+            dem_index_model = dem_index.get_index_model()
+            index_versions = dem_index_model.indexversion_set.all()
+            if not index_versions:
                 row += [1, False, False]
-            table.add_row(row)
+                table.add_row(row)
+            else:
+                for indx in index_versions:
+                    row += [indx.id, True, indx.is_active]
+                    table.add_row(row)
 
         print table.draw()

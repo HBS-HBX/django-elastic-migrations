@@ -23,3 +23,5 @@ class DjangoElasticMigrationsConfig(AppConfig):
         self.stream = logging.StreamHandler()
         self.stream.setLevel(logging.INFO)
         log.addHandler(self.stream)
+        from django_elastic_migrations.indexes import DEMIndexManager
+        DEMIndexManager.class_db_init()
