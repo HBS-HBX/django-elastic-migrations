@@ -24,4 +24,3 @@ class Command(ESCommand):
         if indexes_to_create:
             for index_name in indexes_to_create:
                 DEMIndexManager.update_index(index_name)
-        breakpoint = None

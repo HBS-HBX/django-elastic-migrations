@@ -59,13 +59,14 @@ class DEMIndexManager(object):
         return [i for i in es_client.indices.get_alias("*")]
 
     @classmethod
-    def delete_es_created_index(cls, index_name, **kwargs):
+    def delete_es_created_index(cls, full_index_version_name, **kwargs):
         """
-        Simple way to delete an elasticsearch index
-        :param index_name: name of elasticsearch index to delete
+        Simple way to delete an index in Elasticsearch. Uses the raw ES client,
+        so the full elasticsearch name of the index is required.
+        :param full_index_version_name: name of elasticsearch index to delete
         :param kwargs: **kwargs
         """
-        return es_client.indices.delete(index=index_name, **kwargs)
+        return es_client.indices.delete(index=full_index_version_name, **kwargs)
 
     @classmethod
     def update_index_models(cls):

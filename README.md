@@ -1,11 +1,14 @@
 # Django Elastic Migrations
 
 Django Elastic Migrations provides a way to control the deployment of
-multiple Elasticsearch schemas over time.
+multiple Elasticsearch schemas over time. Despite the name, it doesn't
+have anything to do with Django Migrations (yet?), but like that system,
+it is a tool created to help update a live database with changes from 
+a codebase.
 
 ## Overview
 
-Elastic has given us the basic tools needed to configure search indexes:
+Elastic has given us basic tools needed to configure search indexes:
 
 * **[`elasticsearch-py`](https://github.com/elastic/elasticsearch-py)**
   is a python interface to elasticsearch's REST API
@@ -13,15 +16,15 @@ Elastic has given us the basic tools needed to configure search indexes:
   is a Django-esque way of declaring complex Elasticsearch index schemas
   (which itself uses `elasticsearch-py`).
 
-Technically you can do everything you need with these, but any
-application using more than one index or deploying changes to schemas
-will want a *consistent* way to create, rebuild, update, activate
-and drop their indexes over time. In addition, if you use AWS
-Elasticsearch, you will find that you cannot stop and apply a new
+Technically you can accomplish everything you need with these, but any
+application a.) using more than one index or b.) deploying changes to 
+schemas will want a *consistent* way to `create`, `update`, 
+`activate` and `drop` their indexes over time. In addition, if you use 
+AWS Elasticsearch, you will find that you cannot stop and apply a new
 mapping to your index, so you must create a new index with a new schema
 and then reindex into that schema, which requires extra care.
 
-Django Elastic Migrations provides Django management commands for
+*Django Elastic Migrations provides Django management commands for
 performing these actions, records a history of the actions performed,
 and offers a conceptual layer for thinking about schemas that change
 over time. It aims to be compatible with AWS Elasticsearch 6.0 and
@@ -31,11 +34,9 @@ greater.
 Django Elastic Migrations provides comes with three models:
 **Index**, **IndexVersion**, and **IndexAction**:
 
-- **Index** - the parent of a series of *IndexVersions* with
-  a single name, e.g. `course_search`. This isn't actually an Elasticsearch
-  index itself, but every *IndexVersion* is, and points to to a single
-  *Index*. In addition, each *Index* has at most one **active**
-  *IndexVersion*.
+- **Index** - a base name, e.g. `course_search` that's the parent of 
+  several *IndexVersions*. Not actually an Elasticsearch index.
+  Each *Index* has at most one **active** *IndexVersion*.
 
 - **IndexVersion** - an Elasticsearch index, configured with a schema
     at the time of creation. The Elasticsearch index name is
@@ -93,13 +94,10 @@ so that the history of each *Index* is recorded.
     - help: Drop the documents from the specified IndexVersion index
     - usage `./manage.py es_drop [req Index name] [req IndexVersion number]`
 
-- `./manage.py es_makemigrations [req Index name]`
-    - help: Creates a migration that will add a new *IndexVersion* (and
-      its *Index* if necessary) and update it.
-
 - `./manage.py predeploy`
     - help: find all schemas that have changed, and for each, create
-      a new *IndexVersion* and begin reindexing.
+      a new *IndexVersion* and begin reindexing. Does not activate 
+      those indexes, though, assuming you will do this on your own.
 
 
 ### Deployment Flow

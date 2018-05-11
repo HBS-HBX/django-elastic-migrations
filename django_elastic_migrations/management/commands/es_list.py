@@ -17,10 +17,10 @@ class Command(ESCommand):
         )
 
     def handle(self, *args, **options):
-        print("Available DEMIndex Definitions:")
+        print("Available Index Definitions:")
 
         table = Texttable()
-        table.add_row(["Name", "Created", "Is Active"])
+        table.add_row(["Name", "Created", "Is Active", "Codebase Version"])
 
         indexes = DEMIndexManager.get_indexes()
 
@@ -35,9 +35,9 @@ class Command(ESCommand):
             dem_index_model = dem_index.get_index_model()
             index_versions = dem_index_model.indexversion_set.all()
             if not index_versions:
-                table.add_row([dem_index.get_base_name(), False, False])
+                table.add_row([dem_index.get_base_name(), False, False, "Current (not created)"])
             else:
                 for indx in index_versions:
-                    table.add_row([indx.name, not indx.is_deleted, indx.is_active])
+                    table.add_row([indx.name, not (indx.is_deleted is None), indx.is_active, indx.tag])
 
         print table.draw()
