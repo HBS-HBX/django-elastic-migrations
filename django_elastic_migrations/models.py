@@ -100,7 +100,9 @@ class IndexVersion(models.Model):
         return "{base_name}-{id}".format(base_name=self.index.name, id=self.id)
 
     def get_last_time_update_called(self):
-        last_update = self.indexaction_set.filter(action=IndexAction.ACTION_UPDATE_INDEX).last()
+        last_update = self.indexaction_set.filter(
+            action=IndexAction.ACTION_UPDATE_INDEX
+        ).last()
         if last_update:
             return last_update.last_modified
         return None
