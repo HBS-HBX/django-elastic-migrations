@@ -42,7 +42,7 @@ class Index(models.Model):
         Get the versions"
         :return:
         """
-        return self.indexversion_set.last()
+        return self.indexversion_set.filter(deleted_time__isnull=True).last()
 
     def get_new_version(self, dem_index=None):
         """
@@ -162,7 +162,9 @@ class IndexAction(models.Model):
     def dem_index(self):
         return getattr(self, '_dem_index', None)
 
-    def add_log(self, msg, commit=True):
+    def add_log(self, msg, commit=True, use_self_dict_format=False):
+        if use_self_dict_format:
+            msg = msg.format(**self.__dict__)
         print(msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
         if commit:
@@ -241,24 +243,40 @@ class CreateIndexAction(IndexAction):
 
     def perform_action(self, dem_index, *args, **kwargs):
         latest_version = self.index.get_latest_version()
+        force = kwargs.pop("force", False)
         new_version = None
+
+        self.index_version = latest_version
+
+        # configure self.__dict__ for format messages below
+        self._index_name = self.index.name
+        self._index_version_name = self.index_version.name
 
         msg = ""
         if latest_version and dem_index.hash_matches(latest_version.json_md5):
-            self.index_version = latest_version
-            msg = (
-                "The doc type for index {index_name} has not changed "
-                "since {index_version}; not creating a new index."
-            )
+            if force:
+                self.add_log(
+                    "The doc type for index {_index_name} has not changed "
+                    "since {_index_version_name}; but creating a new index anyway "
+                    "since you added the --force argument",
+                    use_self_dict_format=True
+                ),
+                self.index_version = dem_index.create()
+                self._index_version_name = self.index_version.name
+            else:
+                self.add_log(
+                    "The doc type for index {_index_name} has not changed "
+                    "since {_index_version_name}; not creating a new index.",
+                    use_self_dict_format=True
+                )
         else:
             self.index_version = dem_index.create()
-            msg = (
-                "The doc type for index {index_name} changed; created a new "
-                "index version {index_version} in elasticsearch."
+            self._index_version_name = self.index_version.name
+            self.add_log(
+                "The doc type for index {_index_name} changed; created a new "
+                "index version {_index_version_name} in elasticsearch.",
+                use_self_dict_format=True
             )
-
-        if msg:
-            self.add_log(msg.format(index_name=self.index.name, index_version=self.index_version.name), True)
 
 
 class UpdateIndexAction(IndexAction):

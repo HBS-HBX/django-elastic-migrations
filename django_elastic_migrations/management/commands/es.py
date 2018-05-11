@@ -4,6 +4,10 @@ from django.core.management import BaseCommand, call_command
 class Command(BaseCommand):
     help = "django-elastic-migrations: base command for search index management"
 
+    def __init__(self):
+        super(Command, self).__init__()
+        print ""
+
     def add_arguments(self, parser):
         parser.add_argument(
             'index', nargs='*',
@@ -25,7 +29,6 @@ class Command(BaseCommand):
             "--activate", action='store_true', default=False,
             help='Activate the latest version of the named index'
         )
-
 
     def handle(self, *args, **options):
         if 'list_available' in options:

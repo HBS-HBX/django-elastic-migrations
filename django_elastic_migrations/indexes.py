@@ -153,7 +153,7 @@ class DEMIndexManager(object):
         return cls.get_indexes_dict().get(index_name, None)
 
     @classmethod
-    def create_index(cls, index_name):
+    def create_index(cls, index_name, force=False):
         """
         If the index name is in the initialized indexes dict,
         and the Index does not exist, create the specified Index
@@ -165,13 +165,14 @@ class DEMIndexManager(object):
 
         If the schema has not changed since the last IndexVersion, raise
         DEMCannotCreateUnchangedIndexException
-        :param index_name:
+        :param index_name: the base name of the index
+        :param force_new: create a new index even if the schema is unchanged
         :return:
         """
         index_class = cls.get_dem_index(index_name)
         if index_class:
             from django_elastic_migrations.models import CreateIndexAction
-            CreateIndexAction().start_action(dem_index=index_class)
+            CreateIndexAction().start_action(dem_index=index_class, force=force)
         else:
             raise DEMIndexNotFound(index_name)
 

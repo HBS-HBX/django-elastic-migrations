@@ -13,6 +13,10 @@ class Command(ESCommand):
             help='Name of an index'
         )
         parser.add_argument(
+            '--force', action='store_true',
+            help='create a new index version even if the schema has not changed'
+        )
+        parser.add_argument(
             "-ls", "--list-available", action='store_true',
             help='List the available named indexes'
         )
@@ -23,7 +27,5 @@ class Command(ESCommand):
         indexes_to_create = options.get('index', [])
         if indexes_to_create:
             for index_name in indexes_to_create:
-                DEMIndexManager.create_index(index_name)
+                DEMIndexManager.create_index(index_name, force=options["force"])
 
-
-        breakpoint = None
