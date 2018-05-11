@@ -109,6 +109,10 @@ class IndexVersion(models.Model):
         self.deleted_time = timezone.now()
         self.save()
 
+    @property
+    def is_deleted(self):
+        return not self.deleted_time
+
 
 @python_2_unicode_compatible
 class IndexAction(models.Model):
@@ -195,7 +199,7 @@ class IndexAction(models.Model):
 
     def start_action(self, dem_index, *args, **kwargs):
         self._dem_index = dem_index
-        index_name = dem_index.get_index_base_name()
+        index_name = dem_index.get_base_name()
         index_instance, _ = Index.objects.get_or_create(name=index_name)
         self.index = index_instance
         self.to_in_progress()

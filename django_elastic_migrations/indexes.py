@@ -127,7 +127,7 @@ class DEMIndexManager(object):
 
     @classmethod
     def register_dem_index(cls, dem_index):
-        cls.instances[dem_index.get_index_base_name()] = dem_index
+        cls.instances[dem_index.get_base_name()] = dem_index
 
     @classmethod
     def create_index_model(cls, base_name):
@@ -276,7 +276,7 @@ class DEMIndex(ESIndex):
             index_model = DEMIndexManager.add_index(self)
             if not index_model:
                 raise ValueError("DEMIndex.create couldn't create {}".format(
-                    self.get_index_base_name()))
+                    self.get_base_name()))
         index_version = index_model.get_new_version(self)
         try:
             index = index_version.name
@@ -298,7 +298,7 @@ class DEMIndex(ESIndex):
         # return self.get_index_model().active_version.name
         return DEMIndexManager.get_active_index_version_name(self._base_name)
 
-    def get_index_base_name(self):
+    def get_base_name(self):
         return self._base_name
 
     def get_index_hash_and_json(self):

@@ -20,17 +20,24 @@ class Command(ESCommand):
         print("Available DEMIndex Definitions:")
 
         table = Texttable()
-        table.add_row(["Index Name", "Schema Number", "Created", "Activated"])
-        for dem_index in DEMIndexManager.get_indexes():
-            row = [dem_index.get_index_base_name()]
+        table.add_row(["Name", "Created", "Is Active"])
+
+        indexes = DEMIndexManager.get_indexes()
+
+        if options['index']:
+            new_indexes = []
+            for index in indexes:
+                if index.get_base_name() in options['index']:
+                    new_indexes.append(index)
+            indexes = new_indexes
+
+        for dem_index in indexes:
             dem_index_model = dem_index.get_index_model()
             index_versions = dem_index_model.indexversion_set.all()
             if not index_versions:
-                row += [1, False, False]
-                table.add_row(row)
+                table.add_row([dem_index.get_base_name(), False, False])
             else:
                 for indx in index_versions:
-                    row += [indx.id, True, indx.is_active]
-                    table.add_row(row)
+                    table.add_row([indx.name, not indx.is_deleted, indx.is_active])
 
         print table.draw()
