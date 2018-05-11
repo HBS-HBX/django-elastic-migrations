@@ -14,8 +14,12 @@ class DEMCannotCreateUnchangedIndexException(DjangoElasticMigrationsException):
 class DEMIndexNotFound(DjangoElasticMigrationsException):
     """
     Raised when a reference is made to an DEMIndex subclass that is not found.
-    For example, if `./manage.py es_create_index course_search` is called,
-    There must be a `class MyIndex(DEMIndex): name="course_search"`
+    For example, if `./manage.py es_create course_search` is called,
+    The following must appear in the django user's code:
+
+        class MyIndex(DEMIndex):
+            name = "course_search"`
+
     importable somewhere.
     """
     pass
