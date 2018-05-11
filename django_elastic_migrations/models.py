@@ -140,16 +140,22 @@ class IndexAction(models.Model):
 
     DEFAULT_ACTION = ACTION_CREATE_INDEX
 
-    # creates a `status` field with default as the first value in list: `queued`
-    status = models.CharField(choices=STATUSES_ALL_CHOICES, max_length=32, default=STATUS_QUEUED)
-    action = models.CharField(choices=ACTIONS_ALL_CHOICES, max_length=64)
+    # linked models
     index = models.ForeignKey(Index)
-    log = models.TextField(blank=True)
-    # override TimeFramedModel.start to add on creation
+    index_version = models.ForeignKey(IndexVersion, null=True)
+
+    # which management command was run
+    action = models.CharField(choices=ACTIONS_ALL_CHOICES, max_length=64)
+
+    # timing of the management command
     start = models.DateTimeField(auto_now_add=True)
     end = models.DateTimeField(blank=True, null=True)
     last_modified = models.DateTimeField(auto_now=True)
-    index_version = models.ForeignKey(IndexVersion, null=True)
+
+    # state of this operation
+    status = models.CharField(choices=STATUSES_ALL_CHOICES, max_length=32, default=STATUS_QUEUED)
+    # text from management command
+    log = models.TextField(blank=True)
 
     def __init__(self, *args, **kwargs):
         action = self._meta.get_field('action')

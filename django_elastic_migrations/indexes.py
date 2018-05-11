@@ -9,10 +9,20 @@ from django_elastic_migrations.exceptions import DEMIndexNotFound
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
+"""
+indexes.py - Django-facing API for interacting with this App
+
+Module Conventions
+------------------
+* 'ES': classes imported from Elasticsearch are prefixed with this
+* 'DEM': classes belonging to this app are prefixed with this (for Django Elastic Migrations)
+"""
+
+
 class DEMIndexManager(object):
     """
     API for interacting with a collection of DEMIndexes.
-    Called by various management commands.
+    Called by Django Elastic Migrations management commands.
     """
 
     post_migrate_completed = False
@@ -204,7 +214,7 @@ class DEMIndexManager(object):
             raise DEMIndexNotFound(index_name)
 
 
-class DEMDocTypeIndexHandler(object):
+class _DEMDocTypeIndexHandler(object):
     """
     Internally, Elasticsearch-dsl-py uses a string stored in the
     DocType to determine which index to write to. This class is
@@ -212,6 +222,7 @@ class DEMDocTypeIndexHandler(object):
     that the .index property gets redirected to the value of the
     active index version for that doc type. All other attributes
     are handled by the original DocTypeOptions class.
+    Not meant to be used directly outside of this module.
     """
 
     def __init__(self, es_doc_type):
@@ -241,36 +252,44 @@ class DEMDocTypeIndexHandler(object):
 
 class DEMDocType(ESDocType):
     """
-    SubClass of Elasticsearch's DocType, used to specify the
-    types of fields that will be put into the mapping of a
-    specific index. The functionality changed from Elasticsearch
-    is that we manage the doc type's index name.
+    Django users subclass DEMDocType instead of of Elasticsearch's DocType
+    to use Django Elastic Migrations. All documentation from their class
+    applies here.
+    https://elasticsearch-dsl.readthedocs.io/en/latest/api.html#elasticsearch_dsl.DocType
+
+    Change from Elasticsearch: we manage the doc type's index name to
+    make it the activated version of the index by default.
     """
 
     def __init__(self, *args, **kwargs):
         super(DEMDocType, self).__init__(*args, **kwargs)
-        self._doc_type = DEMDocTypeIndexHandler(getattr(self, '_doc_type', None))
+        self._doc_type = _DEMDocTypeIndexHandler(getattr(self, '_doc_type', None))
 
 
 class DEMIndex(ESIndex):
     """
-    Subclass of Elasticsearch's Index which specifies the
-    base name of a new index.
+    Django users subclass DEMIndex instead of elasticsearch-dsl-py's Index
+    to use Django Elastic Migrations. Most documentation from their class
+    applies here.
+
+    Change from Elasticsearch: several convenience methods were
     """
 
     def __init__(self, name, using=es_client):
         super(DEMIndex, self).__init__(name, using)
         self._base_name = name
         self.__doc_type = None
-        # ensure every index calls home to the index manager
+        # ensure every index calls home to our manager
         DEMIndexManager.register_dem_index(self)
 
     def create(self, **kwargs):
         """
-        Create a new IndexVersion record, adding the json schema
-        of the new index to it. Then call create on the new
+        Overrides elasticsearch_dsl.Index.create().
+        Creates a new IndexVersion record, adding the json schema
+        of the new index to it. Then calls create on the new
         index for elasticsearch.
         :returns new django_elastic_migrations.models.IndexVersion
+        :see also https://elasticsearch-dsl.readthedocs.io/en/latest/api.html#elasticsearch_dsl.Index.create
         """
         index_model = self.get_index_model()
         if not index_model:
@@ -289,6 +308,11 @@ class DEMIndex(ESIndex):
         return index_version
 
     def doc_type(self, doc_type=None):
+        """
+        Overrides elasticsearch_dsl.Index.doc_type().
+        Associates a DEMDocType with this DEMIndex, which is a bidirectional association.
+        :returns DEMDocType associated with this DEMIndex (if any)
+        """
         if doc_type:
             self.__doc_type = doc_type
             return super(DEMIndex, self).doc_type(doc_type)
@@ -296,7 +320,6 @@ class DEMIndex(ESIndex):
             return self.__doc_type
 
     def get_active_version_index_name(self):
-        # return self.get_index_model().active_version.name
         return DEMIndexManager.get_active_index_version_name(self._base_name)
 
     def get_base_name(self):
@@ -332,9 +355,9 @@ class DEMIndex(ESIndex):
     @_name.setter
     def _name(self, value):
         """
-        When we call super.__init__, the first action is to write
-        to super._name attribute. Instead, store the value in
-        _base_name so as to look up the real name of the
-        active index later.
+        Override super._name attribute, which determines which ES index is
+        written to, with our dynamic name that takes into account
+        the active index version. This property
+        is written by the superclass.
         """
         self._base_name = value
