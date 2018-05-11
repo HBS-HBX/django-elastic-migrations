@@ -5,7 +5,7 @@ from django.db import ProgrammingError
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType
 
 from django_elastic_migrations import es_client
-from django_elastic_migrations.exceptions import DEMIndexNotFound
+from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
@@ -263,7 +263,40 @@ class DEMDocType(ESDocType):
 
     def __init__(self, *args, **kwargs):
         super(DEMDocType, self).__init__(*args, **kwargs)
-        self._doc_type = _DEMDocTypeIndexHandler(getattr(self, '_doc_type', None))
+        # super.__init__ creates the self._doc_type property that we
+        # modify here
+        self._doc_type = _DEMDocTypeIndexHandler(
+            getattr(self, '_doc_type', None))
+
+    @classmethod
+    def get_reindex_iterator(self, last_updated_datetime):
+        """
+        Django users override this method. It must return an iterator
+        or generator of instantiated DEMDocType subclasses, ready
+        for inserting into Elasticsearch. For example:
+
+        class UsersDocType(DEMDocType)
+
+            @classmethod
+            def get_reindex_iterator(cls, last_updated_datetime):
+                users = User.objects.filter(
+                    last_modified__gte=last_updated_datetime)
+                return [cls.getDocForUser(u) for u in users]
+
+        Of course, you could just ignoire the last_updated_datetime
+        if you didn't feel like using it and want to reindex all docs:
+
+        class UsersDocType(DEMDocType)
+
+            @classmethod
+            def get_reindex_iterator(cls, last_updated_datetime):
+                users = User.objects.all()
+                return [cls.getDocForUser(u) for u in users]
+
+        :param last_updated_datetime: DateTime
+        :return: iterator / generator of *DEMDocType instances*
+        """
+        raise DEMDocTypeRequiresGetReindexIterator()
 
 
 class DEMIndex(ESIndex):

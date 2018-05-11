@@ -38,3 +38,12 @@ class IndexNamePropertyCannotBeSet(DjangoElasticMigrationsException):
     Raised when attempting to set the self._name property on an
     Elasticsearch Index.
     """
+
+
+class DEMDocTypeRequiresGetReindexIterator(DjangoElasticMigrationsException):
+    """
+    Raised when ./manage.py es_update tries to call DEMDocType.get_reindex_iterator()
+    on a subclass, but the subclass has not implemented this.
+    """
+    message = ("To run ./manage.py es_update my_index, my_index needs to " 
+              "implement get_reindex_iterator")

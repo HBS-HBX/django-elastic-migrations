@@ -323,7 +323,8 @@ class UpdateIndexAction(IndexAction):
         )
 
         self.add_log("Getting Reindex Iterator...")
-        reindex_iterator = dem_index.doc_type().get_reindex_iterator(last_update=last_update)
+        reindex_iterator = dem_index.doc_type().get_reindex_iterator(
+            last_update=last_update)
 
         # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
         from itertools import islice
