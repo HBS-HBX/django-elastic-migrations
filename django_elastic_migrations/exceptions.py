@@ -3,6 +3,12 @@ class DjangoElasticMigrationsException(Exception):
     pass
 
 
+class IllegalDEMIndexState(DjangoElasticMigrationsException):
+    """
+    Raised when a DEMIndex is misconfigured
+    """
+
+
 class DEMCannotCreateUnchangedIndexException(DjangoElasticMigrationsException):
     """
     Raised when a request is made to create an index, and the index has not changed.

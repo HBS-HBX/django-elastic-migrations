@@ -5,7 +5,8 @@ from django.db import ProgrammingError
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ
 
 from django_elastic_migrations import es_client
-from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator
+from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
+    IllegalDEMIndexState
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
@@ -458,6 +459,13 @@ class DEMIndex(ESIndex):
         the active index version. This property
         is read by the superclass.
         """
+        version_id = self.get_version_id()
+        if version_id:
+            version_model = self.get_version_model()
+            if version_model:
+                return version_model.name
+            raise IllegalDEMIndexState("No associated version found in the database for {}-{}".format(
+                self.get_base_name(), version_id))
         return self.get_active_version_index_name()
 
     @_name.setter
