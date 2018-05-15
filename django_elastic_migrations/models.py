@@ -88,7 +88,7 @@ class IndexVersion(models.Model):
         """
         Get a string representation of this model instance.
         """
-        return '<IndexVersion, ID: {}>'.format(self.id)
+        return '<IndexVersion for {}, ID: {}>'.format(str(self.index), self.id)
 
     @property
     def is_active(self):
@@ -363,3 +363,44 @@ class ActivateIndexAction(IndexAction):
 
         self.add_log("Active version for {index_name} has been set "
                      "to {index_version_name}.".format(**msg_params))
+
+
+class ClearIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        version = kwargs.get('use_version_mode', False)
+        version_model = dem_index.get_version_model()
+        msg_params = {"index_name": self.index.name}
+        if version_model:
+            self.index_version = version_model
+            msg_params.update({"index_version_name": version_model.name})
+            dem_index.clear()
+            self.add_log("Cleared all documents from {index_version_name} "
+                         "because you said to do so.".format(**msg_params))
+        else:
+            latest_version = self.index.get_latest_version()
+
+            if not latest_version:
+                raise NoCreatedIndexVersion(
+                    "You must have created a version of the '{index_name}' index "
+                    "to call clear index.".format(**msg_params)
+                )
+
+            active_version = self.index.active_version
+            if active_version:
+                self.index_version = latest_version
+                msg_params.update({"index_version_name": latest_version.name})
+                dem_index.clear()
+                self.add_log("Cleared all documents from {index_version_name} "
+                             "because you said to do so.".format(**msg_params))
+            else:
+                raise NoActiveIndexVersion(
+                    "You must activate an index version to clear using the index "
+                    "name `{index_version_name}`only.".format(**msg_params)
+                )
+

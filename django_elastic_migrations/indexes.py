@@ -2,7 +2,7 @@
 import sys
 
 from django.db import ProgrammingError
-from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType
+from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ
 
 from django_elastic_migrations import es_client
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator
@@ -30,7 +30,7 @@ class DEMIndexManager(object):
 
     """
     DEMIndex base name ⤵ 
-        DEMIndex instance
+        active DEMIndex instance
     """
     instances = {}
 
@@ -160,7 +160,22 @@ class DEMIndexManager(object):
         return cls.instances
 
     @classmethod
-    def get_dem_index(cls, index_name):
+    def get_dem_index(cls, index_name, use_version_mode=False):
+        """
+        Get the DEMIndex instance associated with `index_name`.
+        :param index_name: Name of index
+        :param use_version_mode: If True, treat `index_name` as the
+               fully qualified elasticsearch name of the index
+        :return:
+        """
+        version_number = None
+        if use_version_mode and index_name:
+            separator_index = index_name.rindex("-")
+            base_name = index_name[:separator_index]
+            version_number = index_name[separator_index+1:]
+            index_name = base_name
+        if version_number:
+            return DEMIndex(index_name, version_id=version_number)
         return cls.get_indexes_dict().get(index_name, None)
 
     @classmethod
@@ -188,18 +203,26 @@ class DEMIndexManager(object):
             raise DEMIndexNotFound(index_name)
 
     @classmethod
-    def update_index(cls, index_name):
+    def update_index(cls, index_name, all=False):
         """
-        Given the named index, update the documents
+        Given the named index, update the documents. By default, it only
+        updates since the time of the last update.
         :param index_name:
+        :param all - whether or not to update all indexes
         :return:
         """
-        dem_index = cls.get_dem_index(index_name)
-        if dem_index:
-            from django_elastic_migrations.models import UpdateIndexAction
-            UpdateIndexAction().start_action(dem_index=dem_index)
+        from django_elastic_migrations.models import UpdateIndexAction
+        if index_name:
+            dem_index = cls.get_dem_index(index_name)
+            if dem_index:
+                UpdateIndexAction().start_action(dem_index=dem_index)
+            else:
+                raise DEMIndexNotFound(index_name)
+        elif all:
+            for dem_index in cls.get_indexes():
+                UpdateIndexAction().start_action(dem_index=dem_index)
         else:
-            raise DEMIndexNotFound(index_name)
+            raise DEMIndexNotFound()
 
     @classmethod
     def activate_index(cls, index_name):
@@ -212,6 +235,33 @@ class DEMIndexManager(object):
             ActivateIndexAction().start_action(dem_index=dem_index)
         else:
             raise DEMIndexNotFound(index_name)
+
+    @classmethod
+    def clear_index(cls, index_name, use_version_mode=False):
+        """
+        Given the named index, clear the documents from the index
+
+        """
+        from django_elastic_migrations.models import ClearIndexAction
+        if index_name:
+            dem_indexes = []
+            if index_name == 'all':
+                dem_indexes.append(cls.get_indexes())
+            else:
+                dem_index = cls.get_dem_index(index_name, use_version_mode)
+                if dem_index:
+                    dem_indexes.append(dem_index)
+                else:
+                    DEMIndexNotFound(index_name)
+            if dem_indexes:
+                actions = []
+                for dem_index in dem_indexes:
+                    action = ClearIndexAction()
+                    action.start_action(
+                        dem_index=dem_index, use_version_mode=use_version_mode)
+                    actions.append(action)
+                return actions
+        raise DEMIndexNotFound()
 
 
 class _DEMDocTypeIndexHandler(object):
@@ -301,12 +351,27 @@ class DEMIndex(ESIndex):
     Change from Elasticsearch: several convenience methods were
     """
 
-    def __init__(self, name, using=es_client):
+    def __init__(self, name, using=es_client, version_id=None):
+        """
+        :param name: the name of this index
+        :param using: the elasticsearch client to use
+        :param use_version_mode: if True bypass whether or not this version
+               is activated; use the name of the index directly
+        """
         super(DEMIndex, self).__init__(name, using)
         self._base_name = name
         self.__doc_type = None
+        self.__version_id = version_id
+        self.__version_model = None
         # ensure every index calls home to our manager
-        DEMIndexManager.register_dem_index(self)
+        if not version_id:
+            DEMIndexManager.register_dem_index(self)
+
+    def clear(self):
+        """
+        Remove all of the documents in this index.
+        """
+        self.search().query(ESQ('match_all')).delete()
 
     def create(self, **kwargs):
         """
@@ -347,6 +412,23 @@ class DEMIndex(ESIndex):
 
     def get_active_version_index_name(self):
         return DEMIndexManager.get_active_index_version_name(self._base_name)
+
+    def get_version_model(self):
+        """
+        If this index was instantiated with an id, return the VersionModel associated
+        with it. If not,
+        :return:
+        """
+        version_id = self.get_version_id()
+        if version_id:
+            if not self.__version_model:
+                from django_elastic_migrations.models import IndexVersion
+                self.__version_model = IndexVersion.objects.filter(id=self.get_version_id()).first()
+            return self.__version_model
+        return self.get_active_version_index_name()
+
+    def get_version_id(self):
+        return self.__version_id or 0
 
     def get_base_name(self):
         return self._base_name

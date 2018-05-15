@@ -23,7 +23,7 @@ class Command(ESCommand):
 
     def handle(self, *args, **options):
         if options.get('list_available'):
-            call_command('es_list')
+            return call_command('es_list')
         indexes_to_create = options.get('index', [])
         if indexes_to_create:
             for index_name in indexes_to_create:

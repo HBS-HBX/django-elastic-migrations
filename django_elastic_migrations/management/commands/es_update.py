@@ -20,7 +20,10 @@ class Command(ESCommand):
     def handle(self, *args, **options):
         if options.get('list_available'):
             call_command('es_list')
-        indexes_to_create = options.get('index', [])
-        if indexes_to_create:
-            for index_name in indexes_to_create:
+            return
+        indexes_to_update = options.get('index', [])
+        if indexes_to_update:
+            for index_name in indexes_to_update:
                 DEMIndexManager.update_index(index_name)
+        else:
+            DEMIndexManager.update_index(None, all=True)
