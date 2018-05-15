@@ -359,7 +359,7 @@ class DEMIndex(ESIndex):
                is activated; use the name of the index directly
         """
         super(DEMIndex, self).__init__(name, using)
-        self._base_name = name
+        self.__base_name = name
         self.__doc_type = None
         self.__version_id = version_id
         self.__version_model = None
@@ -411,7 +411,7 @@ class DEMIndex(ESIndex):
             return self.__doc_type
 
     def get_active_version_index_name(self):
-        return DEMIndexManager.get_active_index_version_name(self._base_name)
+        return DEMIndexManager.get_active_index_version_name(self.__base_name)
 
     def get_version_model(self):
         """
@@ -431,7 +431,7 @@ class DEMIndex(ESIndex):
         return self.__version_id or 0
 
     def get_base_name(self):
-        return self._base_name
+        return self.__base_name
 
     def get_index_hash_and_json(self):
         """
@@ -440,11 +440,11 @@ class DEMIndex(ESIndex):
         will be accessed through an index version.
         :return: (md5 str, json string)
         """
-        es_index = self.clone(name=self._base_name, using=es_client)
+        es_index = self.clone(name=self.__base_name, using=es_client)
         return get_index_hash_and_json(es_index)
 
     def get_index_model(self):
-        return DEMIndexManager.get_index_model(self._base_name, False)
+        return DEMIndexManager.get_index_model(self.__base_name, False)
 
     def hash_matches(self, their_index_hash):
         our_index_hash, _ = self.get_index_hash_and_json()
@@ -468,4 +468,4 @@ class DEMIndex(ESIndex):
         the active index version. This property
         is written by the superclass.
         """
-        self._base_name = value
+        self.__base_name = value
