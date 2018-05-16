@@ -6,7 +6,7 @@ from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ
 
 from django_elastic_migrations import es_client
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
-    IllegalDEMIndexState
+    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
@@ -50,7 +50,6 @@ class DEMIndexManager(object):
     def class_db_init(cls):
         cls.db_ready = True
         if not ('makemigrations' in sys.argv or 'migrate' in sys.argv):
-            # if we just
             cls.update_index_models()
         cls.reinitialize_esindex_instances()
 
@@ -224,7 +223,6 @@ class DEMIndexManager(object):
                 return actions
         raise DEMIndexNotFound()
 
-
     @classmethod
     def update_index(cls, index_name, use_version_mode=False):
         """
@@ -238,18 +236,6 @@ class DEMIndexManager(object):
         from django_elastic_migrations.models import UpdateIndexAction
         action = UpdateIndexAction()
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
-        # from django_elastic_migrations.models import UpdateIndexAction
-        # if index_name:
-        #     dem_index = cls.get_dem_index(index_name)
-        #     if dem_index:
-        #         UpdateIndexAction().start_action(dem_index=dem_index)
-        #     else:
-        #         raise DEMIndexNotFound(index_name)
-        # elif all:
-        #     for dem_index in cls.get_indexes():
-        #         UpdateIndexAction().start_action(dem_index=dem_index)
-        # else:
-        #     raise DEMIndexNotFound()
 
     @classmethod
     def activate_index(cls, index_name):
@@ -374,9 +360,16 @@ class DEMIndex(ESIndex):
         self.__doc_type = None
         self.__version_id = version_id
         self.__version_model = None
-        # ensure every index calls home to our manager
+
+        # if this DEMIndex has a version_id, and .doc_type() has been called,
+        # then this property will be filled in with a reference to the
+        # original DEMIndex, the one in the codebase.
+        # it's not used outside of .doc_type().
+        self.__base_dem_index = None
+
         if not version_id:
-            DEMIndexManager.register_dem_index(self)
+            # ensure every index calls home to our manager
+                DEMIndexManager.register_dem_index(self)
 
     def clear(self):
         """
@@ -412,18 +405,43 @@ class DEMIndex(ESIndex):
     def doc_type(self, doc_type=None):
         """
         Overrides elasticsearch_dsl.Index.doc_type().
-        Associates a DEMDocType with this DEMIndex, which is a bidirectional association.
+        Associates a DEMDocType with this DEMIndex, which is a bidirectional
+        association.
+
+        In the case that this DEMIndex has been instantiated
+        as DEMIndex(name, version_id) and attempting to retrieve a doc_type:
+        IF the index version requires a different version of the codebase,
+        this method will raise DEMIndexVersionCodebaseMismatchError.
+
         :returns DEMDocType associated with this DEMIndex (if any)
         """
         if doc_type:
             self.__doc_type = doc_type
             return super(DEMIndex, self).doc_type(doc_type)
         else:
-            if self.get_version_id():
-                if self.__doc_type:
-                    breakpoint = None
-                else:
-                    breakpoint = None
+            if self.get_version_id() and not self.__doc_type:
+                version_model = self.get_version_model()
+                self.__base_dem_index = DEMIndexManager.get_dem_index(self.get_base_name())
+                doc_type = self.__base_dem_index.doc_type()
+                doc_type_index_backup = doc_type._doc_type.index
+                doc_type._doc_type.index = version_model.name
+                self.__doc_type = super(DEMIndex, self).doc_type(doc_type)
+                if not self.hash_matches(version_model.json_md5):
+                    doc_type._doc_type.index = doc_type_index_backup
+                    self.__doc_type = None
+                    msg = (
+                        "Someone requested DEMIndex {index_name}, "
+                        "which was created in codebase version {tag}. "
+                        "The current version of that index does not have the same "
+                        "spec. Please run operations for {index_name} on an app "
+                        "server running a version such as {tag}.  "
+                        " - needed doc type hash: {needed_hash}".format(
+                            index_name=version_model.name,
+                            needed_hash=version_model.json_md5,
+                            tag=version_model.tag
+                        )
+                    )
+                    raise DEMIndexVersionCodebaseMismatchError(msg)
             return self.__doc_type
 
     def get_active_version_index_name(self):
@@ -472,10 +490,10 @@ class DEMIndex(ESIndex):
     @property
     def _name(self):
         """
-        Override super._name attribute, which determines which ES index is
-        written to, with our dynamic name that takes into account
-        the active index version. This property
-        is read by the superclass.
+        Override Elasticsearch's super._name attribute, which determines
+        which ES index is written to, with our dynamic name that
+        takes into account the active index version. This property
+        is read in the superclass.
         """
         version_id = self.get_version_id()
         if version_id:
@@ -489,9 +507,8 @@ class DEMIndex(ESIndex):
     @_name.setter
     def _name(self, value):
         """
-        Override super._name attribute, which determines which ES index is
-        written to, with our dynamic name that takes into account
-        the active index version. This property
-        is written by the superclass.
+        Override Elasticsearch's super._name attribute, which determines
+        which ES index is written to, with our dynamic name
+        This property is written to by the superclass.
         """
         self.__base_name = value

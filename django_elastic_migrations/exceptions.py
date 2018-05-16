@@ -56,3 +56,11 @@ class DEMDocTypeRequiresGetReindexIterator(DjangoElasticMigrationsException):
     """
     message = ("To run ./manage.py es_update my_index, my_index needs to "
                "implement get_reindex_iterator")
+
+
+class DEMIndexVersionCodebaseMismatchError(DjangoElasticMigrationsException):
+    """
+    Raised when calling ./manage.py es_update, and the json hash of the
+    index in the codebase differs from the json hash of the index version
+    that update would be called on.
+    """

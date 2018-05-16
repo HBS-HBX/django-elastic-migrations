@@ -350,6 +350,8 @@ class UpdateIndexAction(IndexAction):
                 "Handling update of index '{_index_name}' using its active index version "
                 "'{_index_version_name}'", use_self_dict_format=True)
 
+        doc_type = dem_index.doc_type()
+
         self._last_update = self.index_version.get_last_time_update_called()
         if not self._last_update:
             self._last_update = 'never'
@@ -360,7 +362,8 @@ class UpdateIndexAction(IndexAction):
         )
 
         self.add_log("Getting Reindex Iterator...")
-        reindex_iterator = dem_index.doc_type().get_reindex_iterator(
+
+        reindex_iterator = doc_type.get_reindex_iterator(
             last_update=self._last_update)
 
         # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
