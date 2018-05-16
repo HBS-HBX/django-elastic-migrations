@@ -374,21 +374,23 @@ class ClearIndexAction(IndexAction):
 
     def perform_action(self, dem_index, *args, **kwargs):
         version = kwargs.get('use_version_mode', False)
-        version_model = dem_index.get_version_model()
         msg_params = {"index_name": self.index.name}
-        if version_model:
+        if dem_index.get_version_id():
+            version_model = dem_index.get_version_model()
             self.index_version = version_model
             msg_params.update({"index_version_name": version_model.name})
             dem_index.clear()
-            self.add_log("Cleared all documents from {index_version_name} "
-                         "because you said to do so.".format(**msg_params))
+            msg = ("Cleared all documents from index version '{index_version_name}' "
+                   "because you said to do so.".format(**msg_params))
+            self.add_log(msg)
         else:
             latest_version = self.index.get_latest_version()
 
             if not latest_version:
                 raise NoCreatedIndexVersion(
-                    "You must have created a version of the '{index_name}' index "
-                    "to call clear index.".format(**msg_params)
+                    "You must have created a version of the "
+                    "'{index_name}' index to call clear "
+                    "index.".format(**msg_params)
                 )
 
             active_version = self.index.active_version
@@ -396,8 +398,10 @@ class ClearIndexAction(IndexAction):
                 self.index_version = latest_version
                 msg_params.update({"index_version_name": latest_version.name})
                 dem_index.clear()
-                self.add_log("Cleared all documents from {index_version_name} "
-                             "because you said to do so.".format(**msg_params))
+                self.add_log(
+                    "The active index for '{index_name}' is '{index_version_name}': "
+                    "Clearing all documents because you said to do so.".format(
+                        **msg_params))
             else:
                 raise NoActiveIndexVersion(
                     "You must activate an index version to clear using the index "

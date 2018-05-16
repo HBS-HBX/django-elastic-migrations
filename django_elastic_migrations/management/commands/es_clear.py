@@ -1,7 +1,12 @@
+import logging
 from django.core.management import CommandError
 
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
+
+
+logger = logging.getLogger("django-elastic-migrations")
+
 
 MODE_INDEXES = 'index'
 MODE_VERSIONS = 'version'
@@ -43,11 +48,17 @@ class Command(ESCommand):
         apply_all = options.get('all', False)
 
         if apply_all:
+            if indexes:
+                logger.warning(
+                    "./manage.py es_clear --all received named indexes - "
+                    "these specified index names will be ignored because "
+                    "you have requested to clear *all* the indexes."
+                )
             DEMIndexManager.clear_index(
                 'all',
                 use_version_mode=use_version_mode,
             )
-        if indexes:
+        elif indexes:
             for index_name in indexes:
                 DEMIndexManager.clear_index(
                     index_name,

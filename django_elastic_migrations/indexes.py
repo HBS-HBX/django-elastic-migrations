@@ -247,7 +247,7 @@ class DEMIndexManager(object):
         if index_name:
             dem_indexes = []
             if index_name == 'all':
-                dem_indexes.append(cls.get_indexes())
+                dem_indexes.extend(cls.get_indexes())
             else:
                 dem_index = cls.get_dem_index(index_name, use_version_mode)
                 if dem_index:
@@ -417,14 +417,17 @@ class DEMIndex(ESIndex):
     def get_version_model(self):
         """
         If this index was instantiated with an id, return the VersionModel associated
-        with it. If not,
+        with it. If not, return the active version index name
         :return:
         """
         version_id = self.get_version_id()
         if version_id:
             if not self.__version_model:
+                # importing here to avoid circular imports
                 from django_elastic_migrations.models import IndexVersion
-                self.__version_model = IndexVersion.objects.filter(id=self.get_version_id()).first()
+                self.__version_model = IndexVersion.objects.filter(
+                    id=self.get_version_id()
+                ).first()
             return self.__version_model
         return self.get_active_version_index_name()
 

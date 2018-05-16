@@ -15,8 +15,10 @@ from django.core.exceptions import ImproperlyConfigured
 
 
 if not hasattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT'):
-    raise ImproperlyConfigured('The DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT setting is required. This should be the python '
-                               'path to the elasticsearch client to use for indexing.')
+    raise ImproperlyConfigured(
+        'The DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT setting is required. '
+        'This should be the python path to the elasticsearch client '
+        'to use for indexing.')
 
 
 es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
