@@ -70,8 +70,9 @@ class IndexVersion(models.Model):
     # note: the index name field in this field does NOT include the IndexVersion id
     json = models.TextField(verbose_name="Elasticsearch Index JSON", blank=True)
     # store an MD5 of the JSON field above, so as to compare equality
-    json_md5 = models.CharField(verbose_name="Elasticsearch Index JSON hash", db_index=True, max_length=32,
-                                editable=False)
+    json_md5 = models.CharField(
+        verbose_name="Elasticsearch Index JSON hash", db_index=True,
+        max_length=32, editable=False)
     tag = models.CharField(verbose_name="Codebase Git Tag", max_length=64, blank=True)
     inserted = models.DateTimeField(auto_now_add=True)
     deleted_time = models.DateTimeField(null=True, blank=True)
