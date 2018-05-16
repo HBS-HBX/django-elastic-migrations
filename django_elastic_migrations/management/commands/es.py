@@ -104,7 +104,7 @@ class Command(BaseCommand):
                     "indexes.".format(", ".join(indexes))
                 )
 
-        if not indexes or not apply_all:
+        if not (indexes or apply_all):
             raise CommandError(
                 "At least one {mode} or --all must be specified".format(
                     mode=mode

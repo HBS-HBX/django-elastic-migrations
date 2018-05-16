@@ -204,7 +204,29 @@ class DEMIndexManager(object):
             raise DEMIndexNotFound(index_name)
 
     @classmethod
-    def update_index(cls, index_name, all=False):
+    def _start_action_for_indexes(cls, action, index_name, use_version_mode=False):
+        if index_name:
+            dem_indexes = []
+            if index_name == 'all':
+                dem_indexes.extend(cls.get_indexes())
+            else:
+                dem_index = cls.get_dem_index(index_name, use_version_mode)
+                if dem_index:
+                    dem_indexes.append(dem_index)
+                else:
+                    DEMIndexNotFound(index_name)
+            if dem_indexes:
+                actions = []
+                for dem_index in dem_indexes:
+                    action.start_action(
+                        dem_index=dem_index, use_version_mode=use_version_mode)
+                    actions.append(action)
+                return actions
+        raise DEMIndexNotFound()
+
+
+    @classmethod
+    def update_index(cls, index_name, use_version_mode=False):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
@@ -212,18 +234,22 @@ class DEMIndexManager(object):
         :param all - whether or not to update all indexes
         :return:
         """
+        # avoid circular import
         from django_elastic_migrations.models import UpdateIndexAction
-        if index_name:
-            dem_index = cls.get_dem_index(index_name)
-            if dem_index:
-                UpdateIndexAction().start_action(dem_index=dem_index)
-            else:
-                raise DEMIndexNotFound(index_name)
-        elif all:
-            for dem_index in cls.get_indexes():
-                UpdateIndexAction().start_action(dem_index=dem_index)
-        else:
-            raise DEMIndexNotFound()
+        action = UpdateIndexAction()
+        return cls._start_action_for_indexes(action, index_name, use_version_mode)
+        # from django_elastic_migrations.models import UpdateIndexAction
+        # if index_name:
+        #     dem_index = cls.get_dem_index(index_name)
+        #     if dem_index:
+        #         UpdateIndexAction().start_action(dem_index=dem_index)
+        #     else:
+        #         raise DEMIndexNotFound(index_name)
+        # elif all:
+        #     for dem_index in cls.get_indexes():
+        #         UpdateIndexAction().start_action(dem_index=dem_index)
+        # else:
+        #     raise DEMIndexNotFound()
 
     @classmethod
     def activate_index(cls, index_name):
@@ -243,26 +269,10 @@ class DEMIndexManager(object):
         Given the named index, clear the documents from the index
 
         """
+        # avoid circular import
         from django_elastic_migrations.models import ClearIndexAction
-        if index_name:
-            dem_indexes = []
-            if index_name == 'all':
-                dem_indexes.extend(cls.get_indexes())
-            else:
-                dem_index = cls.get_dem_index(index_name, use_version_mode)
-                if dem_index:
-                    dem_indexes.append(dem_index)
-                else:
-                    DEMIndexNotFound(index_name)
-            if dem_indexes:
-                actions = []
-                for dem_index in dem_indexes:
-                    action = ClearIndexAction()
-                    action.start_action(
-                        dem_index=dem_index, use_version_mode=use_version_mode)
-                    actions.append(action)
-                return actions
-        raise DEMIndexNotFound()
+        action = ClearIndexAction()
+        return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
 
 class _DEMDocTypeIndexHandler(object):
@@ -409,6 +419,11 @@ class DEMIndex(ESIndex):
             self.__doc_type = doc_type
             return super(DEMIndex, self).doc_type(doc_type)
         else:
+            if self.get_version_id():
+                if self.__doc_type:
+                    breakpoint = None
+                else:
+                    breakpoint = None
             return self.__doc_type
 
     def get_active_version_index_name(self):

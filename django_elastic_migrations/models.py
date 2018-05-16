@@ -13,7 +13,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch.helpers import bulk
 
 from django_elastic_migrations import codebase_id, es_client
-from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion
+from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState
 
 
 @python_2_unicode_compatible
@@ -299,34 +299,69 @@ class UpdateIndexAction(IndexAction):
         proxy = True
 
     def perform_action(self, dem_index, *args, **kwargs):
-        active_version = self.index.active_version
-        if not active_version:
-            msg = (
-                "You must have an active version of the '{index_name}' index "
-                "to call update index. Please activate an index and try again.".format(
-                    index_name=self.index.name
+        self._index_name = self.index.name
+        self._index_version_id = dem_index.get_version_id()
+
+        if self._index_version_id:
+            # we have instantiated this DEMIndex with a specific IndexVersion
+            index_version = dem_index.get_version_model()
+            if not index_version:
+                msg = (
+                    "DEMIndex '{_index_name}' configured with version "
+                    "'{_index_version_id}' did not have an IndexModel "
+                    "in the database".format(**self.__dict__)
                 )
-            )
-            raise NoActiveIndexVersion(msg)
+                raise IllegalDEMIndexState(msg)
 
-        self.index_version = active_version
-        last_update = active_version.get_last_time_update_called()
-        msg_params = {
-            "index_version_name": active_version.name,
-            "last_update": "never"
-        }
-        if last_update:
-            msg_params.update({"last_update": str(last_update)})
+            self.index_version = index_version
+            self._index_version_name = index_version.name
+            self.add_log(
+                "Handling update of manually specified index version "
+                "'{_index_version_name}'", use_self_dict_format=True)
 
+        else:
+            # use the active version of the index if one exists.
+
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
+            if not latest_version:
+                raise NoCreatedIndexVersion(
+                    "You must have created and activated a version of the "
+                    "'{_index_name}' index to call update "
+                    "index.".format(**self.__dict__)
+                )
+
+            # at least one version is available. now get the *active* version for this index.
+            active_version = self.index.active_version
+
+            if not active_version:
+                msg = (
+                    "You must have an active version of the '{_index_name}' index "
+                    "to call update index. Please activate an index and try again.".format(
+                        **self.__dict__
+                    )
+                )
+                raise NoActiveIndexVersion(msg)
+
+            # we have an active version for this index. now do the update.
+            self.index_version = active_version
+            self._index_version_name = self.index_version.name
+            self.add_log(
+                "Handling update of index '{_index_name}' using its active index version "
+                "'{_index_version_name}'", use_self_dict_format=True)
+
+        self._last_update = self.index_version.get_last_time_update_called()
+        if not self._last_update:
+            self._last_update = 'never'
         self.add_log(
             "Checking the last time update was called: "
-            u"\n - index version: {index_version_name} "
-            u"\n - update date: {last_update} ".format(**msg_params)
+            u"\n - index version: {_index_version_name} "
+            u"\n - update date: {_last_update} ", use_self_dict_format=True
         )
 
         self.add_log("Getting Reindex Iterator...")
         reindex_iterator = dem_index.doc_type().get_reindex_iterator(
-            last_update=last_update)
+            last_update=self._last_update)
 
         # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
         from itertools import islice
@@ -335,7 +370,44 @@ class UpdateIndexAction(IndexAction):
         self.add_log("Calling bulk reindex...")
         bulk(client=es_client, actions=reindex_iterator, refresh=True)
 
-        self.add_log("Completed with indexing {index_version_name}".format(**msg_params))
+        self.add_log("Completed with indexing {_index_version_name}", use_self_dict_format=True)
+
+        # if not active_version:
+        #     msg = (
+        #         "You must have an active version of the '{index_name}' index "
+        #         "to call update index. Please activate an index and try again.".format(
+        #             index_name=self.index.name
+        #         )
+        #     )
+        #     raise NoActiveIndexVersion(msg)
+        #
+        # self.index_version = active_version
+        # last_update = active_version.get_last_time_update_called()
+        # msg_params = {
+        #     "index_version_name": active_version.name,
+        #     "last_update": "never"
+        # }
+        # if last_update:
+        #     msg_params.update({"last_update": str(last_update)})
+        #
+        # self.add_log(
+        #     "Checking the last time update was called: "
+        #     u"\n - index version: {index_version_name} "
+        #     u"\n - update date: {last_update} ".format(**msg_params)
+        # )
+        #
+        # self.add_log("Getting Reindex Iterator...")
+        # reindex_iterator = dem_index.doc_type().get_reindex_iterator(
+        #     last_update=last_update)
+        #
+        # # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
+        # from itertools import islice
+        # reindex_iterator = list(islice(reindex_iterator, 3))
+        #
+        # self.add_log("Calling bulk reindex...")
+        # bulk(client=es_client, actions=reindex_iterator, refresh=True)
+        #
+        # self.add_log("Completed with indexing {index_version_name}".format(**msg_params))
 
 
 class ActivateIndexAction(IndexAction):
@@ -375,6 +447,7 @@ class ClearIndexAction(IndexAction):
     def perform_action(self, dem_index, *args, **kwargs):
         msg_params = {"index_name": self.index.name}
         if dem_index.get_version_id():
+            # we have instantiated this DEMIndex with a specific IndexVersion
             version_model = dem_index.get_version_model()
             self.index_version = version_model
             msg_params.update({"index_version_name": version_model.name})
@@ -383,8 +456,10 @@ class ClearIndexAction(IndexAction):
                    "because you said to do so.".format(**msg_params))
             self.add_log(msg)
         else:
-            latest_version = self.index.get_latest_version()
+            # use the active version of the index if one exists.
 
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
             if not latest_version:
                 raise NoCreatedIndexVersion(
                     "You must have created a version of the "
@@ -392,6 +467,7 @@ class ClearIndexAction(IndexAction):
                     "index.".format(**msg_params)
                 )
 
+            # at least one version is available. now get the *active* version for this index.
             active_version = self.index.active_version
             if active_version:
                 self.index_version = latest_version
