@@ -74,7 +74,6 @@ class IndexVersion(models.Model):
                                 editable=False)
     tag = models.CharField(verbose_name="Codebase Git Tag", max_length=64, blank=True)
     inserted = models.DateTimeField(auto_now_add=True)
-    # TODO: add this deleted field in
     deleted_time = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -373,7 +372,6 @@ class ClearIndexAction(IndexAction):
         proxy = True
 
     def perform_action(self, dem_index, *args, **kwargs):
-        version = kwargs.get('use_version_mode', False)
         msg_params = {"index_name": self.index.name}
         if dem_index.get_version_id():
             version_model = dem_index.get_version_model()
