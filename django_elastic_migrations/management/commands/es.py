@@ -49,8 +49,9 @@ class Command(BaseCommand):
             call_command('activate', *args, **options)
 
     """
-    The methods below are added as an aid to subcommands that need to 
-    specify indexes or index versions in a unified way
+    Methods To Specify Indexes
+    The methods below are added as an aid to subcommands
+    so indexes or index versions are specified in a unified way.
     """
 
     def get_index_specifying_help_messages(self):

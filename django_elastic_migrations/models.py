@@ -56,6 +56,17 @@ class Index(models.Model):
         version.save()
         return version
 
+    def deactivate(self):
+        """
+        Remove any active version from this index
+        """
+        if self.active_version:
+            self.active_version = None
+            self.save()
+
+    def get_available_versions(self):
+        return self.indexversion_set.filter(deleted_time__isnull=True)
+
 
 @python_2_unicode_compatible
 class IndexVersion(models.Model):
@@ -108,6 +119,10 @@ class IndexVersion(models.Model):
         return None
 
     def delete(self, using=None, keep_parents=False):
+        if self.is_active:
+            parent_index = self.index
+            parent_index.active_version = None
+            parent_index.save()
         self.deleted_time = timezone.now()
         self.save()
 
@@ -137,7 +152,8 @@ class IndexAction(models.Model):
     ACTION_CREATE_INDEX = 'create_index'
     ACTION_UPDATE_INDEX = 'update_index'
     ACTION_ACTIVATE_INDEX = 'activate_index'
-    ACTIONS_ALL = {ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX}
+    ACTION_DROP_INDEX = 'drop_index'
+    ACTIONS_ALL = {ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX, ACTION_DROP_INDEX}
     ACTIONS_ALL_CHOICES = [(i, i) for i in ACTIONS_ALL]
 
     DEFAULT_ACTION = ACTION_CREATE_INDEX
@@ -375,43 +391,6 @@ class UpdateIndexAction(IndexAction):
 
         self.add_log("Completed with indexing {_index_version_name}", use_self_dict_format=True)
 
-        # if not active_version:
-        #     msg = (
-        #         "You must have an active version of the '{index_name}' index "
-        #         "to call update index. Please activate an index and try again.".format(
-        #             index_name=self.index.name
-        #         )
-        #     )
-        #     raise NoActiveIndexVersion(msg)
-        #
-        # self.index_version = active_version
-        # last_update = active_version.get_last_time_update_called()
-        # msg_params = {
-        #     "index_version_name": active_version.name,
-        #     "last_update": "never"
-        # }
-        # if last_update:
-        #     msg_params.update({"last_update": str(last_update)})
-        #
-        # self.add_log(
-        #     "Checking the last time update was called: "
-        #     u"\n - index version: {index_version_name} "
-        #     u"\n - update date: {last_update} ".format(**msg_params)
-        # )
-        #
-        # self.add_log("Getting Reindex Iterator...")
-        # reindex_iterator = dem_index.doc_type().get_reindex_iterator(
-        #     last_update=last_update)
-        #
-        # # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
-        # from itertools import islice
-        # reindex_iterator = list(islice(reindex_iterator, 3))
-        #
-        # self.add_log("Calling bulk reindex...")
-        # bulk(client=es_client, actions=reindex_iterator, refresh=True)
-        #
-        # self.add_log("Completed with indexing {index_version_name}".format(**msg_params))
-
 
 class ActivateIndexAction(IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
@@ -421,23 +400,45 @@ class ActivateIndexAction(IndexAction):
         proxy = True
 
     def perform_action(self, dem_index, *args, **kwargs):
-        latest_version = self.index.get_latest_version()
         msg_params = {"index_name": self.index.name}
+        if dem_index.get_version_id():
+            # we have instantiated this DEMIndex with a specific IndexVersion
+            version_model = dem_index.get_version_model()
+            self.index_version = version_model
+            self.active_version = version_model
+            self.index.save()
+            msg_params.update({"index_version_name": version_model.name})
+            msg = ("Activating index version '{index_version_name}' "
+                   "because you said to do so.".format(**msg_params))
+            self.add_log(msg)
+        else:
+            # use the active version of the index if one exists.
 
-        if not latest_version:
-            raise NoCreatedIndexVersion(
-                "You must have created a version of the '{index_name}' index "
-                "to call activate index. Please create an index and "
-                "try again.".format(**msg_params)
-            )
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
+            if not latest_version:
+                raise NoCreatedIndexVersion(
+                    "You must have created a version of the "
+                    "'{index_name}' index to call activate "
+                    "index.".format(**msg_params)
+                )
 
-        self.index.active_version = latest_version
-        self.index_version = latest_version
-        msg_params.update({"index_version_name": latest_version.name})
-        self.index.save()
-
-        self.add_log("Active version for {index_name} has been set "
-                     "to {index_version_name}.".format(**msg_params))
+            # at least one version is available. now get the *active* version for this index.
+            active_version = self.index.active_version
+            msg_params.update({"index_version_name": latest_version.name})
+            if active_version != latest_version:
+                self.index.active_version = latest_version
+                self.index.save()
+                self.add_log(
+                    "For index '{index_name}', activating '{index_version_name}' "
+                    "because you said so.".format(
+                        **msg_params))
+            else:
+                self.add_log(
+                    "For index '{index_name}', '{index_version_name}' "
+                    "is the latest index version and it is already active. "
+                    "No action taken. ".format(
+                        **msg_params))
 
 
 class ClearIndexAction(IndexAction):
@@ -486,3 +487,49 @@ class ClearIndexAction(IndexAction):
                     "name `{index_version_name}`only.".format(**msg_params)
                 )
 
+
+class DropIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_DROP_INDEX
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        msg_params = {"index_name": self.index.name}
+        if dem_index.get_version_id():
+            # we have instantiated this DEMIndex with a specific IndexVersion
+            version_model = dem_index.get_version_model()
+            self.index_version = version_model
+            msg_params.update({"index_version_name": version_model.name})
+            dem_index.delete()
+            msg = ("Dropping index version '{index_version_name}' "
+                   "because you said to do so.".format(**msg_params))
+            self.add_log(msg)
+        else:
+            # use the active version of the index if one exists.
+
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
+            if not latest_version:
+                raise NoCreatedIndexVersion(
+                    "You must have created a version of the "
+                    "'{index_name}' index to call drop "
+                    "index.".format(**msg_params)
+                )
+
+            # at least one version is available. now get the *active* version for this index.
+            active_version = self.index.active_version
+            if active_version:
+                self.index_version = latest_version
+                msg_params.update({"index_version_name": latest_version.name})
+                dem_index.delete()
+                self.add_log(
+                    "deleting the active index for '{index_name}': "
+                    "'{index_version_name}' because you said to do so.".format(
+                        **msg_params))
+            else:
+                raise NoActiveIndexVersion(
+                    "You must activate an index version to drop using the index "
+                    "name '{index_name}' only.".format(**msg_params)
+                )

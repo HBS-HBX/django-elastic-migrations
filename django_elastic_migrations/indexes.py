@@ -128,12 +128,19 @@ class DEMIndexManager(object):
         return index_model
 
     @classmethod
-    def get_active_index_version_name(cls, index_base_name):
+    def get_active_index_version(cls, index_base_name):
         model_version = cls.get_index_model(index_base_name)
         if model_version:
             active_version = model_version.active_version
             if active_version:
-                return active_version.name
+                return active_version
+        return None
+
+    @classmethod
+    def get_active_index_version_name(cls, index_base_name):
+        active_version = cls.get_active_index_version(index_base_name)
+        if active_version:
+            return active_version.name
         return ""
 
     @classmethod
@@ -190,7 +197,7 @@ class DEMIndexManager(object):
         IndexVersion and associate it with the Index.
 
         If the schema has not changed since the last IndexVersion, raise
-        DEMCannotCreateUnchangedIndexException
+        DEMCannotCreateUnchangedIndexException.
         :param index_name: the base name of the index
         :param force_new: create a new index even if the schema is unchanged
         :return:
@@ -204,6 +211,18 @@ class DEMIndexManager(object):
 
     @classmethod
     def _start_action_for_indexes(cls, action, index_name, use_version_mode=False):
+        """
+        Called by activate_index, update_index, clear_index, drop_index.
+
+        This helper method is used for all actions that can receive one of the
+        common index specifiers. See the "Methods To Specify Indexes" in
+        "./manage.py es" for more info on the common ways they are specified.
+        :param action: action to run
+        :param index_name: either the base name or the fully qualified es index name,
+               depending on use_version_mode
+        :param use_version_mode: if true, separate the version id from the base name
+               in the index_name
+        """
         if index_name:
             dem_indexes = []
             if index_name == 'all':
@@ -238,16 +257,14 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod
-    def activate_index(cls, index_name):
+    def activate_index(cls, index_name, use_version_mode=False):
         """
         Given the named index, activate the latest version of the index
         """
-        dem_index = cls.get_dem_index(index_name)
-        if dem_index:
-            from django_elastic_migrations.models import ActivateIndexAction
-            ActivateIndexAction().start_action(dem_index=dem_index)
-        else:
-            raise DEMIndexNotFound(index_name)
+        # avoid circular import
+        from django_elastic_migrations.models import ActivateIndexAction
+        action = ActivateIndexAction()
+        return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod
     def clear_index(cls, index_name, use_version_mode=False):
@@ -258,6 +275,17 @@ class DEMIndexManager(object):
         # avoid circular import
         from django_elastic_migrations.models import ClearIndexAction
         action = ClearIndexAction()
+        return cls._start_action_for_indexes(action, index_name, use_version_mode)
+
+    @classmethod
+    def drop_index(cls, index_name, use_version_mode=False):
+        """
+        Given the named index, drop it from es
+
+        """
+        # avoid circular import
+        from django_elastic_migrations.models import DropIndexAction
+        action = DropIndexAction()
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
 
@@ -402,6 +430,12 @@ class DEMIndex(ESIndex):
             raise ex
         return index_version
 
+    def delete(self, **kwargs):
+        index_version = self.get_version_model()
+        DEMIndexManager.delete_es_created_index(index_version.name, ignore=[400, 404])
+        if index_version:
+            index_version.delete()
+
     def doc_type(self, doc_type=None):
         """
         Overrides elasticsearch_dsl.Index.doc_type().
@@ -462,7 +496,7 @@ class DEMIndex(ESIndex):
                     id=self.get_version_id()
                 ).first()
             return self.__version_model
-        return self.get_active_version_index_name()
+        return self.get_index_model().active_version
 
     def get_version_id(self):
         return self.__version_id or 0

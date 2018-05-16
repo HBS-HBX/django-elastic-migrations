@@ -33,7 +33,7 @@ class Command(ESCommand):
 
         for dem_index in indexes:
             dem_index_model = dem_index.get_index_model()
-            index_versions = dem_index_model.indexversion_set.all()
+            index_versions = dem_index_model.get_available_versions()
             if not index_versions:
                 table.add_row([dem_index.get_base_name(), False, False, "Current (not created)"])
             else:
