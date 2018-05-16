@@ -5,9 +5,6 @@ from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
 
 
-logger = logging.getLogger("django-elastic-migrations")
-
-
 class Command(ESCommand):
     help = "django-elastic-migrations: clear documents from elasticsearch indexes"
 
