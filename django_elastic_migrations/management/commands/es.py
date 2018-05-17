@@ -78,7 +78,7 @@ class Command(BaseCommand):
         if include_versions:
             # some arguments do not allow specifying index versions,
             # such as es_create. In that case, do not include this arg.
-            self.get_index_specifying_arguments(parser)
+            self.get_index_version_specifying_arguments(parser)
 
         parser.add_argument(
             "--all", action='store_true', default=False,
@@ -94,9 +94,8 @@ class Command(BaseCommand):
 
         at_least_one = None
         for opt in at_least_one_required:
-            opt_val = options.get(opt, None)
-            if opt_val:
-                at_least_one = opt_val
+            if options.get(opt, None):
+                at_least_one = True
 
         if not at_least_one:
             raise CommandError(
