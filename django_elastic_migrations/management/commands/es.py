@@ -18,35 +18,32 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'index', nargs='*',
-            help='Name of an index'
-        )
-        parser.add_argument(
             "-ls", "--list-available", action='store_true',
-            help='List the available named indexes (same as es_list)'
+            help='List the available named indexes; calls es_list'
         )
         parser.add_argument(
             "--create", action='store_true', default=False,
-            help='Create the named index'
+            help='Create the named index; calls es_create'
         )
         parser.add_argument(
             "--update", action='store_true', default=False,
-            help='Update the named index'
+            help='Update the named index; calls es_update'
+        )
+        parser.add_argument(
+            "--drop", action='store_true', default=False,
+            help='Drop the named index, calls es_drop'
         )
         parser.add_argument(
             "--activate", action='store_true', default=False,
-            help='Activate the latest version of the named index'
+            help='Activate the latest version of the named index; calls es_activate'
         )
 
     def handle(self, *args, **options):
         if 'list_available' in options:
             call_command('es_list', *args, **options)
-        if 'create' in options:
-            call_command('es_create', *args, **options)
-        if 'update' in options:
-            call_command('es_update', *args, **options)
-        if 'activate' in options:
-            call_command('activate', *args, **options)
+        for cmd in ['create', 'update', 'activate', 'drop']:
+            if cmd in options:
+                return call_command("es_{}".format(cmd), *args, **options)
 
     """
     Methods To Specify Indexes
@@ -73,18 +70,27 @@ class Command(BaseCommand):
             )
         }
 
-    def get_index_specifying_arguments(self, parser):
+    def get_index_version_specifying_arguments(self, parser):
         messages = self.get_index_specifying_help_messages()
-        parser.add_argument(
-            'index', nargs='*',
-            help=messages.get("index")
-        )
         parser.add_argument(
             "--mode",
             help=messages.get("mode"),
             choices=[self.MODE_INDEXES, self.MODE_VERSIONS],
             default=self.MODE_INDEXES
         )
+
+    def get_index_specifying_arguments(self, parser, include_versions=True):
+        messages = self.get_index_specifying_help_messages()
+        parser.add_argument(
+            'index', nargs='*',
+            help=messages.get("index")
+        )
+
+        if include_versions:
+            # some arguments do not allow specifying index versions,
+            # such as es_create. In that case, do not include this arg.
+            self.get_index_specifying_arguments(parser)
+
         parser.add_argument(
             "--all", action='store_true', default=False,
             help=messages.get("all")

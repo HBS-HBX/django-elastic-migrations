@@ -265,44 +265,45 @@ class IndexAction(models.Model):
 class CreateIndexAction(IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_CREATE_INDEX
 
+    def __init__(self, *args, **kwargs):
+        self.force = kwargs.pop('force', False)
+        super(CreateIndexAction, self).__init__(*args, **kwargs)
+
     class Meta:
         # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
         proxy = True
 
     def perform_action(self, dem_index, *args, **kwargs):
         latest_version = self.index.get_latest_version()
-        force = kwargs.pop("force", False)
-        new_version = None
 
-        self.index_version = latest_version
-
-        # configure self.__dict__ for format messages below
         self._index_name = self.index.name
-        self._index_version_name = self.index_version.name
 
         msg = ""
         if latest_version and dem_index.hash_matches(latest_version.json_md5):
-            if force:
+            self.index_version = latest_version
+            self._index_version_name = self.index_version.name
+            if self.force:
                 self.add_log(
-                    "The doc type for index {_index_name} has not changed "
-                    "since {_index_version_name}; but creating a new index anyway "
-                    "since you added the --force argument",
+                    "The doc type for index '{_index_name}' has not changed "
+                    "since '{_index_version_name}'; "
+                    "\nbut creating a new index anyway since you added "
+                    "the --force argument!",
                     use_self_dict_format=True
                 ),
                 self.index_version = dem_index.create()
                 self._index_version_name = self.index_version.name
             else:
                 self.add_log(
-                    "The doc type for index {_index_name} has not changed "
-                    "since {_index_version_name}; not creating a new index.",
+                    "The doc type for index '{_index_name}' has not changed "
+                    "since '{_index_version_name}'; not creating a new index.",
                     use_self_dict_format=True
                 )
         else:
             self.index_version = dem_index.create()
             self._index_version_name = self.index_version.name
             self.add_log(
-                "The doc type for index {_index_name} changed; created a new "
-                "index version {_index_version_name} in elasticsearch.",
+                "The doc type for index '{_index_name}' changed; created a new "
+                "index version '{_index_version_name}' in elasticsearch.",
                 use_self_dict_format=True
             )
 

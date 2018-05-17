@@ -70,14 +70,14 @@ so that the history of each *Index* is recorded.
 
 - `./manage.py es_activate`
     - help: Activate the specified *IndexVersion* or activate all latest *IndexVersions*
-    - usage: `./manage.py es_activate [req Index name] [opt IndexVersion number]`
+    - usage: `./manage.py es_activate [req Index name | IndexVersion name]`
         - if no *IndexVersion* is specified, the latest is activated
     - example: `./manage.py es_activate course_search-1`
-    - flag: `--all-latest` - ensure all *Indexes* are activated at the
+    - (**TBD**) flag: `--all-latest` - ensure all *Indexes* are activated at the
       latest available *IndexVersion* (called after deploy, before
       making a new release public)
 
-- `./manage.py es_update [req Index name] [opt IndexVersion number] `
+- `./manage.py es_update [req Index name | IndexVersion name] `
     - help: Update the documents in the specified *IndexVersion*.
       If *IndexVersion* is not supplied, updates the *active* index.
       By default, only indexes those documents that have changed
@@ -94,7 +94,7 @@ so that the history of each *Index* is recorded.
     - help: Drop the documents from the specified IndexVersion index
     - usage `./manage.py es_drop [req Index name] [req IndexVersion number]`
 
-- `./manage.py predeploy`
+- (**TBD**) `./manage.py predeploy`
     - help: find all schemas that have changed, and for each, create
       a new *IndexVersion* and begin reindexing. Does not activate 
       those indexes, though, assuming you will do this on your own.
@@ -103,25 +103,25 @@ so that the history of each *Index* is recorded.
 ### Deployment Flow
 
 #### Development Time
-- Developer (in the past) has subclassed
-  `django_elastic_migrations.DEMIndex`, associating it with a
-  `elasticsearch_dsl.document.DocType` schema as well as a base name
+- Developer (in the past) has instantiated
+  `django_elastic_migrations.DEMIndex`, giving it a base name for the 
+  schema, e.g. `course_search`. Developer associates it with a subclass 
+  of `django_elastic_migrations.DEMDocType` schema as well as a base name
   for the index, e.g. `course_search`. See *installation* section below
   for more information.
 
 - Developer (now) changes the schema of a `elasticsearch_dsl.document.DocType`
   associated with an `Index`, say, the `course_search` index.
 
-- Developer runs `./manage.py es_makemigrations course_search`, which
-  will, when it is run, is responsible for the *IndexVersion* preparation.
-  (see below). Developer commits it into the pull request that contains
-  the index schema changes.
+- Developer runs `./manage.py es_create course_search`, which
+  will, when it is run, is responsible for the *IndexVersion* creation.
+  (see below). 
 
 #### Pre-deployment (optional performance optimization)
-- `course_search-1` is the ES index currently being used in prod.
+- consider `course_search-1` is the ES index already being used in prod.
 
 - Login to the template server, check out the new codebase,
-  and run `./manage.py es_predeploy`. Behind the scenes, this is the same as
+  and run `./manage.py es_create course_search`. Behind the scenes, this is the same as
   calling:
     - `./manage.py es_create course_search`, which creates
       `course_search-2` with new settings (with no change to

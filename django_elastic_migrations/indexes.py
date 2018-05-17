@@ -186,33 +186,9 @@ class DEMIndexManager(object):
         return cls.get_indexes_dict().get(index_name, None)
 
     @classmethod
-    def create_index(cls, index_name, force=False):
-        """
-        If the index name is in the initialized indexes dict,
-        and the Index does not exist, create the specified Index
-        and the first IndexVersion.
-
-        If the Index and a prior IndexVersion already exist, check
-        that the schema has changed. If the schema has changed, create a new
-        IndexVersion and associate it with the Index.
-
-        If the schema has not changed since the last IndexVersion, raise
-        DEMCannotCreateUnchangedIndexException.
-        :param index_name: the base name of the index
-        :param force_new: create a new index even if the schema is unchanged
-        :return:
-        """
-        index_class = cls.get_dem_index(index_name)
-        if index_class:
-            from django_elastic_migrations.models import CreateIndexAction
-            CreateIndexAction().start_action(dem_index=index_class, force=force)
-        else:
-            raise DEMIndexNotFound(index_name)
-
-    @classmethod
     def _start_action_for_indexes(cls, action, index_name, use_version_mode=False):
         """
-        Called by activate_index, update_index, clear_index, drop_index.
+        Called by create_index, activate_index, update_index, clear_index, drop_index.
 
         This helper method is used for all actions that can receive one of the
         common index specifiers. See the "Methods To Specify Indexes" in
@@ -241,6 +217,28 @@ class DEMIndexManager(object):
                     actions.append(action)
                 return actions
         raise DEMIndexNotFound()
+
+    @classmethod
+    def create_index(cls, index_name, force=False):
+        """
+        If the index name is in the initialized indexes dict,
+        and the Index does not exist, create the specified Index
+        and the first IndexVersion.
+
+        If the Index and a prior IndexVersion already exist, check
+        that the schema has changed. If the schema has changed, create a new
+        IndexVersion and associate it with the Index.
+
+        If the schema has not changed since the last IndexVersion, raise
+        DEMCannotCreateUnchangedIndexException.
+        :param index_name: the base name of the index
+        :param force_new: create a new index even if the schema is unchanged
+        :return:
+        """
+        # avoid circular import
+        from django_elastic_migrations.models import CreateIndexAction
+        action = CreateIndexAction(force=force)
+        return cls._start_action_for_indexes(action, index_name, use_version_mode=False)
 
     @classmethod
     def update_index(cls, index_name, use_version_mode=False):
