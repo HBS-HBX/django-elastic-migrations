@@ -38,7 +38,7 @@ class Command(ESCommand):
         else:
 
             table.add_row([
-                "Name", "Created", "Is Active", "Num Docs", "Codebase Version"])
+                "Name", "Created", "Is Active", "Num Docs", "Created In Tag"])
 
             indexes = DEMIndexManager.get_indexes()
 
@@ -68,7 +68,12 @@ class Command(ESCommand):
                         dem_index.get_num_docs(),
                         "Current (not created)"])
 
-        print table.draw()
-        print ("Reminder: an index version name looks like 'my_index-4', " 
-              "and its base index name looks like 'my_index'.")
+        print(table.draw())
+        print(
+            "Reminder: an index version name looks like 'my_index-4', " 
+            "and its base index name \n"
+            "looks like 'my_index'. Most Django Elastic Migrations management commands \n"
+            "take the base name (in which case the activated version is used) \n"
+            "or the specific index version name."
+        )
 
