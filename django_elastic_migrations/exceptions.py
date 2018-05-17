@@ -1,6 +1,13 @@
 class DjangoElasticMigrationsException(Exception):
     """A generic exception for all others to extend."""
-    pass
+
+
+class FirstMigrationNotRunError(DjangoElasticMigrationsException):
+    """
+    Raised if a the system attempts to use Django Elastic Migrations
+    without first running the app's initial migration
+    """
+    message = "Please run ./manage.py migrate before using Django Elastic Migrations."
 
 
 class IllegalDEMIndexState(DjangoElasticMigrationsException):

@@ -1,10 +1,7 @@
 # Django Elastic Migrations
 
 Django Elastic Migrations provides a way to control the deployment of
-multiple Elasticsearch schemas over time. Despite the name, it doesn't
-have anything to do with Django Migrations (yet?), but like that system,
-it is a tool created to help update a live database with changes from 
-a codebase.
+multiple Elasticsearch schemas over time. 
 
 ## Overview
 
@@ -16,39 +13,44 @@ Elastic has given us basic tools needed to configure search indexes:
   is a Django-esque way of declaring complex Elasticsearch index schemas
   (which itself uses `elasticsearch-py`).
 
-Technically you can accomplish everything you need with these, but any
-application a.) using more than one index or b.) deploying changes to 
-schemas will want a *consistent* way to `create`, `update`, 
-`activate` and `drop` their indexes over time. In addition, if you use 
-AWS Elasticsearch, you will find that you cannot stop and apply a new
-mapping to your index, so you must create a new index with a new schema
-and then reindex into that schema, which requires extra care.
+Technically you can accomplish everything you need with these, but 
+applications a.) using more than one index or b.) deploying changes to 
+schemas will need a *consistent* way to `create`, `update`, 
+`activate` and `drop` and `list` their indexes. In addition, if you use 
+[AWS Elasticsearch you cannot stop and apply a new mapping](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/aes-supported-es-operations.html) 
+to your index, so you must create a new index with a new schema
+and then reindex into that schema, and then get your code to start using 
+that new index. This process requires a little care.
 
 *Django Elastic Migrations provides Django management commands for
 performing these actions, records a history of the actions performed,
 and offers a conceptual layer for thinking about schemas that change
 over time. It aims to be compatible with AWS Elasticsearch 6.0 and
-greater.
+greater.*
 
 ### Models
-Django Elastic Migrations provides comes with three models:
+Django Elastic Migrations provides comes with three django models:
 **Index**, **IndexVersion**, and **IndexAction**:
 
 - **Index** - a base name, e.g. `course_search` that's the parent of 
   several *IndexVersions*. Not actually an Elasticsearch index.
-  Each *Index* has at most one **active** *IndexVersion*.
+  Each *Index* has at most one **active** *IndexVersion* to which 
+  actions are directed.
 
 - **IndexVersion** - an Elasticsearch index, configured with a schema
-    at the time of creation. The Elasticsearch index name is
-    the name of the *Index* plus the id of the *IndexVersion*
-    model: `course_search-1`. When the schema is changed, a new
-    *IndexVersion* is added with name `course_search-2`, etc.
+  at the time of creation. The Elasticsearch index name is
+  the name of the *Index* plus the id of the *IndexVersion*
+  model: `course_search-1`. When the schema is changed, a new
+  *IndexVersion* is added with name `course_search-2`, etc.
 
-- **IndexAction** - an action that impacts an *Index* or its
+- **IndexAction** - a recorded action that changes an *Index* or its
   children, such as updating the index or changing which *IndexVersion*
   is active in an *Index*.
 
 ### Management Commands
+
+Use `./manage.py es --help` to see the list of all of these commands.
+
 
 #### Read Only Commands
 
@@ -57,120 +59,128 @@ Django Elastic Migrations provides comes with three models:
       count for each of its *IndexVersions*
     - usage: `./manage.py es_list`
 
+
 #### Action Commands
 
 These management commands add an Action record in the database,
 so that the history of each *Index* is recorded.
 
-- `./manage.py es_create`
-    - help: If configuration has changed, create a new *IndexVersion*
-      record as well as a new index in Elasticsearch
-    - usage: `./manage.py es_create [req Index name]`
-    - example: ./manage.py es_create course_search
+- `./manage.py es_create` - create a new index.
+- `./manage.py es_activate` - "activate" a new index version. all 
+  updates and reads for that index by default will go to that version.
+- `./manage.py es_update` - update the documents in the index. 
+- `./manage.py es_clear` - remove the documents from an index.
+- `./manage.py es_drop` - drop an index.
 
-- `./manage.py es_activate`
-    - help: Activate the specified *IndexVersion* or activate all latest *IndexVersions*
-    - usage: `./manage.py es_activate [req Index name | IndexVersion name]`
-        - if no *IndexVersion* is specified, the latest is activated
-    - example: `./manage.py es_activate course_search-1`
-    - (**TBD**) flag: `--all-latest` - ensure all *Indexes* are activated at the
-      latest available *IndexVersion* (called after deploy, before
-      making a new release public)
-
-- `./manage.py es_update [req Index name | IndexVersion name] `
-    - help: Update the documents in the specified *IndexVersion*.
-      If *IndexVersion* is not supplied, updates the *active* index.
-      By default, only indexes those documents that have changed
-      since the last reindexing.
-    - alternate usage: `./manage.py es_update --all-active`
-        - update all active IndexVersions
-    - flag: `--full` - do a full update of all documents in the
-      index, rather than just the ones that have changed since
-      the last update.
-    - flag: `[req Index name] --last` - update the index
-      of the *last* index in the given *Index*
-
-- `./manage.py es_drop`
-    - help: Drop the documents from the specified IndexVersion index
-    - usage `./manage.py es_drop [req Index name] [req IndexVersion number]`
-
-- (**TBD**) `./manage.py predeploy`
-    - help: find all schemas that have changed, and for each, create
-      a new *IndexVersion* and begin reindexing. Does not activate 
-      those indexes, though, assuming you will do this on your own.
+For each of these, use `--help` to see the details.
 
 
-### Deployment Flow
+### Usage
 
-#### Development Time
-- Developer (in the past) has instantiated
-  `django_elastic_migrations.DEMIndex`, giving it a base name for the 
-  schema, e.g. `course_search`. Developer associates it with a subclass 
-  of `django_elastic_migrations.DEMDocType` schema as well as a base name
-  for the index, e.g. `course_search`. See *installation* section below
-  for more information.
-
-- Developer (now) changes the schema of a `elasticsearch_dsl.document.DocType`
-  associated with an `Index`, say, the `course_search` index.
-
-- Developer runs `./manage.py es_create course_search`, which
-  will, when it is run, is responsible for the *IndexVersion* creation.
-  (see below). 
-
-#### Pre-deployment (optional performance optimization)
-- consider `course_search-1` is the ES index already being used in prod.
-
-- Login to the template server, check out the new codebase,
-  and run `./manage.py es_create course_search`. Behind the scenes, this is the same as
-  calling:
-    - `./manage.py es_create course_search`, which creates
-      `course_search-2` with new settings (with no change to
-      `course_search-1`, which is still in use)
-    - `./manage.py es_update course_search --latest`. This updates
-      the latest course_search index, `course_search-2` (also no change
-      to `course_search-1`).
-
-#### Deployment
-A django migration runs the following:
-- `./manage.py es_create course_search 2`, *which does not in this case
-  make a change since index 2 was manually created*
-
-- `./manage.py es_update course_search 2`, *which updates those docs
-  that have changed since earlier in the day*. Potentially quite fast,
-  if most of the docs have been indexed in pre-deployment.
-
-#### Post-deployment, before the flip
-- `./manage.py es_activate --all-latest` activates the latest indexes.
-  All further reindexing events are sent to the latest *IndexVersions*.
-
-
-## Installation
+#### Installation
+0. Ensure that Elasticsearch 6.0 or later is accessible, and you have 
+   configured a singleton client in `path.to.your.es_client`.
 1. Put a reference to this package in your `requirements.txt`
 2. Add `django_elastic_migrations` to `INSTALLED_APPS` in your Django
    settings file
 3. Add the following information to your Django settings file:
    ```
    DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "path.to.your.singleton.ES_CLIENT"
-    ```
+   # optional, any unique number for your releases to associate with indexes
+   DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID = subprocess.check_output(['git', 'describe', "--tags"]).strip()
+   ```
 4. Create the `django_elastic_migrations` tables by running `./manage.py migrate`
 5. Create an `DEMIndex`:
    ```
-   from django_elastic_migrations import ESSearchIndex
-
-   class CourseSearch(ESSearchIndex):
-
-       name = 'course_search'
-
-       # must be subtype of elasticsearch_dsl.document.DocType
-       doc_type = CourseSearchDoc
-
+   from django_elastic_migrations.indexes import DEMIndex, DEMDocType
+   from elasticsearch_dsl import Text
+   
+   CourseSearchIndex = DEMIndex('course_search')
+   
+   @CourseSearchIndex.doc_type
+   class CourseSearchDoc(DEMDocType):
+       full_text = Text(required=True)
+       
        @classmethod
-       def get_updated_docs_since(cls, date_time):
-           """Returns DocTypes that have been modified after date_time"""
-           changed_teis = TeachingElementInstance.objects.filter(
-           ...
+       def get_reindex_iterator(cls, last_updated_datetime=None):
+           """Returns CourseSearchDocs that have been modified after date_time"""
+           changed_teis = TeachingElementInstance.objects.filter(...)
+           course_search_docs = []
+           for tei in changed_teis:
+               course_search_docs.append(CourseSearchDoc(
+                   full_text=tei.get_search_text()
+               ))
+           return course_search_docs
+   
    ```
-6. Run `./manage.py es_list` to see the index as available
+6. Run `./manage.py es_list` to see the index as available:
+    ```
+    ./manage.py es_list
+    
+    Available Index Definitions:
+    +---------------+---------+-----------+----------+-----------------------+
+    | Name          | Created | Is Active | Num Docs | Created In Tag        |
+    +---------------+---------+-----------+----------+-----------------------+
+    | course_search | 0       | 0         | 0        | Current (not created) |
+    +---------------+---------+-----------+----------+-----------------------+
+    Reminder: an index version name looks like 'my_index-4', and its base index name 
+    looks like 'my_index'. Most Django Elastic Migrations management commands 
+    take the base name (in which case the activated version is used) 
+    or the specific index version name.
+    ```
+7. Create the course_search index in elasticsearch with `./manage.py es_create course_search`:
+    ```
+    $> ./manage.py es_create course_search
+    The doc type for index 'course_search' changed; created a new index version 
+    'course_search-1' in elasticsearch.
+    $> ./manage.py es_list
+    
+    Available Index Definitions:
+    +-----------------+---------+-----------+----------+-----------------------+
+    | Name            | Created | Is Active | Num Docs | Created In Tag        |
+    +-----------------+---------+-----------+----------+-----------------------+
+    | course_search-1 | 1       | 0         | 0        | 07.09.005-59-g78147c9 |
+    +-----------------+---------+-----------+----------+-----------------------+
+    Reminder: an index version name looks like 'my_index-4', and its base index name 
+    looks like 'my_index'. Most Django Elastic Migrations management commands 
+    take the base name (in which case the activated version is used) 
+    or the specific index version name.
+    ```
+8. Activate the `course_search-1` index version, so all updates and resds go to 
+   it.
+    ```
+    ./manage.py es_activate course_search
+    For index 'course_search', activating 'course_search-1' because you said so.
+    ```
+9. Assuming you have implemented `get_reindex_iterator`, you can call 
+   `./manage.py es_update` to update the index.
+    ```
+    $> ./manage.py es_update course_search
+    
+    Handling update of index 'course_search' using its active index version 'course_search-1'
+    Checking the last time update was called: 
+     - index version: course_search-1 
+     - update date: 2018-05-17 20:37:07.034759+00:00 
+    Getting Reindex Iterator...
+    Completed with indexing course_search-1
+    
+    $> ./manage.py es_list
+    
+    Available Index Definitions:
+    +-----------------+---------+-----------+----------+-----------------------+
+    | Name            | Created | Is Active | Num Docs | Created In Tag        |
+    +-----------------+---------+-----------+----------+-----------------------+
+    | course_search-1 | 1       | 1         | 3        | 07.09.005-59-g78147c9 |
+    +-----------------+---------+-----------+----------+-----------------------+
+    ```
+
+### Deployment
+- Creating and updating indexes can happen long in advance of deployment,
+  just use the management commands as above and don't use es_activate
+- During deployment, if `get_reindex_iterator` is implemented correctly,
+  it will only reindex those documents that have changed *since the last
+  reindexing*
+- After deployment and before going live, activate the latest index
 
 
 ## Development

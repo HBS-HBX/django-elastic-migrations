@@ -1,6 +1,7 @@
 from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager
+from django_elastic_migrations.exceptions import FirstMigrationNotRunError
 from django_elastic_migrations.management.commands.es import ESCommand
 
 
@@ -49,24 +50,27 @@ class Command(ESCommand):
                         new_indexes.append(index)
                 indexes = new_indexes
 
-            for dem_index in indexes:
-                dem_index_model = dem_index.get_index_model()
-                index_versions = dem_index_model.get_available_versions()
-                if index_versions:
-                    for index in index_versions:
+            try:
+                for dem_index in indexes:
+                    dem_index_model = dem_index.get_index_model()
+                    index_versions = dem_index_model.get_available_versions()
+                    if index_versions:
+                        for index in index_versions:
+                            table.add_row([
+                                index.name,
+                                not (index.is_deleted is None),
+                                index.is_active or 0,
+                                dem_index.get_num_docs(),
+                                index.tag])
+                    else:
                         table.add_row([
-                            index.name,
-                            not (index.is_deleted is None),
-                            index.is_active or 0,
+                            dem_index.get_base_name(),
+                            False,
+                            False,
                             dem_index.get_num_docs(),
-                            index.tag])
-                else:
-                    table.add_row([
-                        dem_index.get_base_name(),
-                        False,
-                        False,
-                        dem_index.get_num_docs(),
-                        "Current (not created)"])
+                            "Current (not created)"])
+            except AttributeError:
+                raise FirstMigrationNotRunError()
 
         print(table.draw())
         print(
