@@ -180,8 +180,8 @@ For each of these, use `--help` to see the details.
 - During deployment, if `get_reindex_iterator` is implemented correctly,
   it will only reindex those documents that have changed *since the last
   reindexing*
-- After deployment and before going live, activate the latest index
-
+- After deployment and before going live, activate the latest index.
+- After activating, be sure to cycle your gunicorn workers.
 
 ## Development
 
