@@ -11,20 +11,23 @@ class Command(ESCommand):
     help = "django-elastic-migrations: list available indexes"
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            'index', nargs='*',
-            help='Name of an index'
-        )
+        self.get_index_specifying_arguments(parser, include_versions=False)
 
     def handle(self, *args, **options):
         print("Available Index Definitions:")
+        indexes, _, apply_all = self.get_index_specifying_options(options)
 
         table = Texttable()
-        table.add_row(["Name", "Created", "Is Active", "Codebase Version"])
+        table.add_row([
+            "Name",
+            "Created",
+            "Is Active",
+            "Num Docs",
+            "Codebase Version"])
 
         indexes = DEMIndexManager.get_indexes()
 
-        if options['index']:
+        if indexes and not apply_all:
             new_indexes = []
             for index in indexes:
                 if index.get_base_name() in options['index']:
@@ -35,9 +38,19 @@ class Command(ESCommand):
             dem_index_model = dem_index.get_index_model()
             index_versions = dem_index_model.get_available_versions()
             if not index_versions:
-                table.add_row([dem_index.get_base_name(), False, False, "Current (not created)"])
+                table.add_row([
+                    dem_index.get_base_name(),
+                    False,
+                    False,
+                    dem_index.get_num_docs(),
+                    "Current (not created)"])
             else:
                 for indx in index_versions:
-                    table.add_row([indx.name, not (indx.is_deleted is None), indx.is_active, indx.tag])
+                    table.add_row([
+                        indx.name,
+                        not (indx.is_deleted is None),
+                        indx.is_active,
+                        dem_index.get_num_docs(),
+                        indx.tag])
 
         print table.draw()

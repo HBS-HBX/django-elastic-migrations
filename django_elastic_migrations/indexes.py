@@ -485,6 +485,28 @@ class DEMIndex(ESIndex):
     def get_active_version_index_name(self):
         return DEMIndexManager.get_active_index_version_name(self.__base_name)
 
+    def get_base_name(self):
+        return self.__base_name
+
+    def get_index_hash_and_json(self):
+        """
+        Get the schema json for this index and its hash for this index.
+        Note: the schema only contains the base name, even though it
+        will be accessed through an index version.
+        :return: (md5 str, json string)
+        """
+        es_index = self.clone(name=self.__base_name, using=es_client)
+        return get_index_hash_and_json(es_index)
+
+    def get_index_model(self):
+        return DEMIndexManager.get_index_model(self.__base_name, False)
+
+    def get_num_docs(self):
+        return self.search().query(ESQ('match_all')).count()
+
+    def get_version_id(self):
+        return self.__version_id or 0
+
     def get_version_model(self):
         """
         If this index was instantiated with an id, return the VersionModel associated
@@ -501,25 +523,6 @@ class DEMIndex(ESIndex):
                 ).first()
             return self.__version_model
         return self.get_index_model().active_version
-
-    def get_version_id(self):
-        return self.__version_id or 0
-
-    def get_base_name(self):
-        return self.__base_name
-
-    def get_index_hash_and_json(self):
-        """
-        Get the schema json for this index and its hash for this index.
-        Note: the schema only contains the base name, even though it
-        will be accessed through an index version.
-        :return: (md5 str, json string)
-        """
-        es_index = self.clone(name=self.__base_name, using=es_client)
-        return get_index_hash_and_json(es_index)
-
-    def get_index_model(self):
-        return DEMIndexManager.get_index_model(self.__base_name, False)
 
     def hash_matches(self, their_index_hash):
         our_index_hash, _ = self.get_index_hash_and_json()
