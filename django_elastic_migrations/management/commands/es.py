@@ -5,6 +5,14 @@ from django.core.management import BaseCommand, call_command, CommandError
 
 logger = logging.getLogger("django-elastic-migrations")
 
+commands = {
+    'list': 'List indexes; calls es_list',
+    'create': 'Create indexes; calls es_create',
+    'activate': 'Create indexes; calls es_activate',
+    'update': 'Create indexes; calls es_update',
+    'drop': 'Create indexes; calls es_drop',
+}
+
 
 class Command(BaseCommand):
     help = "django-elastic-migrations: base command for search index management"
@@ -17,31 +25,12 @@ class Command(BaseCommand):
         print ""
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "-ls", "--list-available", action='store_true',
-            help='List the available named indexes; calls es_list'
-        )
-        parser.add_argument(
-            "--create", action='store_true', default=False,
-            help='Create the named index; calls es_create'
-        )
-        parser.add_argument(
-            "--update", action='store_true', default=False,
-            help='Update the named index; calls es_update'
-        )
-        parser.add_argument(
-            "--drop", action='store_true', default=False,
-            help='Drop the named index, calls es_drop'
-        )
-        parser.add_argument(
-            "--activate", action='store_true', default=False,
-            help='Activate the latest version of the named index; calls es_activate'
-        )
+        for cmd, help in commands.items():
+            parser.add_argument(
+                "--{}".format(cmd), action="store_true", help=help)
 
     def handle(self, *args, **options):
-        if 'list_available' in options:
-            call_command('es_list', *args, **options)
-        for cmd in ['create', 'update', 'activate', 'drop']:
+        for cmd in commands.keys():
             if cmd in options:
                 return call_command("es_{}".format(cmd), *args, **options)
 
