@@ -30,28 +30,16 @@ class DEMIndexManager(object):
     db_ready = False
 
     """
-    DEMIndex base name ⤵ 
-        active DEMIndex instance
-    """
-    instances = {}
-
-    """
     DEMIndex base name ⤵
         django_elastic_migrations.models.Index instance
     """
     index_models = {}
 
-    @classmethod
-    def post_migrate(cls, sender, **kwargs):
-        cls.post_migrate_completed = True
-        cls.class_db_init()
-
-    @classmethod
-    def class_db_init(cls):
-        cls.db_ready = True
-        if not ('makemigrations' in sys.argv or 'migrate' in sys.argv):
-            cls.update_index_models()
-        cls.reinitialize_esindex_instances()
+    """
+    DEMIndex base name ⤵ 
+        active DEMIndex instance
+    """
+    instances = {}
 
     @classmethod
     def add_index(cls, dem_index_instance, create_on_not_found=True):
@@ -61,12 +49,22 @@ class DEMIndexManager(object):
             return cls.get_index_model(base_name, create_on_not_found)
 
     @classmethod
-    def list_es_created_indexes(cls):
-        """
-        Get the names of the available elasticsearch indexes
-        :return: list(str)
-        """
-        return [i for i in es_client.indices.get_alias("*")]
+    def class_db_init(cls):
+        cls.db_ready = True
+        if not ('makemigrations' in sys.argv or 'migrate' in sys.argv):
+            cls.update_index_models()
+        cls.reinitialize_esindex_instances()
+
+    @classmethod
+    def create_index_model(cls, base_name):
+        if cls.db_ready:
+            from django_elastic_migrations.models import Index as DEMIndexModel
+            try:
+                index_model = DEMIndexModel.objects.create(name=base_name)
+                cls.index_models[base_name] = index_model
+            except ProgrammingError:
+                # the app is starting up and the database isn't available
+                pass
 
     @classmethod
     def delete_es_created_index(cls, full_index_version_name, **kwargs):
@@ -79,31 +77,39 @@ class DEMIndexManager(object):
         return es_client.indices.delete(index=full_index_version_name, **kwargs)
 
     @classmethod
-    def update_index_models(cls):
-        if cls.db_ready:
-            from django_elastic_migrations.models import Index as DEMIndexModel
-            try:
-                cls.index_models = {i.name: i for i in DEMIndexModel.objects.all()}
-            except ProgrammingError:
-                # the app is starting up and the database isn't available
-                pass
+    def get_active_index_version(cls, index_base_name):
+        model_version = cls.get_index_model(index_base_name)
+        if model_version:
+            active_version = model_version.active_version
+            if active_version:
+                return active_version
+        return None
 
     @classmethod
-    def reinitialize_esindex_instances(cls):
+    def get_active_index_version_name(cls, index_base_name):
+        active_version = cls.get_active_index_version(index_base_name)
+        if active_version:
+            return active_version.name
+        return ""
+
+    @classmethod
+    def get_dem_index(cls, index_name, use_version_mode=False):
         """
-        When Elasticsearch Index classes are loaded into the
-        python interpreter, the index name is set before
-        we can read the active index version from the DB.
-        After our django-elastic-migrations app is ready
-        to talk to the DB and find out the names of the indexes,
-        go through and reinitialize each ES Index subclass instance
-        as well as their associated ES DocType subclasses
-        with the appropriate index names
+        Get the DEMIndex instance associated with `index_name`.
+        :param index_name: Name of index
+        :param use_version_mode: If True, treat `index_name` as the
+               fully qualified elasticsearch name of the index
+        :return:
         """
-        for index_base_name, instance in cls.instances.items():
-            instance_doc_type = instance.doc_type()
-            instance.__init__(index_base_name)
-            instance.doc_type(instance_doc_type)
+        version_number = None
+        if use_version_mode and index_name:
+            separator_index = index_name.rindex("-")
+            base_name = index_name[:separator_index]
+            version_number = index_name[separator_index+1:]
+            index_name = base_name
+        if version_number:
+            return DEMIndex(index_name, version_id=version_number)
+        return cls.get_indexes_dict().get(index_name, None)
 
     @classmethod
     def get_index_model(cls, base_name, create_on_not_found=True):
@@ -128,37 +134,6 @@ class DEMIndexManager(object):
         return index_model
 
     @classmethod
-    def get_active_index_version(cls, index_base_name):
-        model_version = cls.get_index_model(index_base_name)
-        if model_version:
-            active_version = model_version.active_version
-            if active_version:
-                return active_version
-        return None
-
-    @classmethod
-    def get_active_index_version_name(cls, index_base_name):
-        active_version = cls.get_active_index_version(index_base_name)
-        if active_version:
-            return active_version.name
-        return ""
-
-    @classmethod
-    def register_dem_index(cls, dem_index):
-        cls.instances[dem_index.get_base_name()] = dem_index
-
-    @classmethod
-    def create_index_model(cls, base_name):
-        if cls.db_ready:
-            from django_elastic_migrations.models import Index as DEMIndexModel
-            try:
-                index_model = DEMIndexModel.objects.create(name=base_name)
-                cls.index_models[base_name] = index_model
-            except ProgrammingError:
-                # the app is starting up and the database isn't available
-                pass
-
-    @classmethod
     def get_indexes(cls):
         return cls.instances.values()
 
@@ -167,56 +142,54 @@ class DEMIndexManager(object):
         return cls.instances
 
     @classmethod
-    def get_dem_index(cls, index_name, use_version_mode=False):
+    def list_es_created_indexes(cls):
         """
-        Get the DEMIndex instance associated with `index_name`.
-        :param index_name: Name of index
-        :param use_version_mode: If True, treat `index_name` as the
-               fully qualified elasticsearch name of the index
-        :return:
+        Get the names of the available elasticsearch indexes
+        :return: list(str)
         """
-        version_number = None
-        if use_version_mode and index_name:
-            separator_index = index_name.rindex("-")
-            base_name = index_name[:separator_index]
-            version_number = index_name[separator_index+1:]
-            index_name = base_name
-        if version_number:
-            return DEMIndex(index_name, version_id=version_number)
-        return cls.get_indexes_dict().get(index_name, None)
+        return [i for i in es_client.indices.get_alias("*")]
 
     @classmethod
-    def _start_action_for_indexes(cls, action, index_name, use_version_mode=False):
-        """
-        Called by create_index, activate_index, update_index, clear_index, drop_index.
+    def post_migrate(cls, sender, **kwargs):
+        cls.post_migrate_completed = True
+        cls.class_db_init()
 
-        This helper method is used for all actions that can receive one of the
-        common index specifiers. See the "Methods To Specify Indexes" in
-        "./manage.py es" for more info on the common ways they are specified.
-        :param action: action to run
-        :param index_name: either the base name or the fully qualified es index name,
-               depending on use_version_mode
-        :param use_version_mode: if true, separate the version id from the base name
-               in the index_name
+    @classmethod
+    def register_dem_index(cls, dem_index):
+        cls.instances[dem_index.get_base_name()] = dem_index
+
+    @classmethod
+    def reinitialize_esindex_instances(cls):
         """
-        if index_name:
-            dem_indexes = []
-            if index_name == 'all':
-                dem_indexes.extend(cls.get_indexes())
-            else:
-                dem_index = cls.get_dem_index(index_name, use_version_mode)
-                if dem_index:
-                    dem_indexes.append(dem_index)
-                else:
-                    DEMIndexNotFound(index_name)
-            if dem_indexes:
-                actions = []
-                for dem_index in dem_indexes:
-                    action.start_action(
-                        dem_index=dem_index, use_version_mode=use_version_mode)
-                    actions.append(action)
-                return actions
-        raise DEMIndexNotFound()
+        When Elasticsearch Index classes are loaded into the
+        python interpreter, the index name is set before
+        we can read the active index version from the DB.
+        After our django-elastic-migrations app is ready
+        to talk to the DB and find out the names of the indexes,
+        go through and reinitialize each ES Index subclass instance
+        as well as their associated ES DocType subclasses
+        with the appropriate index names
+        """
+        for index_base_name, instance in cls.instances.items():
+            instance_doc_type = instance.doc_type()
+            instance.__init__(index_base_name)
+            instance.doc_type(instance_doc_type)
+
+    @classmethod
+    def update_index_models(cls):
+        if cls.db_ready:
+            from django_elastic_migrations.models import Index as DEMIndexModel
+            try:
+                cls.index_models = {i.name: i for i in DEMIndexModel.objects.all()}
+            except ProgrammingError:
+                # the app is starting up and the database isn't available
+                pass
+
+    """
+    Management Command APIs
+    The section below contains helper methods for 
+    Django Elastic Migrations' management commands.
+    """
 
     @classmethod
     def create_index(cls, index_name, force=False):
@@ -285,6 +258,39 @@ class DEMIndexManager(object):
         from django_elastic_migrations.models import DropIndexAction
         action = DropIndexAction()
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
+
+    @classmethod
+    def _start_action_for_indexes(cls, action, index_name, use_version_mode=False):
+        """
+        Called by create_index, activate_index, update_index, clear_index, drop_index.
+
+        This helper method is used for all actions that can receive one of the
+        common index specifiers. See the "Methods To Specify Indexes" in
+        "./manage.py es" for more info on the common ways they are specified.
+        :param action: action to run
+        :param index_name: either the base name or the fully qualified es index name,
+               depending on use_version_mode
+        :param use_version_mode: if true, separate the version id from the base name
+               in the index_name
+        """
+        if index_name:
+            dem_indexes = []
+            if index_name == 'all':
+                dem_indexes.extend(cls.get_indexes())
+            else:
+                dem_index = cls.get_dem_index(index_name, use_version_mode)
+                if dem_index:
+                    dem_indexes.append(dem_index)
+                else:
+                    DEMIndexNotFound(index_name)
+            if dem_indexes:
+                actions = []
+                for dem_index in dem_indexes:
+                    action.start_action(
+                        dem_index=dem_index, use_version_mode=use_version_mode)
+                    actions.append(action)
+                return actions
+        raise DEMIndexNotFound()
 
 
 class _DEMDocTypeIndexHandler(object):
