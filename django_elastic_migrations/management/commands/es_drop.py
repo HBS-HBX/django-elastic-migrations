@@ -12,7 +12,7 @@ class Command(ESCommand):
         self.get_index_specifying_arguments(parser)
         parser.add_argument(
             '--es-only', action='store_true',
-            help="Only drop indexes in elasticsearch "
+            help="Only drop indexes in elasticsearch (!) "
                  "(probably not what you want, just useful for debugging)"
         )
 
