@@ -68,7 +68,7 @@ class Command(BaseCommand):
             default=self.MODE_INDEXES
         )
 
-    def get_index_specifying_arguments(self, parser, include_versions=True):
+    def get_index_specifying_arguments(self, parser, include_versions=True, default_all=False):
         messages = self.get_index_specifying_help_messages()
         parser.add_argument(
             'index', nargs='*',
@@ -81,7 +81,7 @@ class Command(BaseCommand):
             self.get_index_version_specifying_arguments(parser)
 
         parser.add_argument(
-            "--all", action='store_true', default=False,
+            "--all", action='store_true', default=default_all,
             help=messages.get("all")
         )
 

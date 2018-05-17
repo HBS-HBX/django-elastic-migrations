@@ -8,7 +8,7 @@ class Command(ESCommand):
     help = "django-elastic-migrations: list available indexes"
 
     def add_arguments(self, parser):
-        self.get_index_specifying_arguments(parser, include_versions=False)
+        self.get_index_specifying_arguments(parser, include_versions=False, default_all=True)
         parser.add_argument(
             '--es-only', action='store_true',
             help="Only list indexes in elasticsearch, without respect to the models."
@@ -57,7 +57,7 @@ class Command(ESCommand):
                         table.add_row([
                             index.name,
                             not (index.is_deleted is None),
-                            index.is_active,
+                            index.is_active or 0,
                             dem_index.get_num_docs(),
                             index.tag])
                 else:

@@ -6,7 +6,7 @@ from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, 
 
 from django_elastic_migrations import es_client
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
-    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError
+    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
@@ -532,6 +532,22 @@ class DEMIndex(ESIndex):
     def hash_matches(self, their_index_hash):
         our_index_hash, _ = self.get_index_hash_and_json()
         return our_index_hash == their_index_hash
+
+    def save(self):
+        try:
+            super(DEMIndex, self).save()
+        except ValueError as ex:
+            if "Empty value" in ex.message and not self.get_active_version_index_name():
+                msg = (
+                    "{base_name} does not have an activated index version. "
+                    "Please activate one to save a document. "
+                    "\n sample command: ./manage.py es_activate {base_name}"
+                    "\n original error message: {err_msg}".format(
+                        base_name=self.get_base_name(),
+                        err_msg=ex.message
+                    )
+                )
+                raise NoActiveIndexVersion(msg)
 
     @property
     def _name(self):
