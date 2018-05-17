@@ -2,7 +2,7 @@
 import sys
 
 from django.db import ProgrammingError
-from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ
+from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
 from django_elastic_migrations import es_client
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
@@ -110,6 +110,11 @@ class DEMIndexManager(object):
         if version_number:
             return DEMIndex(index_name, version_id=version_number)
         return cls.get_indexes_dict().get(index_name, None)
+
+    @classmethod
+    def get_es_index_doc_count(cls, full_index_version_name, **kwargs):
+        s = Search(index=full_index_version_name, using=es_client, **kwargs)
+        return s.query(ESQ('match_all')).count()
 
     @classmethod
     def get_index_model(cls, base_name, create_on_not_found=True):

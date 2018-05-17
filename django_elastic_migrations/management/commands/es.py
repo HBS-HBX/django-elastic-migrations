@@ -85,8 +85,25 @@ class Command(BaseCommand):
             help=messages.get("all")
         )
 
-    def get_index_specifying_options(self, options):
+    def get_index_specifying_options(self, options, require_one_include_list=None):
         mode = options.get('mode', self.MODE_INDEXES)
+        at_least_one_required = ['index', 'all']
+
+        if require_one_include_list:
+            at_least_one_required.extend(require_one_include_list)
+
+        at_least_one = None
+        for opt in at_least_one_required:
+            opt_val = options.get(opt, None)
+            if opt_val:
+                at_least_one = opt_val
+
+        if not at_least_one:
+            raise CommandError(
+                "At least one of {} must be specified".format(
+                    ", ".join(at_least_one_required)
+                ))
+
         indexes = options.get('index', [])
         use_version_mode = mode == self.MODE_VERSIONS
         apply_all = options.get('all', False)
@@ -100,11 +117,6 @@ class Command(BaseCommand):
                     "indexes.".format(", ".join(indexes))
                 )
 
-        if not (indexes or apply_all):
-            raise CommandError(
-                "At least one {mode} or --all must be specified".format(
-                    mode=mode
-                ))
         return indexes, use_version_mode, apply_all
 
 
