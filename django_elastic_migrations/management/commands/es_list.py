@@ -55,13 +55,14 @@ class Command(ESCommand):
                     dem_index_model = dem_index.get_index_model()
                     index_versions = dem_index_model.get_available_versions()
                     if index_versions:
-                        for index in index_versions:
+                        for index_version in index_versions:
+                            num_docs = DEMIndexManager.get_es_index_doc_count(index_version.name)
                             table.add_row([
-                                index.name,
-                                not (index.is_deleted is None),
-                                index.is_active or 0,
-                                dem_index.get_num_docs(),
-                                index.tag])
+                                index_version.name,
+                                not (index_version.is_deleted is None),
+                                index_version.is_active or 0,
+                                num_docs,
+                                index_version.tag])
                     else:
                         table.add_row([
                             dem_index.get_base_name(),
