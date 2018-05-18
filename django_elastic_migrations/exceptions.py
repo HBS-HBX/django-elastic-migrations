@@ -71,3 +71,13 @@ class DEMIndexVersionCodebaseMismatchError(DjangoElasticMigrationsException):
     index in the codebase differs from the json hash of the index version
     that update would be called on.
     """
+
+
+class CannotDropActiveVersion(DjangoElasticMigrationsException):
+    """
+    Raised a user requests to drop an index that is activated.
+    """
+    message = (
+        "Please run ./manage.py es_activate to activate another index "
+        "before dropping this one."
+    )

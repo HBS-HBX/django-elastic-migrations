@@ -13,7 +13,8 @@ from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch.helpers import bulk
 
 from django_elastic_migrations import codebase_id, es_client
-from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState
+from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
+    CannotDropActiveVersion
 
 
 @python_2_unicode_compatible
@@ -503,6 +504,9 @@ class DropIndexAction(IndexAction):
             # we have instantiated this DEMIndex with a specific IndexVersion
             version_model = dem_index.get_version_model()
             self.index_version = version_model
+            if version_model.is_active:
+                raise CannotDropActiveVersion()
+
             msg_params.update({"index_version_name": version_model.name})
             dem_index.delete()
             msg = ("Dropping index version '{index_version_name}' "
@@ -520,18 +524,9 @@ class DropIndexAction(IndexAction):
                     "index.".format(**msg_params)
                 )
 
-            # at least one version is available. now get the *active* version for this index.
+            # at least one version is available.
+            # now get the *active* version for this index.
             active_version = self.index.active_version
             if active_version:
-                self.index_version = latest_version
-                msg_params.update({"index_version_name": latest_version.name})
-                dem_index.delete()
-                self.add_log(
-                    "deleting the active index for '{index_name}': "
-                    "'{index_version_name}' because you said to do so.".format(
-                        **msg_params))
-            else:
-                raise NoActiveIndexVersion(
-                    "You must activate an index version to drop using the index "
-                    "name '{index_name}' only.".format(**msg_params)
-                )
+                self.index_version = active_version
+                raise CannotDropActiveVersion()
