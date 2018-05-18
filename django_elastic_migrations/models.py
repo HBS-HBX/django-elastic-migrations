@@ -23,12 +23,13 @@ class Index(models.Model):
     managed by django_elastic_migrations
     """
     name = models.CharField(verbose_name="Index Name", max_length=32, unique=True)
+
+    # Django convention is to use '+' for related name when you don't need the
+    # reverse relation. in this case, we already have IndexVersion pointing
+    # back to Index, so we don't need that reverse name.
+    # See https://docs.djangoproject.com/en/2.0/ref/models/fields/#django.db.models.ForeignKey.related_name
     active_version = models.ForeignKey(
         'django_elastic_migrations.IndexVersion',
-        # Django convention is to use '+' for related name when you don't need the
-        # reverse relation. in this case, we already have IndexVersion pointing
-        # back to Index, so we don't need that reverse name.
-        # See https://docs.djangoproject.com/en/2.0/ref/models/fields/#django.db.models.ForeignKey.related_name
         related_name="+", null=True)
 
     def __str__(self):
