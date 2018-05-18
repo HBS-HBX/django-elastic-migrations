@@ -146,8 +146,8 @@ For each of these, use `--help` to see the details.
     take the base name (in which case the activated version is used) 
     or the specific index version name.
     ```
-8. Activate the `course_search-1` index version, so all updates and resds go to 
-   it.
+8. Activate the `course_search-1` index version, so all updates and 
+   reads go to it.
     ```
     ./manage.py es_activate course_search
     For index 'course_search', activating 'course_search-1' because you said so.
