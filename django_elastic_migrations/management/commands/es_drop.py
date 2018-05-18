@@ -15,11 +15,16 @@ class Command(ESCommand):
             help="Only drop indexes in elasticsearch (!) "
                  "(probably not what you want, just useful for debugging)"
         )
+        parser.add_argument(
+            '--force', action='store_true',
+            help="Drop indexes without having to specify the index version "
+        )
 
     def handle(self, *args, **options):
         indexes, use_version_mode, apply_all = self.get_index_specifying_options(
             options, require_one_include_list=['es_only'])
         es_only = options.get('es_only', False)
+        force = options.get('force', False)
 
         if es_only:
             count = 0
@@ -32,10 +37,12 @@ class Command(ESCommand):
             DEMIndexManager.drop_index(
                 'all',
                 use_version_mode=use_version_mode,
+                force=force
             )
         elif indexes:
             for index_name in indexes:
                 DEMIndexManager.drop_index(
                     index_name,
-                    use_version_mode=use_version_mode
+                    use_version_mode=use_version_mode,
+                    force=force
                 )

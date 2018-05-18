@@ -69,6 +69,12 @@ class Index(models.Model):
     def get_available_versions(self):
         return self.indexversion_set.filter(deleted_time__isnull=True)
 
+    def get_nonactivated_versions(self):
+        qs = self.get_available_versions()
+        if self.active_version:
+            return qs.exclude(id__in=[self.active_version.id])
+        return qs
+
 
 @python_2_unicode_compatible
 class IndexVersion(models.Model):
@@ -455,7 +461,8 @@ class ActivateIndexAction(IndexAction):
                 else:
                     self.add_log(
                         "For index '{index_name}', there is no active version; "
-                        "so there is no version to deactivate. \nNo action performed."
+                        "so there is no version to deactivate. \n"
+                        "No action performed.".format(**msg_params)
                     )
             elif active_version != latest_version:
                 self.index.active_version = latest_version
@@ -522,6 +529,10 @@ class ClearIndexAction(IndexAction):
 class DropIndexAction(IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_DROP_INDEX
 
+    def __init__(self, *args, **kwargs):
+        self.force = kwargs.pop('force', False)
+        super(DropIndexAction, self).__init__(*args, **kwargs)
+
     class Meta:
         # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
         proxy = True
@@ -541,12 +552,47 @@ class DropIndexAction(IndexAction):
                    "because you said to do so.".format(**msg_params))
             self.add_log(msg)
         else:
-            raise IndexVersionRequired(
-                "You asked to drop index {index_name}, \nbut it is required "
-                "to specify the exact index version you wish to drop. \n"
-                "Try, for example, "
-                "`./manage.py es_drop {index_name}-6 --mode=version`, \n"
-                "if version 6 is the one you would like to drop.".format(
-                    **msg_params
+            if not self.force:
+                raise IndexVersionRequired(
+                    "You asked to drop index {index_name}, \nbut it is required "
+                    "to specify the exact index version you wish to drop. \n"
+                    "Try, for example, "
+                    "`./manage.py es_drop {index_name}-6 --mode=version`, \n"
+                    "if version 6 is the one you would like to drop.".format(
+                        **msg_params
+                    )
+                )
+
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
+            if not latest_version:
+                self.add_log(
+                    "There are no created versions of the '{index_name}' "
+                    "elasticsearch index to drop! No action taken.".format(**msg_params)
+                )
+                return
+
+            available_versions = self.index.get_available_versions()
+            self.add_log(
+                "About to drop {} versions because you said to do so. "
+                "with the argument --force!".format(
+                    len(available_versions),
                 )
             )
+
+            # avoid circular import
+            from django_elastic_migrations import DEMIndexManager
+            count = 0
+
+            for version in available_versions:
+                count += 1
+                self.add_log(
+                    "Dropping version {} because you said to do so "
+                    "with the argument --force!".format(
+                        version.name
+                    )
+                )
+                DEMIndexManager.delete_es_created_index(version.name)
+                version.delete()
+
+            self.add_log("Done dropping {} versions.".format(count))

@@ -254,14 +254,14 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod
-    def drop_index(cls, index_name, use_version_mode=False):
+    def drop_index(cls, index_name, use_version_mode=False, force=False):
         """
         Given the named index, drop it from es
-
+        :param force - if True, drop an index even if the version is not supplied
         """
         # avoid circular import
         from django_elastic_migrations.models import DropIndexAction
-        action = DropIndexAction()
+        action = DropIndexAction(force=force)
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod
