@@ -11,6 +11,7 @@ commands = {
     'activate': 'Create indexes; calls es_activate',
     'update': 'Create indexes; calls es_update',
     'drop': 'Create indexes; calls es_drop',
+    'dangerous_reset': 'Dangerously drops all indexes and recreates all indexes (!)'
 }
 
 
