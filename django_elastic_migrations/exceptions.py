@@ -81,3 +81,9 @@ class CannotDropActiveVersion(DjangoElasticMigrationsException):
         "Please run ./manage.py es_activate to activate another index "
         "before dropping this one."
     )
+
+
+class IndexVersionRequired(DjangoElasticMigrationsException):
+    """
+    Raised when a command requires an index version to be specified.
+    """

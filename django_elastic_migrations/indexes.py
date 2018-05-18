@@ -233,13 +233,13 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod
-    def activate_index(cls, index_name, use_version_mode=False):
+    def activate_index(cls, index_name, use_version_mode=False, deactivate=False):
         """
         Given the named index, activate the latest version of the index
         """
         # avoid circular import
         from django_elastic_migrations.models import ActivateIndexAction
-        action = ActivateIndexAction()
+        action = ActivateIndexAction(deactivate=deactivate)
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod

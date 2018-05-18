@@ -14,7 +14,7 @@ from elasticsearch.helpers import bulk
 
 from django_elastic_migrations import codebase_id, es_client
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
-    CannotDropActiveVersion
+    CannotDropActiveVersion, IndexVersionRequired
 
 
 @python_2_unicode_compatible
@@ -398,6 +398,10 @@ class UpdateIndexAction(IndexAction):
 class ActivateIndexAction(IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
 
+    def __init__(self, *args, **kwargs):
+        self.deactivate = kwargs.pop('deactivate', False)
+        super(ActivateIndexAction, self).__init__(*args, **kwargs)
+
     class Meta:
         # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
         proxy = True
@@ -407,13 +411,22 @@ class ActivateIndexAction(IndexAction):
         if dem_index.get_version_id():
             # we have instantiated this DEMIndex with a specific IndexVersion
             version_model = dem_index.get_version_model()
-            self.index_version = version_model
-            self.active_version = version_model
-            self.index.save()
             msg_params.update({"index_version_name": version_model.name})
-            msg = ("Activating index version '{index_version_name}' "
-                   "because you said to do so.".format(**msg_params))
-            self.add_log(msg)
+            self.index_version = version_model
+            index = self.index
+
+            if self.deactivate and index.active_version == version_model:
+                index.active_version = None
+                self.add_log(
+                    "DEactivating index version '{index_version_name}' "
+                    "because you said to do so.".format(**msg_params))
+            else:
+                index.active_version = version_model
+                self.add_log(
+                    "Activating index version '{index_version_name}' "
+                    "because you said to do so.".format(**msg_params))
+            index.save()
+
         else:
             # use the active version of the index if one exists.
 
@@ -422,14 +435,29 @@ class ActivateIndexAction(IndexAction):
             if not latest_version:
                 raise NoCreatedIndexVersion(
                     "You must have created a version of the "
-                    "'{index_name}' index to call activate "
+                    "'{index_name}' index to call es_activate "
                     "index.".format(**msg_params)
                 )
 
             # at least one version is available. now get the *active* version for this index.
             active_version = self.index.active_version
             msg_params.update({"index_version_name": latest_version.name})
-            if active_version != latest_version:
+
+            if self.deactivate:
+                if self.index.active_version:
+                    self.index.active_version = None
+                    self.add_log(
+                        "For index '{index_name}', DEactivating "
+                        "'{index_version_name}' "
+                        "because you said so.".format(
+                            **msg_params))
+                    self.index.save()
+                else:
+                    self.add_log(
+                        "For index '{index_name}', there is no active version; "
+                        "so there is no version to deactivate. \nNo action performed."
+                    )
+            elif active_version != latest_version:
                 self.index.active_version = latest_version
                 self.index.save()
                 self.add_log(
@@ -513,20 +541,12 @@ class DropIndexAction(IndexAction):
                    "because you said to do so.".format(**msg_params))
             self.add_log(msg)
         else:
-            # use the active version of the index if one exists.
-
-            # first, check if *any* version exists.
-            latest_version = self.index.get_latest_version()
-            if not latest_version:
-                raise NoCreatedIndexVersion(
-                    "You must have created a version of the "
-                    "'{index_name}' index to call drop "
-                    "index.".format(**msg_params)
+            raise IndexVersionRequired(
+                "You asked to drop index {index_name}, \nbut it is required "
+                "to specify the exact index version you wish to drop. \n"
+                "Try, for example, "
+                "`./manage.py es_drop {index_name}-6 --mode=version`, \n"
+                "if version 6 is the one you would like to drop.".format(
+                    **msg_params
                 )
-
-            # at least one version is available.
-            # now get the *active* version for this index.
-            active_version = self.index.active_version
-            if active_version:
-                self.index_version = active_version
-                raise CannotDropActiveVersion()
+            )
