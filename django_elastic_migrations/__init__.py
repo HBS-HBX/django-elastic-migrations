@@ -26,6 +26,8 @@ es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_
 
 codebase_id = getattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID', "")
 
+environment_prefix = getattr(
+    settings, 'DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX', "")
 
 from django_elastic_migrations import apps, indexes
 __all__ = [apps, indexes]

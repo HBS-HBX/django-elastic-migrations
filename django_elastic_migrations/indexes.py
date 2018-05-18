@@ -4,7 +4,7 @@ import sys
 from django.db import ProgrammingError
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
-from django_elastic_migrations import es_client
+from django_elastic_migrations import es_client, environment_prefix
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
     IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
@@ -392,7 +392,9 @@ class DEMIndex(ESIndex):
         :param use_version_mode: if True bypass whether or not this version
                is activated; use the name of the index directly
         """
-        super(DEMIndex, self).__init__(name, using)
+        prefixed_name = "{}{}".format(environment_prefix, name)
+        super(DEMIndex, self).__init__(prefixed_name, using)
+        self.__prefixed_name = prefixed_name
         self.__base_name = name
         self.__doc_type = None
         self.__version_id = version_id

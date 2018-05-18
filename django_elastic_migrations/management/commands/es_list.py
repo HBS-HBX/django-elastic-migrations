@@ -23,9 +23,9 @@ class Command(ESCommand):
 
         es_only = options.get('es_only', False)
 
-        table = Texttable()
+        table = Texttable(max_width=85)
         if es_only:
-            table.add_row([
+            table.header([
                 "Name", "Count" ])
 
             es_indexes = DEMIndexManager.list_es_created_indexes()
@@ -38,8 +38,9 @@ class Command(ESCommand):
 
         else:
 
-            table.add_row([
-                "Name", "Created", "Is Active", "Num Docs", "Created In Tag"])
+            table.header([
+                "Index Base Name", "Index Version Name", "Created", "Active", "Docs", "Tag"])
+            table.set_cols_width([20, 35, 7, 6, 5, 9])
 
             indexes = DEMIndexManager.get_indexes()
 
@@ -58,6 +59,7 @@ class Command(ESCommand):
                         for index_version in index_versions:
                             num_docs = DEMIndexManager.get_es_index_doc_count(index_version.name)
                             table.add_row([
+                                dem_index_model.name,
                                 index_version.name,
                                 not (index_version.is_deleted is None),
                                 index_version.is_active or 0,
@@ -66,6 +68,7 @@ class Command(ESCommand):
                     else:
                         table.add_row([
                             dem_index.get_base_name(),
+                            "",
                             False,
                             False,
                             dem_index.get_num_docs(),
@@ -75,10 +78,10 @@ class Command(ESCommand):
 
         print(table.draw())
         print(
-            "Reminder: an index version name looks like 'my_index-4', " 
-            "and its base index name \n"
-            "looks like 'my_index'. Most Django Elastic Migrations management commands \n"
-            "take the base name (in which case the activated version is used) \n"
-            "or the specific index version name."
+            "An index version name is: \n"
+            "{environment prefix}{index name}-{version primary key id}. \n" 
+            "Most Django Elastic Migrations management commands take the \n"
+            "base name (in which case the activated version is used) or \n"
+            "the specific index version name."
         )
 

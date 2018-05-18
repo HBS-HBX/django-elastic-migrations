@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch.helpers import bulk
 
-from django_elastic_migrations import codebase_id, es_client
+from django_elastic_migrations import codebase_id, es_client, environment_prefix
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired
 
@@ -116,7 +116,9 @@ class IndexVersion(models.Model):
 
     @property
     def name(self):
-        return "{base_name}-{id}".format(base_name=self.index.name, id=self.id)
+        return "{environment_prefix}{base_name}-{id}".format(
+            environment_prefix=environment_prefix,
+            base_name=self.index.name, id=self.id)
 
     def get_last_time_update_called(self):
         last_update = self.indexaction_set.filter(
@@ -574,7 +576,7 @@ class DropIndexAction(IndexAction):
 
             available_versions = self.index.get_available_versions()
             self.add_log(
-                "About to drop {} versions because you said to do so. "
+                "About to drop {} versions because you said to do so "
                 "with the argument --force!".format(
                     len(available_versions),
                 )
