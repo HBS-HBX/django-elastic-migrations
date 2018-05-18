@@ -406,7 +406,7 @@ class DEMIndex(ESIndex):
 
         if not version_id:
             # ensure every index calls home to our manager
-                DEMIndexManager.register_dem_index(self)
+            DEMIndexManager.register_dem_index(self)
 
     def clear(self):
         """
