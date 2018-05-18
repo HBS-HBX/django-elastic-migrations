@@ -200,16 +200,3 @@ with `make upgrade`.
 
 To update the `egg-info` directory, run `python setup.py egg_info`
 
-
-
-# Ideas, Considerations, etc.
-
-## Ideas
-
-1. `./manage.py es_activate --update` flag could update and then activate
-   when the last docs have been activated. This could be
-
-## Considerations
-
-1. If the `./manage.py predeploy` indexes without running prior,
-   unapplied migrations, it could lead to unexpected behavior
