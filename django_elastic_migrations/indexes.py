@@ -2,6 +2,7 @@
 import sys
 
 from django.db import ProgrammingError
+from elasticsearch import TransportError
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
 from django_elastic_migrations import es_client, environment_prefix
@@ -11,7 +12,7 @@ from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 
 
 """
-indexes.py - Django-facing API for interacting with this App
+indexes.py - Django-facing API for interacting with Django Elastic Migrations
 
 Module Conventions
 ------------------
@@ -114,7 +115,13 @@ class DEMIndexManager(object):
     @classmethod
     def get_es_index_doc_count(cls, full_index_version_name, **kwargs):
         s = Search(index=full_index_version_name, using=es_client, **kwargs)
-        return s.query(ESQ('match_all')).count()
+        try:
+            return s.query(ESQ('match_all')).count()
+        except TransportError as ex:
+            if ex.status_code == 404:
+                return 0
+            else:
+                raise ex
 
     @classmethod
     def get_index_model(cls, base_name, create_on_not_found=True):
