@@ -88,6 +88,8 @@ For each of these, use `--help` to see the details.
    DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "path.to.your.singleton.ES_CLIENT"
    # optional, any unique number for your releases to associate with indexes
    DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID = subprocess.check_output(['git', 'describe', "--tags"]).strip()
+   # optional, can be used to have multiple servers share the same es
+   DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = "qa1_"
    ```
 4. Create the `django_elastic_migrations` tables by running `./manage.py migrate`
 5. Create an `DEMIndex`:
