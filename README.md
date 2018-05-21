@@ -194,6 +194,38 @@ For each of these, use `--help` to see the details.
 - After deployment and before going live, activate the latest index.
 - After activating, be sure to cycle your gunicorn workers.
 
+
+### Integration Testing
+1. Put the following in your settings: 
+    ```
+    if 'test' in sys.argv:
+        DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = 'test_'
+    ```
+2. Override TestCase - `test_utilities.py`
+    ```
+    from django_elastic_migrations import DEMIndexManager
+    
+    es_test_prefix = settings.DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX
+    
+    def _setup_django_elastic_migration_schemas():
+        """
+        Create the test elasticsearch indexes
+        """
+        DEMIndexManager.drop_index(
+            'all', force=True, just_prefix=es_test_prefix)
+        DEMIndexManager.create_index('all', force=True)
+        DEMIndexManager.activate_index('all')
+        DEMIndexManager.class_db_init()
+    
+    class MyTestCase(TestCase):
+    
+        def _pre_setup(self):
+            super(MyTestCase, self)._pre_setup()
+            _setup_django_elastic_migration_schemas()
+    
+    ```
+
+
 ## Development
 
 This project uses `make` to manage the build process. Type `make help`
