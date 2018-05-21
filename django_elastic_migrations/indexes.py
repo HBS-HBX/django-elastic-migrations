@@ -217,7 +217,7 @@ class DEMIndexManager(object):
         If the schema has not changed since the last IndexVersion, raise
         DEMCannotCreateUnchangedIndexException.
         :param index_name: the base name of the index
-        :param force_new: create a new index even if the schema is unchanged
+        :param force: create a new index even if the schema is unchanged
         :return:
         """
         # avoid circular import
@@ -261,14 +261,16 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod
-    def drop_index(cls, index_name, use_version_mode=False, force=False):
+    def drop_index(cls, index_name, use_version_mode=False, force=False, just_prefix=None):
         """
         Given the named index, drop it from es
         :param force - if True, drop an index even if the version is not supplied
+        :param just_prefix - if a string is supplied, only those index versions with the
+               prefix will be dropped
         """
         # avoid circular import
         from django_elastic_migrations.models import DropIndexAction
-        action = DropIndexAction(force=force)
+        action = DropIndexAction(force=force, just_prefix=just_prefix)
         return cls._start_action_for_indexes(action, index_name, use_version_mode)
 
     @classmethod

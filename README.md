@@ -22,11 +22,18 @@ to your index, so you must create a new index with a new schema
 and then reindex into that schema, and then get your code to start using 
 that new index. This process requires a little care.
 
-*Django Elastic Migrations provides Django management commands for
-performing these actions, records a history of the actions performed,
-and offers a conceptual layer for thinking about schemas that change
-over time. It aims to be compatible with AWS Elasticsearch 6.0 and
-greater.*
+*Django Elastic Migrations provides:* 
+* Django management commands for `list`ing indexes, as well as performing
+  `create`, `update`, `activate` and `drop` actions on them
+* Records a history of actions performed, and gives an easy way to add 
+  new recorded actions
+* Supports AWS Elasticsearch 6.0 and above
+* Provides a way to multiplex multiple environments into one 
+  elasticsearch cluster using environment prefixes. Two or more servers 
+  can share the same Elasticsearch cluster without overlapping indexes, 
+  even when using the same code. 
+* Facilitates clearing out the search database between unit tests. 
+
 
 ### Models
 Django Elastic Migrations provides comes with three django models:
@@ -46,6 +53,7 @@ Django Elastic Migrations provides comes with three django models:
 - **IndexAction** - a recorded action that changes an *Index* or its
   children, such as updating the index or changing which *IndexVersion*
   is active in an *Index*.
+
 
 ### Management Commands
 
@@ -88,7 +96,8 @@ For each of these, use `--help` to see the details.
    DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "path.to.your.singleton.ES_CLIENT"
    # optional, any unique number for your releases to associate with indexes
    DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID = subprocess.check_output(['git', 'describe', "--tags"]).strip()
-   # optional, can be used to have multiple servers share the same es
+   # optional, can be used to have multiple servers share the same 
+   # elasticsearch instance without conflicting
    DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = "qa1_"
    ```
 4. Create the `django_elastic_migrations` tables by running `./manage.py migrate`

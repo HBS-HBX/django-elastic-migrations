@@ -19,12 +19,18 @@ class Command(ESCommand):
             '--force', action='store_true',
             help="Drop indexes without having to specify the index version "
         )
+        parser.add_argument(
+            '--just-prefix', nargs='?',
+            help=("Only drop index versions whose name begins with "
+                  "the given environment prefix")
+        )
 
     def handle(self, *args, **options):
         indexes, use_version_mode, apply_all = self.get_index_specifying_options(
             options, require_one_include_list=['es_only'])
         es_only = options.get('es_only', False)
         force = options.get('force', False)
+        just_prefix = options.get('just-prefix', None)
 
         if es_only:
             count = 0
@@ -37,12 +43,14 @@ class Command(ESCommand):
             DEMIndexManager.drop_index(
                 'all',
                 use_version_mode=use_version_mode,
-                force=force
+                force=force,
+                just_prefix=just_prefix
             )
         elif indexes:
             for index_name in indexes:
                 DEMIndexManager.drop_index(
                     index_name,
                     use_version_mode=use_version_mode,
-                    force=force
+                    force=force,
+                    just_prefix=just_prefix
                 )

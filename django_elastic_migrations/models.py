@@ -52,7 +52,7 @@ class Index(models.Model):
         If a dem_index is supplied, use that dem index's
         json and hash.
         """
-        version = IndexVersion(index=self, tag=codebase_id[:63])
+        version = IndexVersion(index=self, tag=codebase_id[:63], prefix=environment_prefix)
         if dem_index:
             version.json_md5, version.json = dem_index.get_index_hash_and_json()
         version.save()
@@ -68,6 +68,9 @@ class Index(models.Model):
 
     def get_available_versions(self):
         return self.indexversion_set.filter(deleted_time__isnull=True)
+
+    def get_available_versions_with_prefix(self, prefix=environment_prefix):
+        return self.get_available_versions().filter(prefix=prefix)
 
     def get_nonactivated_versions(self):
         qs = self.get_available_versions()
@@ -85,6 +88,7 @@ class IndexVersion(models.Model):
     index is created with that schema.
     """
     index = models.ForeignKey(Index)
+    prefix = models.CharField(verbose_name="Environment Prefix", max_length=32, blank=True)
     # store the JSON sent to Elasticsearch to configure the index
     # note: the index name field in this field does NOT include the IndexVersion id
     json = models.TextField(verbose_name="Elasticsearch Index JSON", blank=True)
@@ -117,7 +121,7 @@ class IndexVersion(models.Model):
     @property
     def name(self):
         return "{environment_prefix}{base_name}-{id}".format(
-            environment_prefix=environment_prefix,
+            environment_prefix=self.prefix,
             base_name=self.index.name, id=self.id)
 
     def get_last_time_update_called(self):
@@ -533,6 +537,7 @@ class DropIndexAction(IndexAction):
 
     def __init__(self, *args, **kwargs):
         self.force = kwargs.pop('force', False)
+        self.just_prefix = kwargs.pop('just_prefix', None)
         super(DropIndexAction, self).__init__(*args, **kwargs)
 
     class Meta:
@@ -574,7 +579,11 @@ class DropIndexAction(IndexAction):
                 )
                 return
 
-            available_versions = self.index.get_available_versions()
+            available_versions = []
+            if self.just_prefix:
+                available_versions = self.index.get_available_versions_with_prefix(self.just_prefix)
+            else:
+                available_versions = self.index.get_available_versions()
             self.add_log(
                 "About to drop {} versions because you said to do so "
                 "with the argument --force!".format(
