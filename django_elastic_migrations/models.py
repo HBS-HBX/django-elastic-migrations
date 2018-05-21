@@ -5,11 +5,13 @@ Database models for django_elastic_migrations.
 
 from __future__ import absolute_import, unicode_literals
 
+import sys
 import traceback
 
 from django.db import models
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
+from elasticsearch import TransportError
 from elasticsearch.helpers import bulk
 
 from django_elastic_migrations import codebase_id, es_client, environment_prefix
@@ -119,6 +121,10 @@ class IndexVersion(models.Model):
         return active_ver and active_ver.id == self.id
 
     @property
+    def is_deleted(self):
+        return not self.deleted_time
+
+    @property
     def name(self):
         return "{environment_prefix}{base_name}-{id}".format(
             environment_prefix=self.prefix,
@@ -209,7 +215,7 @@ class IndexAction(models.Model):
             msg = msg.format(**self.__dict__)
         print(msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
-        if commit:
+        if commit and not 'test' in sys.argv:
             self.save()
 
     def perform_action(self, dem_index, *args, **kwargs):
@@ -603,7 +609,27 @@ class DropIndexAction(IndexAction):
                         version.name
                     )
                 )
-                DEMIndexManager.delete_es_created_index(version.name)
-                version.delete()
+                try:
+                    DEMIndexManager.delete_es_created_index(version.name)
+                    version.delete()
+                except TransportError as ex:
+                    if ex.status_code == 404:
+                        self.add_log(
+                            "Version {} does not exist in ES; not doing anything there".format(
+                                version.name
+                            )
+                        )
+                        if version.is_deleted:
+                            self.add_log(
+                                "Version {} was already deleted in IndexVersion model; "
+                                "not doing anything further".format(
+                                    version.name
+                                )
+                            )
+                            count -= 1
+                        else:
+                            version.delete()
+                    else:
+                        raise ex
 
             self.add_log("Done dropping {} versions.".format(count))

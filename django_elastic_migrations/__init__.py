@@ -4,6 +4,8 @@ Migrate Elasticsearch-DSL Schemas in Django.
 
 from __future__ import absolute_import, unicode_literals
 
+import sys
+
 from django_elastic_migrations.utils import loading
 
 __version__ = '0.1.3'
@@ -28,6 +30,13 @@ codebase_id = getattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID', "")
 
 environment_prefix = getattr(
     settings, 'DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX', "")
+
+
+es_test_prefix = "test_"
+
+
+if 'test' in sys.argv:
+    environment_prefix = '{}{}'.format(es_test_prefix, environment_prefix)
 
 from django_elastic_migrations import apps, indexes
 __all__ = [apps, indexes]

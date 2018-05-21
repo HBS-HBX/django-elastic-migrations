@@ -5,7 +5,7 @@ from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
-from django_elastic_migrations import es_client, environment_prefix
+from django_elastic_migrations import es_client, environment_prefix, es_test_prefix
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
     IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
@@ -186,6 +186,19 @@ class DEMIndexManager(object):
             instance_doc_type = instance.doc_type()
             instance.__init__(index_base_name)
             instance.doc_type(instance_doc_type)
+
+    @classmethod
+    def test_pre_setup(cls):
+        DEMIndexManager.class_db_init()
+        cls.test_post_teardown()
+        DEMIndexManager.create_index('all', force=True)
+        DEMIndexManager.activate_index('all')
+        DEMIndexManager.class_db_init()
+
+    @classmethod
+    def test_post_teardown(cls):
+        DEMIndexManager.drop_index(
+            'all', force=True, just_prefix=es_test_prefix)
 
     @classmethod
     def update_index_models(cls):
@@ -446,6 +459,10 @@ class DEMIndex(ESIndex):
             body = self.to_dict()
             self.connection.indices.create(index=index, body=body, **kwargs)
         except Exception as ex:
+            if isinstance(ex, TransportError):
+                if ex.status_code == 400:
+                    # "resource_already_exists_exception"
+                    return index_version
             index_version.delete()
             raise ex
         return index_version
