@@ -176,8 +176,9 @@ class IndexAction(models.Model):
     ACTION_CREATE_INDEX = 'create_index'
     ACTION_UPDATE_INDEX = 'update_index'
     ACTION_ACTIVATE_INDEX = 'activate_index'
+    ACTION_DEACTIVATE_INDEX = 'deactivate_index'
     ACTION_DROP_INDEX = 'drop_index'
-    ACTIONS_ALL = {ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX, ACTION_DROP_INDEX}
+    ACTIONS_ALL = {ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX, ACTION_DEACTIVATE_INDEX, ACTION_DROP_INDEX}
     ACTIONS_ALL_CHOICES = [(i, i) for i in ACTIONS_ALL]
 
     DEFAULT_ACTION = ACTION_CREATE_INDEX
@@ -493,6 +494,66 @@ class ActivateIndexAction(IndexAction):
                         **msg_params))
 
 
+class DeactivateIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_DEACTIVATE_INDEX
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        msg_params = {"index_name": self.index.name}
+        if dem_index.get_version_id():
+            # we have instantiated this DEMIndex with a specific IndexVersion
+            version_model = dem_index.get_version_model()
+            msg_params.update({"index_version_name": version_model.name})
+            self.index_version = version_model
+            index = self.index
+
+            index.active_version = None
+            if index.active_version == version_model:
+                self.add_log(
+                    "Deactivating formerly active index version "
+                    "'{index_version_name}' "
+                    "because you said to do so.".format(**msg_params))
+                index.save()
+            else:
+                self.add_log(
+                    "There is no need to deactivate '{index_version_name}' "
+                    "because is it not active.".format(**msg_params))
+
+        else:
+            # use the active version of the index if one exists.
+
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
+            if not latest_version:
+                raise NoCreatedIndexVersion(
+                    "You must have created a version of the "
+                    "'{index_name}' index to call es_deactivate "
+                    "index.".format(**msg_params)
+                )
+
+            # at least one version is available.
+
+            msg_params.update({"index_version_name": latest_version.name})
+
+            if self.index.active_version:
+                self.index.active_version = None
+                self.add_log(
+                    "For index '{index_name}', DEactivating "
+                    "'{index_version_name}' "
+                    "because you said so.".format(
+                        **msg_params))
+                self.index.save()
+            else:
+                self.add_log(
+                    "For index '{index_name}', there is no active version; "
+                    "so there is no version to deactivate. \n"
+                    "No action performed.".format(**msg_params)
+                )
+
+
 class ClearIndexAction(IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
 
@@ -536,7 +597,7 @@ class ClearIndexAction(IndexAction):
             else:
                 raise NoActiveIndexVersion(
                     "You must activate an index version to clear using the index "
-                    "name `{index_version_name}`only.".format(**msg_params)
+                    "name `{index_version_name}` only.".format(**msg_params)
                 )
 
 
