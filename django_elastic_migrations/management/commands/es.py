@@ -9,11 +9,11 @@ logger = get_logger()
 
 commands = {
     'list': 'List indexes; calls es_list',
-    'clear': 'Clears indexes; calls es_clear',
     'create': 'Create indexes; calls es_create',
     'activate': 'Activate indexes; calls es_activate',
     'update': 'Update indexes; calls es_update',
     'deactivate': 'Deactivate indexes; calls es_drop',
+    'clear': 'Clears indexes; calls es_clear',
     'drop': 'Drop indexes; calls es_drop',
     'dangerous_reset': 'Dangerously drops all indexes and recreates all indexes (!)'
 }

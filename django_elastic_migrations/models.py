@@ -150,10 +150,6 @@ class IndexVersion(models.Model):
         self.deleted_time = timezone.now()
         self.save()
 
-    @property
-    def is_deleted(self):
-        return not self.deleted_time
-
 
 @python_2_unicode_compatible
 class IndexAction(models.Model):
@@ -285,135 +281,11 @@ class IndexAction(models.Model):
         return index_action
 
 
-class CreateIndexAction(IndexAction):
-    DEFAULT_ACTION = IndexAction.ACTION_CREATE_INDEX
+"""
+↓ Action Implementations Below ↓
 
-    def __init__(self, *args, **kwargs):
-        self.force = kwargs.pop('force', False)
-        super(CreateIndexAction, self).__init__(*args, **kwargs)
-
-    class Meta:
-        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
-        proxy = True
-
-    def perform_action(self, dem_index, *args, **kwargs):
-        latest_version = self.index.get_latest_version()
-
-        self._index_name = self.index.name
-
-        msg = ""
-        if latest_version and dem_index.hash_matches(latest_version.json_md5):
-            self.index_version = latest_version
-            self._index_version_name = self.index_version.name
-            if self.force:
-                self.add_log(
-                    "The doc type for index '{_index_name}' has not changed "
-                    "since '{_index_version_name}'; "
-                    "\nbut creating a new index anyway since you added "
-                    "the --force argument!",
-                    use_self_dict_format=True
-                ),
-                self.index_version = dem_index.create()
-                self._index_version_name = self.index_version.name
-            else:
-                self.add_log(
-                    "The doc type for index '{_index_name}' has not changed "
-                    "since '{_index_version_name}'; not creating a new index.",
-                    use_self_dict_format=True
-                )
-        else:
-            self.index_version = dem_index.create()
-            self._index_version_name = self.index_version.name
-            self.add_log(
-                "The doc type for index '{_index_name}' changed; created a new "
-                "index version '{_index_version_name}' in elasticsearch.",
-                use_self_dict_format=True
-            )
-
-
-class UpdateIndexAction(IndexAction):
-    DEFAULT_ACTION = IndexAction.ACTION_UPDATE_INDEX
-
-    class Meta:
-        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
-        proxy = True
-
-    def perform_action(self, dem_index, *args, **kwargs):
-        self._index_name = self.index.name
-        self._index_version_id = dem_index.get_version_id()
-
-        if self._index_version_id:
-            # we have instantiated this DEMIndex with a specific IndexVersion
-            index_version = dem_index.get_version_model()
-            if not index_version:
-                msg = (
-                    "DEMIndex '{_index_name}' configured with version "
-                    "'{_index_version_id}' did not have an IndexModel "
-                    "in the database".format(**self.__dict__)
-                )
-                raise IllegalDEMIndexState(msg)
-
-            self.index_version = index_version
-            self._index_version_name = index_version.name
-            self.add_log(
-                "Handling update of manually specified index version "
-                "'{_index_version_name}'", use_self_dict_format=True)
-
-        else:
-            # use the active version of the index if one exists.
-
-            # first, check if *any* version exists.
-            latest_version = self.index.get_latest_version()
-            if not latest_version:
-                raise NoCreatedIndexVersion(
-                    "You must have created and activated a version of the "
-                    "'{_index_name}' index to call update "
-                    "index.".format(**self.__dict__)
-                )
-
-            # at least one version is available. now get the *active* version for this index.
-            active_version = self.index.active_version
-
-            if not active_version:
-                msg = (
-                    "You must have an active version of the '{_index_name}' index "
-                    "to call update index. Please activate an index and try again.".format(
-                        **self.__dict__
-                    )
-                )
-                raise NoActiveIndexVersion(msg)
-
-            # we have an active version for this index. now do the update.
-            self.index_version = active_version
-            self._index_version_name = self.index_version.name
-            self.add_log(
-                "Handling update of index '{_index_name}' using its active index version "
-                "'{_index_version_name}'", use_self_dict_format=True)
-
-        doc_type = dem_index.doc_type()
-
-        self._last_update = self.index_version.get_last_time_update_called()
-        if not self._last_update:
-            self._last_update = 'never'
-        self.add_log(
-            "Checking the last time update was called: "
-            u"\n - index version: {_index_version_name} "
-            u"\n - update date: {_last_update} ", use_self_dict_format=True
-        )
-
-        self.add_log("Getting Reindex Iterator...")
-
-        reindex_iterator = doc_type.get_reindex_iterator(
-            last_updated_datetime=self._last_update)
-
-        # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
-        from itertools import islice
-        reindex_iterator = list(islice(reindex_iterator, 3))
-
-        self.add_log("Calling bulk reindex...")
-        bulk(client=es_client, actions=reindex_iterator, refresh=True)
-
-        self.add_log("Completed with indexing {_index_version_name}", use_self_dict_format=True)
+Actions are in descending alphabetical order
+"""
 
 
 class ActivateIndexAction(IndexAction):
@@ -494,6 +366,99 @@ class ActivateIndexAction(IndexAction):
                         **msg_params))
 
 
+class ClearIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        msg_params = {"index_name": self.index.name}
+        if dem_index.get_version_id():
+            # we have instantiated this DEMIndex with a specific IndexVersion
+            version_model = dem_index.get_version_model()
+            self.index_version = version_model
+            msg_params.update({"index_version_name": version_model.name})
+            dem_index.clear()
+            msg = ("Cleared all documents from index version '{index_version_name}' "
+                   "because you said to do so.".format(**msg_params))
+            self.add_log(msg)
+        else:
+            # use the active version of the index if one exists.
+
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
+            if not latest_version:
+                raise NoCreatedIndexVersion(
+                    "You must have created a version of the "
+                    "'{index_name}' index to call clear "
+                    "index.".format(**msg_params)
+                )
+
+            # at least one version is available. now get the *active* version for this index.
+            active_version = self.index.active_version
+            if active_version:
+                self.index_version = latest_version
+                msg_params.update({"index_version_name": latest_version.name})
+                dem_index.clear()
+                self.add_log(
+                    "The active index for '{index_name}' is '{index_version_name}': "
+                    "Clearing all documents because you said to do so.".format(
+                        **msg_params))
+            else:
+                raise NoActiveIndexVersion(
+                    "You must activate an index version to clear using the index "
+                    "name `{index_version_name}` only.".format(**msg_params)
+                )
+
+
+class CreateIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_CREATE_INDEX
+
+    def __init__(self, *args, **kwargs):
+        self.force = kwargs.pop('force', False)
+        super(CreateIndexAction, self).__init__(*args, **kwargs)
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        latest_version = self.index.get_latest_version()
+
+        self._index_name = self.index.name
+
+        msg = ""
+        if latest_version and dem_index.hash_matches(latest_version.json_md5):
+            self.index_version = latest_version
+            self._index_version_name = self.index_version.name
+            if self.force:
+                self.add_log(
+                    "The doc type for index '{_index_name}' has not changed "
+                    "since '{_index_version_name}'; "
+                    "\nbut creating a new index anyway since you added "
+                    "the --force argument!",
+                    use_self_dict_format=True
+                ),
+                self.index_version = dem_index.create()
+                self._index_version_name = self.index_version.name
+            else:
+                self.add_log(
+                    "The doc type for index '{_index_name}' has not changed "
+                    "since '{_index_version_name}'; not creating a new index.",
+                    use_self_dict_format=True
+                )
+        else:
+            self.index_version = dem_index.create()
+            self._index_version_name = self.index_version.name
+            self.add_log(
+                "The doc type for index '{_index_name}' changed; created a new "
+                "index version '{_index_version_name}' in elasticsearch.",
+                use_self_dict_format=True
+            )
+
+
 class DeactivateIndexAction(IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_DEACTIVATE_INDEX
 
@@ -551,53 +516,6 @@ class DeactivateIndexAction(IndexAction):
                     "For index '{index_name}', there is no active version; "
                     "so there is no version to deactivate. \n"
                     "No action performed.".format(**msg_params)
-                )
-
-
-class ClearIndexAction(IndexAction):
-    DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
-
-    class Meta:
-        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
-        proxy = True
-
-    def perform_action(self, dem_index, *args, **kwargs):
-        msg_params = {"index_name": self.index.name}
-        if dem_index.get_version_id():
-            # we have instantiated this DEMIndex with a specific IndexVersion
-            version_model = dem_index.get_version_model()
-            self.index_version = version_model
-            msg_params.update({"index_version_name": version_model.name})
-            dem_index.clear()
-            msg = ("Cleared all documents from index version '{index_version_name}' "
-                   "because you said to do so.".format(**msg_params))
-            self.add_log(msg)
-        else:
-            # use the active version of the index if one exists.
-
-            # first, check if *any* version exists.
-            latest_version = self.index.get_latest_version()
-            if not latest_version:
-                raise NoCreatedIndexVersion(
-                    "You must have created a version of the "
-                    "'{index_name}' index to call clear "
-                    "index.".format(**msg_params)
-                )
-
-            # at least one version is available. now get the *active* version for this index.
-            active_version = self.index.active_version
-            if active_version:
-                self.index_version = latest_version
-                msg_params.update({"index_version_name": latest_version.name})
-                dem_index.clear()
-                self.add_log(
-                    "The active index for '{index_name}' is '{index_version_name}': "
-                    "Clearing all documents because you said to do so.".format(
-                        **msg_params))
-            else:
-                raise NoActiveIndexVersion(
-                    "You must activate an index version to clear using the index "
-                    "name `{index_version_name}` only.".format(**msg_params)
                 )
 
 
@@ -696,3 +614,88 @@ class DropIndexAction(IndexAction):
                         raise ex
 
             self.add_log("Done dropping {} versions.".format(count))
+
+
+class UpdateIndexAction(IndexAction):
+    DEFAULT_ACTION = IndexAction.ACTION_UPDATE_INDEX
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        self._index_name = self.index.name
+        self._index_version_id = dem_index.get_version_id()
+
+        if self._index_version_id:
+            # we have instantiated this DEMIndex with a specific IndexVersion
+            index_version = dem_index.get_version_model()
+            if not index_version:
+                msg = (
+                    "DEMIndex '{_index_name}' configured with version "
+                    "'{_index_version_id}' did not have an IndexModel "
+                    "in the database".format(**self.__dict__)
+                )
+                raise IllegalDEMIndexState(msg)
+
+            self.index_version = index_version
+            self._index_version_name = index_version.name
+            self.add_log(
+                "Handling update of manually specified index version "
+                "'{_index_version_name}'", use_self_dict_format=True)
+
+        else:
+            # use the active version of the index if one exists.
+
+            # first, check if *any* version exists.
+            latest_version = self.index.get_latest_version()
+            if not latest_version:
+                raise NoCreatedIndexVersion(
+                    "You must have created and activated a version of the "
+                    "'{_index_name}' index to call update "
+                    "index.".format(**self.__dict__)
+                )
+
+            # at least one version is available. now get the *active* version for this index.
+            active_version = self.index.active_version
+
+            if not active_version:
+                msg = (
+                    "You must have an active version of the '{_index_name}' index "
+                    "to call update index. Please activate an index and try again.".format(
+                        **self.__dict__
+                    )
+                )
+                raise NoActiveIndexVersion(msg)
+
+            # we have an active version for this index. now do the update.
+            self.index_version = active_version
+            self._index_version_name = self.index_version.name
+            self.add_log(
+                "Handling update of index '{_index_name}' using its active index version "
+                "'{_index_version_name}'", use_self_dict_format=True)
+
+        doc_type = dem_index.doc_type()
+
+        self._last_update = self.index_version.get_last_time_update_called()
+        if not self._last_update:
+            self._last_update = 'never'
+        self.add_log(
+            "Checking the last time update was called: "
+            u"\n - index version: {_index_version_name} "
+            u"\n - update date: {_last_update} ", use_self_dict_format=True
+        )
+
+        self.add_log("Getting Reindex Iterator...")
+
+        reindex_iterator = doc_type.get_reindex_iterator(
+            last_updated_datetime=self._last_update)
+
+        # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
+        from itertools import islice
+        reindex_iterator = list(islice(reindex_iterator, 3))
+
+        self.add_log("Calling bulk reindex...")
+        bulk(client=es_client, actions=reindex_iterator, refresh=True)
+
+        self.add_log("Completed with indexing {_index_version_name}", use_self_dict_format=True)
