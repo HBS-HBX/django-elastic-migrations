@@ -13,7 +13,7 @@ class Command(ESCommand):
     help = "django-elastic-migrations: list available indexes"
 
     def add_arguments(self, parser):
-        self.get_index_specifying_arguments(parser, include_versions=False, default_all=True)
+        self.get_index_specifying_arguments(parser, include_exact=False, default_all=True)
         parser.add_argument(
             '--es-only', action='store_true',
             help="Only list indexes in elasticsearch, without respect to the models."
@@ -22,7 +22,7 @@ class Command(ESCommand):
     def handle(self, *args, **options):
         logger.info("Available Index Definitions:")
 
-        indexes, _, apply_all = self.get_index_specifying_options(
+        indexes, _, apply_all, _ = self.get_index_specifying_options(
             options, require_one_include_list=['es_only'])
 
         es_only = options.get('es_only', False)

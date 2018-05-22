@@ -14,7 +14,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch import TransportError
 from elasticsearch.helpers import bulk
 
-from django_elastic_migrations import codebase_id, es_client, environment_prefix
+from django_elastic_migrations import codebase_id, es_client, environment_prefix, DEMIndexManager
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired
 from django_elastic_migrations.utils.log import get_logger
@@ -84,6 +84,18 @@ class Index(models.Model):
             return qs.exclude(id__in=[self.active_version.id])
         return qs
 
+    def get_older_versions(self, new_version=None, prefix=environment_prefix):
+        """
+        Find all non-deleted versions that are older than the given version
+        """
+        qs = self.get_available_versions()
+        if prefix:
+            qs = self.get_available_versions_with_prefix(prefix)
+
+        if new_version:
+            return qs.filter(id__lt=new_version.id)
+        return qs.filter(id__lt=self.active_version.id)
+
 
 @python_2_unicode_compatible
 class IndexVersion(models.Model):
@@ -134,10 +146,14 @@ class IndexVersion(models.Model):
             environment_prefix=self.prefix,
             base_name=self.index.name, id=self.id)
 
-    def get_last_time_update_called(self):
-        last_update = self.indexaction_set.filter(
-            action=IndexAction.ACTION_UPDATE_INDEX
-        ).last()
+    def get_last_time_update_called(self, before_action=None):
+        qs = self.indexaction_set.filter(
+            action=IndexAction.ACTION_UPDATE_INDEX,
+            status=IndexAction.STATUS_COMPLETE
+        )
+        if before_action:
+            qs.filter(id__lt=before_action.id)
+        last_update = qs.last()
         if last_update:
             return last_update.last_modified
         return None
@@ -282,6 +298,46 @@ class IndexAction(models.Model):
 
 
 """
+↓ Action Mixins Below ↓
+
+Mixins are used to provide handling for common parameters
+"""
+
+
+class OlderModeMixin(object):
+    """
+    Used to pop the 'older_mode' kwarg off and attach it to self.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.older_mode = kwargs.pop('older_mode', False)
+        super(OlderModeMixin, self).__init__(*args, **kwargs)
+
+    def apply_to_older(self, versions, action):
+        """
+        Given the IndexVersions supplied, loop through each, starting the given
+        IndexAction
+        :param versions: iterable of IndexVersion
+        :param action: an IndexAction
+        """
+        if not versions:
+            self.add_log('No older versions found; no actions performed.', level=logger.WARNING)
+            return
+
+        self.add_log("Applying action {action_name} to {num_index_versions} older versions ...".format(
+            action_name = action.action, num_index_versions=len(versions)
+        ))
+
+        for version in versions:
+            sub_dem_index = DEMIndexManager.get_dem_index(version.name, exact_mode=True)
+            action.start_action(dem_index=sub_dem_index)
+
+        self.add_log(" - Done applying action {action_name} to {num_index_versions} older versions".format(
+            action_name = action.action, num_index_versions=len(versions)
+        ))
+
+
+"""
 ↓ Action Implementations Below ↓
 
 Actions are in descending alphabetical order
@@ -311,7 +367,7 @@ class ActivateIndexAction(IndexAction):
             if self.deactivate and index.active_version == version_model:
                 index.active_version = None
                 self.add_log(
-                    "DEactivating index version '{index_version_name}' "
+                    "Deactivating index version '{index_version_name}' "
                     "because you said to do so.".format(**msg_params))
             else:
                 index.active_version = version_model
@@ -366,7 +422,7 @@ class ActivateIndexAction(IndexAction):
                         **msg_params))
 
 
-class ClearIndexAction(IndexAction):
+class ClearIndexAction(OlderModeMixin, IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
 
     class Meta:
@@ -378,12 +434,16 @@ class ClearIndexAction(IndexAction):
         if dem_index.get_version_id():
             # we have instantiated this DEMIndex with a specific IndexVersion
             version_model = dem_index.get_version_model()
-            self.index_version = version_model
-            msg_params.update({"index_version_name": version_model.name})
-            dem_index.clear()
-            msg = ("Cleared all documents from index version '{index_version_name}' "
-                   "because you said to do so.".format(**msg_params))
-            self.add_log(msg)
+            if self.older_mode:
+                versions_to_clear = self.index.get_older_versions(new_version=version_model)
+                self.apply_to_older(versions_to_clear, action=ClearIndexAction(older_mode=True))
+            else:
+                self.index_version = version_model
+                msg_params.update({"index_version_name": version_model.name})
+                dem_index.clear()
+                msg = ("Cleared all documents from index version '{index_version_name}' "
+                       "because you said to do so.".format(**msg_params))
+                self.add_log(msg)
         else:
             # use the active version of the index if one exists.
 
@@ -400,12 +460,16 @@ class ClearIndexAction(IndexAction):
             active_version = self.index.active_version
             if active_version:
                 self.index_version = latest_version
-                msg_params.update({"index_version_name": latest_version.name})
-                dem_index.clear()
-                self.add_log(
-                    "The active index for '{index_name}' is '{index_version_name}': "
-                    "Clearing all documents because you said to do so.".format(
-                        **msg_params))
+                if self.older_mode:
+                    versions_to_clear = self.index.get_older_versions(new_version=active_version)
+                    self.apply_to_older(versions_to_clear, action=ClearIndexAction())
+                else:
+                    msg_params.update({"index_version_name": latest_version.name})
+                    dem_index.clear()
+                    self.add_log(
+                        "The active index for '{index_name}' is '{index_version_name}': "
+                        "Clearing all documents because you said to do so.".format(
+                            **msg_params))
             else:
                 raise NoActiveIndexVersion(
                     "You must activate an index version to clear using the index "
@@ -519,7 +583,7 @@ class DeactivateIndexAction(IndexAction):
                 )
 
 
-class DropIndexAction(IndexAction):
+class DropIndexAction(OlderModeMixin, IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_DROP_INDEX
 
     def __init__(self, *args, **kwargs):
@@ -677,7 +741,7 @@ class UpdateIndexAction(IndexAction):
 
         doc_type = dem_index.doc_type()
 
-        self._last_update = self.index_version.get_last_time_update_called()
+        self._last_update = self.index_version.get_last_time_update_called(before_action=self)
         if not self._last_update:
             self._last_update = 'never'
         self.add_log(

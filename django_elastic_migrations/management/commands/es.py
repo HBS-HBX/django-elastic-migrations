@@ -49,34 +49,55 @@ class Command(BaseCommand):
                 "to operate on. By default, the active version will be acted upon."
                 "If `--version` is supplied, the specificied versions will be acted upon."
             ),
-            "version": (
+            "exact": (
                 "The index names you supply should be considered specific "
-                "index version names, including environment prefix."),
+                "index version names, including environment prefix."
+            ),
             "all": (
-                'Operate on all of the active indexes or index versions.'
+                'Operate on all of the available indexes, using the active version '
+                'for each index.'
+            ),
+            "older": (
+                'Operate on versions older than the active index. With --versions, '
+                'operate on versions older than the specified index.'
             )
         }
 
     @classmethod
-    def get_index_version_specifying_arguments(cls, parser):
+    def get_exact_version_specifying_arguments(cls, parser):
         messages = cls.get_index_specifying_help_messages()
         parser.add_argument(
-            "--version",
-            help=messages.get("version"), action="store_true", default=False
+            "--exact",
+            help=messages.get("exact"), action="store_true", default=False
         )
 
     @classmethod
-    def get_index_specifying_arguments(cls, parser, include_versions=True, default_all=False):
+    def get_index_older_specifying_arguments(cls, parser):
+        messages = cls.get_index_specifying_help_messages()
+        parser.add_argument(
+            "--older",
+            help=messages.get("older"), action="store_true", default=False
+        )
+
+
+    @classmethod
+    def get_index_specifying_arguments(
+        cls, parser, include_exact=True, default_all=False, include_older=False):
         messages = cls.get_index_specifying_help_messages()
         parser.add_argument(
             'index', nargs='*',
             help=messages.get("index")
         )
 
-        if include_versions:
+        if include_exact:
             # some arguments do not allow specifying index versions,
             # such as es_create. In that case, do not include this arg.
-            cls.get_index_version_specifying_arguments(parser)
+            cls.get_exact_version_specifying_arguments(parser)
+
+        if include_older:
+            # some arguments do not allow operating on older versions,
+            # such as es_create.
+            cls.get_index_older_specifying_arguments(parser)
 
         parser.add_argument(
             "--all", action='store_true', default=default_all,
@@ -85,7 +106,8 @@ class Command(BaseCommand):
 
     @classmethod
     def get_index_specifying_options(cls, options, require_one_include_list=None):
-        use_version_mode = options.get('version', False)
+        exact_mode = options.get('exact', False)
+        version_mode = options.get('older', False)
         at_least_one_required = ['index', 'all']
 
         if require_one_include_list:
@@ -98,8 +120,8 @@ class Command(BaseCommand):
 
         if not at_least_one:
             raise CommandError(
-                "At least one of {} must be specified".format(
-                    ", ".join(at_least_one_required)
+                "At least one of ['{}'] must be specified".format(
+                    "', '".join(at_least_one_required)
                 ))
 
         indexes = options.get('index', [])
@@ -116,7 +138,7 @@ class Command(BaseCommand):
             )
             apply_all = False
 
-        return indexes, use_version_mode, apply_all
+        return indexes, exact_mode, apply_all, version_mode
 
 
 ESCommand = Command

@@ -10,19 +10,21 @@ class Command(ESCommand):
     help = "django-elastic-migrations: clear documents from elasticsearch indexes"
 
     def add_arguments(self, parser):
-        self.get_index_specifying_arguments(parser)
+        self.get_index_specifying_arguments(parser, include_older=True)
 
     def handle(self, *args, **options):
-        indexes, use_version_mode, apply_all = self.get_index_specifying_options(options)
+        indexes, exact_mode, apply_all, older_mode = self.get_index_specifying_options(options)
 
         if apply_all:
             DEMIndexManager.clear_index(
                 'all',
-                use_version_mode=use_version_mode,
+                exact_mode=exact_mode,
+                older_mode=older_mode
             )
         elif indexes:
             for index_name in indexes:
                 DEMIndexManager.clear_index(
                     index_name,
-                    use_version_mode=use_version_mode
+                    exact_mode=exact_mode,
+                    older_mode=older_mode
                 )

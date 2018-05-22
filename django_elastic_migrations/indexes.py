@@ -94,16 +94,16 @@ class DEMIndexManager(object):
         return ""
 
     @classmethod
-    def get_dem_index(cls, index_name, use_version_mode=False):
+    def get_dem_index(cls, index_name, exact_mode=False):
         """
         Get the DEMIndex instance associated with `index_name`.
         :param index_name: Name of index
-        :param use_version_mode: If True, treat `index_name` as the
+        :param exact_mode: If True, treat `index_name` as the
                fully qualified elasticsearch name of the index
         :return:
         """
         version_number = None
-        if use_version_mode and index_name:
+        if exact_mode and index_name:
             separator_index = index_name.rindex("-")
             base_name = index_name[:separator_index]
             version_number = index_name[separator_index+1:]
@@ -236,10 +236,10 @@ class DEMIndexManager(object):
         # avoid circular import
         from django_elastic_migrations.models import CreateIndexAction
         action = CreateIndexAction(force=force)
-        return cls._start_action_for_indexes(action, index_name, use_version_mode=False)
+        return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
-    def update_index(cls, index_name, use_version_mode=False):
+    def update_index(cls, index_name, exact_mode=False):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
@@ -250,41 +250,42 @@ class DEMIndexManager(object):
         # avoid circular import
         from django_elastic_migrations.models import UpdateIndexAction
         action = UpdateIndexAction()
-        return cls._start_action_for_indexes(action, index_name, use_version_mode)
+        return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def activate_index(cls, index_name, use_version_mode=False):
+    def activate_index(cls, index_name, exact_mode=False):
         """
         Given the named index, activate the latest version of the index
         """
         # avoid circular import
         from django_elastic_migrations.models import ActivateIndexAction
         action = ActivateIndexAction()
-        return cls._start_action_for_indexes(action, index_name, use_version_mode)
+        return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def deactivate_index(cls, index_name, use_version_mode=False):
+    def deactivate_index(cls, index_name, exact_mode=False):
         """
         Given the named index, activate the latest version of the index
         """
         # avoid circular import
         from django_elastic_migrations.models import DeactivateIndexAction
         action = DeactivateIndexAction()
-        return cls._start_action_for_indexes(action, index_name, use_version_mode)
+        return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def clear_index(cls, index_name, use_version_mode=False):
+    def clear_index(cls, index_name, exact_mode=False, older_mode=False):
         """
         Given the named index, clear the documents from the index
 
         """
         # avoid circular import
         from django_elastic_migrations.models import ClearIndexAction
-        action = ClearIndexAction()
-        return cls._start_action_for_indexes(action, index_name, use_version_mode)
+        action = ClearIndexAction(older_mode=older_mode)
+        return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def drop_index(cls, index_name, use_version_mode=False, force=False, just_prefix=None):
+    def drop_index(
+        cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False):
         """
         Given the named index, drop it from es
         :param force - if True, drop an index even if the version is not supplied
@@ -293,11 +294,11 @@ class DEMIndexManager(object):
         """
         # avoid circular import
         from django_elastic_migrations.models import DropIndexAction
-        action = DropIndexAction(force=force, just_prefix=just_prefix)
-        return cls._start_action_for_indexes(action, index_name, use_version_mode)
+        action = DropIndexAction(force=force, just_prefix=just_prefix, older_mode=older_mode)
+        return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def _start_action_for_indexes(cls, action, index_name, use_version_mode=False):
+    def _start_action_for_indexes(cls, action, index_name, exact_mode=False):
         """
         Called by create_index, activate_index, update_index, clear_index, drop_index.
 
@@ -306,8 +307,8 @@ class DEMIndexManager(object):
         "./manage.py es" for more info on the common ways they are specified.
         :param action: action to run
         :param index_name: either the base name or the fully qualified es index name,
-               depending on use_version_mode
-        :param use_version_mode: if true, separate the version id from the base name
+               depending on exact_mode
+        :param exact_mode: if true, separate the version id from the base name
                in the index_name
         """
         if index_name:
@@ -315,7 +316,7 @@ class DEMIndexManager(object):
             if index_name == 'all':
                 dem_indexes.extend(cls.get_indexes())
             else:
-                dem_index = cls.get_dem_index(index_name, use_version_mode)
+                dem_index = cls.get_dem_index(index_name, exact_mode)
                 if dem_index:
                     dem_indexes.append(dem_index)
                 else:
@@ -323,8 +324,7 @@ class DEMIndexManager(object):
             if dem_indexes:
                 actions = []
                 for dem_index in dem_indexes:
-                    action.start_action(
-                        dem_index=dem_index, use_version_mode=use_version_mode)
+                    action.start_action(dem_index=dem_index)
                     actions.append(action)
                 return actions
         raise DEMIndexNotFound()
@@ -421,8 +421,6 @@ class DEMIndex(ESIndex):
         """
         :param name: the name of this index
         :param using: the elasticsearch client to use
-        :param use_version_mode: if True bypass whether or not this version
-               is activated; use the name of the index directly
         """
         prefixed_name = "{}{}".format(environment_prefix, name)
         super(DEMIndex, self).__init__(prefixed_name, using)

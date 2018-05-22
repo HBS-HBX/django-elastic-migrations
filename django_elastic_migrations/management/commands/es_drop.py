@@ -13,7 +13,7 @@ class Command(ESCommand):
     help = "django-elastic-migrations: drop indexes"
 
     def add_arguments(self, parser):
-        self.get_index_specifying_arguments(parser)
+        self.get_index_specifying_arguments(parser, include_older=True)
         parser.add_argument(
             '--es-only', action='store_true',
             help="Only drop indexes in elasticsearch (!) "
@@ -30,7 +30,7 @@ class Command(ESCommand):
         )
 
     def handle(self, *args, **options):
-        indexes, use_version_mode, apply_all = self.get_index_specifying_options(
+        indexes, exact_mode, apply_all, older_mode = self.get_index_specifying_options(
             options, require_one_include_list=['es_only'])
         es_only = options.get('es_only', False)
         force = options.get('force', False)
@@ -46,15 +46,17 @@ class Command(ESCommand):
         elif apply_all:
             DEMIndexManager.drop_index(
                 'all',
-                use_version_mode=use_version_mode,
+                exact_mode=exact_mode,
                 force=force,
-                just_prefix=just_prefix
+                just_prefix=just_prefix,
+                older_mode=older_mode
             )
         elif indexes:
             for index_name in indexes:
                 DEMIndexManager.drop_index(
                     index_name,
-                    use_version_mode=use_version_mode,
+                    exact_mode=exact_mode,
                     force=force,
-                    just_prefix=just_prefix
+                    just_prefix=just_prefix,
+                    older_mode=older_mode
                 )
