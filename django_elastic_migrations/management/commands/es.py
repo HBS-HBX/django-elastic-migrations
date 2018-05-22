@@ -22,9 +22,6 @@ commands = {
 class Command(BaseCommand):
     help = "django-elastic-migrations: base command for search index management"
 
-    MODE_INDEXES = 'index'
-    MODE_VERSIONS = 'version'
-
     def add_arguments(self, parser):
         for cmd, help in commands.items():
             parser.add_argument(
