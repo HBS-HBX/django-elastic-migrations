@@ -1,9 +1,11 @@
-import logging
 
 from django.core.management import BaseCommand, call_command, CommandError
 
+from django_elastic_migrations.utils.log import getLogger
 
-logger = logging.getLogger("django-elastic-migrations")
+
+logger = getLogger()
+
 
 commands = {
     'list': 'List indexes; calls es_list',

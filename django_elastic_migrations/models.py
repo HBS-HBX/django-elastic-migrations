@@ -17,6 +17,10 @@ from elasticsearch.helpers import bulk
 from django_elastic_migrations import codebase_id, es_client, environment_prefix
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired
+from django_elastic_migrations.utils.log import getLogger
+
+
+logger = getLogger()
 
 
 @python_2_unicode_compatible
@@ -210,10 +214,10 @@ class IndexAction(models.Model):
     def dem_index(self):
         return getattr(self, '_dem_index', None)
 
-    def add_log(self, msg, commit=True, use_self_dict_format=False):
+    def add_log(self, msg, commit=True, use_self_dict_format=False, level=logger.INFO):
         if use_self_dict_format:
             msg = msg.format(**self.__dict__)
-        print(msg)
+        logger.log(level, msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
         if commit and not 'test' in sys.argv:
             self.save()
@@ -249,12 +253,13 @@ class IndexAction(models.Model):
         self.to_in_progress()
         try:
             self.perform_action(dem_index, *args, **kwargs)
+            self.to_complete()
         except Exception as ex:
             log_params = {
                 "action": self.action,
                 "doc": ex.__doc__ or "",
                 "msg": ex.message,
-                "stack": u''.join(traceback.format_stack())
+                "stack": u''.join(traceback.format_exc())
             }
             msg = (
                 u"While completing {action}, encountered exception: "
@@ -262,11 +267,8 @@ class IndexAction(models.Model):
                 u"\n - exception doc: {doc} "
                 u"\n - exception stack: {stack} ".format(**log_params)
             )
-            self.add_log(msg)
+            self.add_log(msg, level=logger.ERROR)
             self.to_aborted()
-            raise ex
-
-        self.to_complete()
 
     @classmethod
     def get_new_action(cls, index_name, include_active_version=False, action=None):
