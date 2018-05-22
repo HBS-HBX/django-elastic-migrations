@@ -403,7 +403,7 @@ class UpdateIndexAction(IndexAction):
         self.add_log("Getting Reindex Iterator...")
 
         reindex_iterator = doc_type.get_reindex_iterator(
-            last_update=self._last_update)
+            last_updated_datetime=self._last_update)
 
         # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
         from itertools import islice

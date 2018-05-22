@@ -62,7 +62,7 @@ class DEMDocTypeRequiresGetReindexIterator(DjangoElasticMigrationsException):
     on a subclass, but the subclass has not implemented this.
     """
     message = ("To run ./manage.py es_update my_index, my_index needs to "
-               "implement get_reindex_iterator")
+               "implement DEMDocType.get_reindex_iterator(self, last_updated_datetime=None)")
 
 
 class DEMIndexVersionCodebaseMismatchError(DjangoElasticMigrationsException):
