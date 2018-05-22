@@ -3,10 +3,10 @@ from texttable import Texttable
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.exceptions import FirstMigrationNotRunError
 from django_elastic_migrations.management.commands.es import ESCommand
-from django_elastic_migrations.utils.log import getLogger
+from django_elastic_migrations.utils.log import get_logger
 
 
-logger = getLogger()
+logger = get_logger()
 
 
 class Command(ESCommand):
@@ -29,8 +29,7 @@ class Command(ESCommand):
 
         table = Texttable(max_width=85)
         if es_only:
-            table.header([
-                "Name", "Count" ])
+            table.header(["Name", "Count"])
 
             es_indexes = DEMIndexManager.list_es_created_indexes()
             for index in es_indexes:

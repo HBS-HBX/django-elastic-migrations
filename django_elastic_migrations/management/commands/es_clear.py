@@ -1,8 +1,9 @@
-import logging
-from django.core.management import CommandError
-
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
+from django_elastic_migrations.utils.log import get_logger
+
+
+logger = get_logger()
 
 
 class Command(ESCommand):

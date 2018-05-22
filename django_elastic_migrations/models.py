@@ -17,10 +17,10 @@ from elasticsearch.helpers import bulk
 from django_elastic_migrations import codebase_id, es_client, environment_prefix
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired
-from django_elastic_migrations.utils.log import getLogger
+from django_elastic_migrations.utils.log import get_logger
 
 
-logger = getLogger()
+logger = get_logger()
 
 
 @python_2_unicode_compatible

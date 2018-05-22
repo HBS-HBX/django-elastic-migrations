@@ -1,14 +1,15 @@
 
 from django.core.management import BaseCommand, call_command, CommandError
 
-from django_elastic_migrations.utils.log import getLogger
+from django_elastic_migrations.utils.log import get_logger
 
 
-logger = getLogger()
+logger = get_logger()
 
 
 commands = {
     'list': 'List indexes; calls es_list',
+    'clear': 'Clears indexes; calls es_clear',
     'create': 'Create indexes; calls es_create',
     'activate': 'Activate indexes; calls es_activate',
     'update': 'Update indexes; calls es_update',
@@ -40,36 +41,36 @@ class Command(BaseCommand):
     so indexes or index versions are specified in a unified way.
     """
 
-    def get_index_specifying_help_messages(self):
+    @classmethod
+    def get_index_specifying_help_messages(cls):
         """
         Override in subclasses to customise the messages as necessary
         """
         return {
-            "mode": "Specify whether to operate on indexes or index versions",
             "index": (
-                "Depending on --mode, the name of index(es) or index version(s) "
-                "to operate on. In the case of `--mode {mode_indexes}` (the default), "
-                "the active version will be operated upon, and indexes without an "
-                "active version will be ignored.".format(mode_indexes=self.MODE_INDEXES)
+                "Depending on mode, the name of index(es) "
+                "to operate on. By default, the active version will be acted upon."
+                "If `--version` is supplied, the specificied versions will be acted upon."
             ),
+            "version": (
+                "The index names you supply should be considered specific "
+                "index version names, including environment prefix."),
             "all": (
-                'Operate on all of the active indexes or index versions, depending on '
-                'whether `--mode {mode_index}`, or `--mode {mode_version}` is '
-                'supplied.'.format(mode_index=self.MODE_INDEXES, mode_version=self.MODE_VERSIONS)
+                'Operate on all of the active indexes or index versions.'
             )
         }
 
-    def get_index_version_specifying_arguments(self, parser):
-        messages = self.get_index_specifying_help_messages()
+    @classmethod
+    def get_index_version_specifying_arguments(cls, parser):
+        messages = cls.get_index_specifying_help_messages()
         parser.add_argument(
-            "--mode",
-            help=messages.get("mode"),
-            choices=[self.MODE_INDEXES, self.MODE_VERSIONS],
-            default=self.MODE_INDEXES
+            "--version",
+            help=messages.get("version"), action="store_true", default=False
         )
 
-    def get_index_specifying_arguments(self, parser, include_versions=True, default_all=False):
-        messages = self.get_index_specifying_help_messages()
+    @classmethod
+    def get_index_specifying_arguments(cls, parser, include_versions=True, default_all=False):
+        messages = cls.get_index_specifying_help_messages()
         parser.add_argument(
             'index', nargs='*',
             help=messages.get("index")
@@ -78,15 +79,16 @@ class Command(BaseCommand):
         if include_versions:
             # some arguments do not allow specifying index versions,
             # such as es_create. In that case, do not include this arg.
-            self.get_index_version_specifying_arguments(parser)
+            cls.get_index_version_specifying_arguments(parser)
 
         parser.add_argument(
             "--all", action='store_true', default=default_all,
             help=messages.get("all")
         )
 
-    def get_index_specifying_options(self, options, require_one_include_list=None):
-        mode = options.get('mode', self.MODE_INDEXES)
+    @classmethod
+    def get_index_specifying_options(cls, options, require_one_include_list=None):
+        use_version_mode = options.get('version', False)
         at_least_one_required = ['index', 'all']
 
         if require_one_include_list:
@@ -104,17 +106,18 @@ class Command(BaseCommand):
                 ))
 
         indexes = options.get('index', [])
-        use_version_mode = mode == self.MODE_VERSIONS
         apply_all = options.get('all', False)
 
-        if apply_all:
-            if indexes:
-                logger.warning(
-                    "./manage.py es_clear --all received named indexes "
-                    "'{}': these specified index names will be ignored "
-                    "because you have requested to clear *all* the "
-                    "indexes.".format(", ".join(indexes))
-                )
+        if apply_all and indexes:
+            logger.warning(
+                "Received --all along with index names: '{indexes}'."
+                "Noramlly you would not specify names of indexes "
+                "with --all, since --all covers all the indexes. "
+                "The --all has been canceled; operating on just '{indexes}'."
+                "To clear *all* the indexes, just use --all.".format(
+                    indexes=", ".join(indexes))
+            )
+            apply_all = False
 
         return indexes, use_version_mode, apply_all
 
