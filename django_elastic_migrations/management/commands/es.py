@@ -23,10 +23,6 @@ class Command(BaseCommand):
     MODE_INDEXES = 'index'
     MODE_VERSIONS = 'version'
 
-    def __init__(self):
-        super(Command, self).__init__()
-        print ""
-
     def add_arguments(self, parser):
         for cmd, help in commands.items():
             parser.add_argument(

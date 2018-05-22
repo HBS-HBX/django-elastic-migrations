@@ -3,6 +3,10 @@ from django.core.management import CommandError
 
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
+from django_elastic_migrations.utils.log import getLogger
+
+
+logger = getLogger()
 
 
 class Command(ESCommand):
@@ -35,10 +39,10 @@ class Command(ESCommand):
         if es_only:
             count = 0
             for index_name in indexes:
-                print "Dropping index {} from Elasticsearch only".format(index_name)
+                logger.warning("Dropping index {} from Elasticsearch only".format(index_name))
                 DEMIndexManager.delete_es_created_index(index_name, ignore=[400, 404])
                 count += 1
-            print "Completed dropping {} indexes from Elasticsearch only".format(count)
+            logger.info("Completed dropping {} indexes from Elasticsearch only".format(count))
         elif apply_all:
             DEMIndexManager.drop_index(
                 'all',

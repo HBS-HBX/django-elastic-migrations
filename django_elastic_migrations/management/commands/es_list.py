@@ -3,6 +3,10 @@ from texttable import Texttable
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.exceptions import FirstMigrationNotRunError
 from django_elastic_migrations.management.commands.es import ESCommand
+from django_elastic_migrations.utils.log import getLogger
+
+
+logger = getLogger()
 
 
 class Command(ESCommand):
@@ -16,7 +20,7 @@ class Command(ESCommand):
         )
 
     def handle(self, *args, **options):
-        print("Available Index Definitions:")
+        logger.info("Available Index Definitions:")
 
         indexes, _, apply_all = self.get_index_specifying_options(
             options, require_one_include_list=['es_only'])
@@ -76,8 +80,8 @@ class Command(ESCommand):
             except AttributeError:
                 raise FirstMigrationNotRunError()
 
-        print(table.draw())
-        print(
+        logger.info(table.draw())
+        logger.info(
             "An index version name is: \n"
             "{environment prefix}{index name}-{version primary key id}. \n" 
             "Most Django Elastic Migrations management commands take the \n"
