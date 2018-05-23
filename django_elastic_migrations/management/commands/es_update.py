@@ -12,7 +12,6 @@ class Command(ESCommand):
 
     def handle(self, *args, **options):
         indexes, exact_mode, apply_all, _, newer_mode = self.get_index_specifying_options(options)
-        latest_mode = options.get('latest', False)
 
         if apply_all:
             DEMIndexManager.update_index(
