@@ -216,7 +216,7 @@ class GoogleSearchDoc(DEMDocType):
             'all', force=True, just_prefix=es_test_prefix)
         DEMIndexManager.create_index('all', force=True)
         DEMIndexManager.activate_index('all')
-        DEMIndexManager.class_db_init()
+        DEMIndexManager.initialize()
     
     class MyTestCase(TestCase):
     
