@@ -428,6 +428,8 @@ class ActivateIndexAction(IndexAction):
                     "Activating index version '{index_version_name}' "
                     "because you said to do so.".format(**msg_params))
             index.save()
+            # by reinitializing, we ensure this worker knows about the update immediately
+            DEMIndexManager.class_db_init()
 
         else:
             # use the active version of the index if one exists.
@@ -463,6 +465,8 @@ class ActivateIndexAction(IndexAction):
             elif active_version != latest_version:
                 self.index.active_version = latest_version
                 self.index.save()
+                # by reinitializing, we ensure this worker knows about the update immediately
+                DEMIndexManager.class_db_init()
                 self.add_log(
                     "For index '{index_name}', activating '{index_version_name}' "
                     "because you said so.".format(
