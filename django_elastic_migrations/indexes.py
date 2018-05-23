@@ -50,7 +50,7 @@ class DEMIndexManager(object):
             return cls.get_index_model(base_name, create_on_not_found)
 
     @classmethod
-    def class_db_init(cls):
+    def initialize(cls):
         cls.db_ready = True
         if not ('makemigrations' in sys.argv or 'migrate' in sys.argv):
             cls.update_index_models()
@@ -164,7 +164,7 @@ class DEMIndexManager(object):
     @classmethod
     def post_migrate(cls, sender, **kwargs):
         cls.post_migrate_completed = True
-        cls.class_db_init()
+        cls.initialize()
 
     @classmethod
     def register_dem_index(cls, dem_index):
@@ -189,11 +189,11 @@ class DEMIndexManager(object):
 
     @classmethod
     def test_pre_setup(cls):
-        DEMIndexManager.class_db_init()
+        DEMIndexManager.initialize()
         cls.test_post_teardown()
         DEMIndexManager.create_index('all', force=True)
         DEMIndexManager.activate_index('all')
-        DEMIndexManager.class_db_init()
+        DEMIndexManager.initialize()
 
     @classmethod
     def test_post_teardown(cls):
