@@ -835,9 +835,10 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         reindex_iterator = doc_type.get_reindex_iterator(
             last_updated_datetime=self._last_update)
 
-        # TODO: REMOVE THIS TESTING CODE (I don't want to reindex all documents while developing)
-        from itertools import islice
-        reindex_iterator = list(islice(reindex_iterator, 3))
+        # LEAVING THIS IN BECAUE IT HELPS WITH TESTING UPDATING
+        # ... rarely want to test updating every document
+        # from itertools import islice
+        # reindex_iterator = list(islice(reindex_iterator, 3))
 
         self.add_log("Calling bulk reindex...")
         bulk(client=es_client, actions=reindex_iterator, refresh=True)
