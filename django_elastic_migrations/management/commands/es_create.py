@@ -15,7 +15,7 @@ class Command(ESCommand):
         )
 
     def handle(self, *args, **options):
-        indexes, _, apply_all, _ = self.get_index_specifying_options(options)
+        indexes, _, apply_all, _, _ = self.get_index_specifying_options(options)
         force = options.get('force')
 
         if apply_all:

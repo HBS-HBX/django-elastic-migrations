@@ -9,7 +9,7 @@ class Command(ESCommand):
         self.get_index_specifying_arguments(parser)
 
     def handle(self, *args, **options):
-        indexes, exact_mode, apply_all, _ = self.get_index_specifying_options(options)
+        indexes, exact_mode, apply_all, _, _ = self.get_index_specifying_options(options)
 
         if apply_all:
             DEMIndexManager.activate_index(

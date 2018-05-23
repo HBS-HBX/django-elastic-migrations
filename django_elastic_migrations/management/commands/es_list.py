@@ -22,7 +22,7 @@ class Command(ESCommand):
     def handle(self, *args, **options):
         logger.info("Available Index Definitions:")
 
-        indexes, _, apply_all, _ = self.get_index_specifying_options(
+        indexes, _, apply_all, _, _ = self.get_index_specifying_options(
             options, require_one_include_list=['es_only'])
 
         es_only = options.get('es_only', False)

@@ -1,5 +1,12 @@
+from django.core.management import CommandError
+
+
 class DjangoElasticMigrationsException(Exception):
     """A generic exception for all others to extend."""
+
+
+class DjangoElasticMigrationsCommandError(CommandError):
+    """A generic command error for others to extend."""
 
 
 class FirstMigrationNotRunError(DjangoElasticMigrationsException):
@@ -75,12 +82,18 @@ class DEMIndexVersionCodebaseMismatchError(DjangoElasticMigrationsException):
 
 class CannotDropActiveVersion(DjangoElasticMigrationsException):
     """
-    Raised a user requests to drop an index that is activated.
+    Raised when a user requests to drop an index that is activated.
     """
     message = (
         "Please run ./manage.py es_activate to activate another index "
         "before dropping this one."
     )
+
+
+class CannotDropAllIndexesWithoutForceArg(DjangoElasticMigrationsCommandError):
+    """
+    Raised a user requests to drop all indexes without force arg
+    """
 
 
 class IndexVersionRequired(DjangoElasticMigrationsException):

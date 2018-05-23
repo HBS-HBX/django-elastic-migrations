@@ -13,7 +13,7 @@ class Command(ESCommand):
         self.get_index_specifying_arguments(parser, include_older=True)
 
     def handle(self, *args, **options):
-        indexes, exact_mode, apply_all, older_mode = self.get_index_specifying_options(options)
+        indexes, exact_mode, apply_all, older_mode, _ = self.get_index_specifying_options(options)
 
         if apply_all:
             DEMIndexManager.clear_index(

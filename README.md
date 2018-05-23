@@ -106,52 +106,51 @@ For each of these, use `--help` to see the details.
    from django_elastic_migrations.indexes import DEMIndex, DEMDocType
    from elasticsearch_dsl import Text
    
-   CourseSearchIndex = DEMIndex('course_search')
-   
-   @CourseSearchIndex.doc_type
-   class CourseSearchDoc(DEMDocType):
-       full_text = Text(required=True)
-       
-       @classmethod
-       def get_reindex_iterator(cls, last_updated_datetime=None):
-           """Returns CourseSearchDocs that have been modified after date_time"""
-           changed_teis = TeachingElementInstance.objects.filter(...)
-           course_search_docs = []
-           for tei in changed_teis:
-               course_search_docs.append(CourseSearchDoc(
-                   full_text=tei.get_search_text()
-               ))
-           return course_search_docs
-   
+GoogleIndex = DEMIndex('google')
+
+
+@GoogleIndex.doc_type
+class GoogleSearchDoc(DEMDocType):
+    text = TEXT_COMPLEX_ENGLISH_NGRAM_METAPHONE
+
+    @classmethod
+    def get_reindex_iterator(self, last_updated_datetime=None):
+        return [GoogleSearchDoc(
+            text="a little sample text").to_dict(include_meta=True)]   
    ```
 6. Run `./manage.py es_list` to see the index as available:
     ```
     ./manage.py es_list
     
     Available Index Definitions:
-    +---------------+---------+-----------+----------+-----------------------+
-    | Name          | Created | Is Active | Num Docs | Created In Tag        |
-    +---------------+---------+-----------+----------+-----------------------+
-    | course_search | 0       | 0         | 0        | Current (not created) |
-    +---------------+---------+-----------+----------+-----------------------+
+    +----------------------+-------------------------------------+---------+--------+-------+-----------+
+    |   Index Base Name    |         Index Version Name          | Created | Active | Docs  |    Tag    |
+    +======================+=====================================+=========+========+=======+===========+
+    | google               |                                     | 0       | 0      | 0     | Current   |
+    |                      |                                     |         |        |       | (not      |
+    |                      |                                     |         |        |       | created)  |
+    +----------------------+-------------------------------------+---------+--------+-------+-----------+
     Reminder: an index version name looks like 'my_index-4', and its base index name 
     looks like 'my_index'. Most Django Elastic Migrations management commands 
     take the base name (in which case the activated version is used) 
     or the specific index version name.
     ```
-7. Create the course_search index in elasticsearch with `./manage.py es_create course_search`:
+7. Create the course_search index in elasticsearch with `./manage.py es_create google`:
     ```
-    $> ./manage.py es_create course_search
-    The doc type for index 'course_search' changed; created a new index version 
+    $> ./manage.py es_create google
+    The doc type for index 'google' changed; created a new index version 
     'course_search-1' in elasticsearch.
     $> ./manage.py es_list
     
     Available Index Definitions:
-    +-----------------+---------+-----------+----------+-----------------------+
-    | Name            | Created | Is Active | Num Docs | Created In Tag        |
-    +-----------------+---------+-----------+----------+-----------------------+
-    | course_search-1 | 1       | 0         | 0        | 07.09.005-59-g78147c9 |
-    +-----------------+---------+-----------+----------+-----------------------+
+    +----------------------+-------------------------------------+---------+--------+-------+-----------+
+    |   Index Base Name    |         Index Version Name          | Created | Active | Docs  |    Tag    |
+    +======================+=====================================+=========+========+=======+===========+
+    | google               | google-1                            | 1       | 0      | 0     | 07.11.005 |
+    |                      |                                     |         |        |       | -93-gd101 |
+    |                      |                                     |         |        |       | a1f       |
+    +----------------------+-------------------------------------+---------+--------+-------+-----------+
+
     Reminder: an index version name looks like 'my_index-4', and its base index name 
     looks like 'my_index'. Most Django Elastic Migrations management commands 
     take the base name (in which case the activated version is used) 
@@ -171,18 +170,20 @@ For each of these, use `--help` to see the details.
     Handling update of index 'course_search' using its active index version 'course_search-1'
     Checking the last time update was called: 
      - index version: course_search-1 
-     - update date: 2018-05-17 20:37:07.034759+00:00 
+     - update date: never 
     Getting Reindex Iterator...
-    Completed with indexing course_search-1
+    Completed with indexing google-1       
     
     $> ./manage.py es_list
     
     Available Index Definitions:
-    +-----------------+---------+-----------+----------+-----------------------+
-    | Name            | Created | Is Active | Num Docs | Created In Tag        |
-    +-----------------+---------+-----------+----------+-----------------------+
-    | course_search-1 | 1       | 1         | 3        | 07.09.005-59-g78147c9 |
-    +-----------------+---------+-----------+----------+-----------------------+
+    +----------------------+-------------------------------------+---------+--------+-------+-----------+
+    |   Index Base Name    |         Index Version Name          | Created | Active | Docs  |    Tag    |
+    +======================+=====================================+=========+========+=======+===========+
+    | google               | google-1                            | 1       | 1      | 3     | 07.11.005 |
+    |                      |                                     |         |        |       | -93-gd101 |
+    |                      |                                     |         |        |       | a1f       |
+    +----------------------+-------------------------------------+---------+--------+-------+-----------+
     ```
 
 ### Deployment

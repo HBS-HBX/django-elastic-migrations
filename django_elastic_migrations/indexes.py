@@ -239,17 +239,16 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
-    def update_index(cls, index_name, exact_mode=False):
+    def update_index(cls, index_name, exact_mode=False, newer_mode=False):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
-        :param index_name:
-        :param all - whether or not to update all indexes
-        :return:
+        :param index_name: the name to use
+        :param exact_mode: whether to take index name as the literal es index name
         """
         # avoid circular import
         from django_elastic_migrations.models import UpdateIndexAction
-        action = UpdateIndexAction()
+        action = UpdateIndexAction(newer_mode=newer_mode)
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod

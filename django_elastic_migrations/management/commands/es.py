@@ -60,44 +60,39 @@ class Command(BaseCommand):
             "older": (
                 'Operate on versions older than the active index. With --versions, '
                 'operate on versions older than the specified index.'
+            ),
+            "newer": (
+                'Operate on versions newer than the active index. With --versions, '
+                'operate on versions newer than the specified index.'
             )
         }
 
     @classmethod
-    def get_exact_version_specifying_arguments(cls, parser):
+    def get_index_specifying_argument_flag(cls, parser, flag, default=False):
         messages = cls.get_index_specifying_help_messages()
         parser.add_argument(
-            "--exact",
-            help=messages.get("exact"), action="store_true", default=False
+            "--{}".format(flag),
+            help=messages.get(flag), action="store_true", default=default
         )
-
-    @classmethod
-    def get_index_older_specifying_arguments(cls, parser):
-        messages = cls.get_index_specifying_help_messages()
-        parser.add_argument(
-            "--older",
-            help=messages.get("older"), action="store_true", default=False
-        )
-
 
     @classmethod
     def get_index_specifying_arguments(
-        cls, parser, include_exact=True, default_all=False, include_older=False):
+        cls, parser, include_exact=True, default_all=False, include_older=False, include_newer=False):
         messages = cls.get_index_specifying_help_messages()
         parser.add_argument(
             'index', nargs='*',
             help=messages.get("index")
         )
 
-        if include_exact:
-            # some arguments do not allow specifying index versions,
-            # such as es_create. In that case, do not include this arg.
-            cls.get_exact_version_specifying_arguments(parser)
+        flags = {
+            'exact': include_exact,
+            'older': include_older,
+            'newer': include_newer
+        }
 
-        if include_older:
-            # some arguments do not allow operating on older versions,
-            # such as es_create.
-            cls.get_index_older_specifying_arguments(parser)
+        for flag, should_use_flag in flags.items():
+            if should_use_flag:
+                cls.get_index_specifying_argument_flag(parser, flag)
 
         parser.add_argument(
             "--all", action='store_true', default=default_all,
@@ -107,7 +102,8 @@ class Command(BaseCommand):
     @classmethod
     def get_index_specifying_options(cls, options, require_one_include_list=None):
         exact_mode = options.get('exact', False)
-        version_mode = options.get('older', False)
+        older_mode = options.get('older', False)
+        newer_mode = options.get('newer', False)
         at_least_one_required = ['index', 'all']
 
         if require_one_include_list:
@@ -138,7 +134,7 @@ class Command(BaseCommand):
             )
             apply_all = False
 
-        return indexes, exact_mode, apply_all, version_mode
+        return indexes, exact_mode, apply_all, older_mode, newer_mode
 
 
 ESCommand = Command
