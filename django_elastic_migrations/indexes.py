@@ -5,11 +5,11 @@ from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
-from django_elastic_migrations import es_client, environment_prefix, es_test_prefix
+from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
     IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
-
+from django_elastic_migrations.utils.loading import import_module_element
 
 """
 indexes.py - Django-facing API for interacting with Django Elastic Migrations
@@ -44,17 +44,41 @@ class DEMIndexManager(object):
 
     @classmethod
     def add_index(cls, dem_index_instance, create_on_not_found=True):
-        base_name = dem_index_instance._base_name
+        base_name = dem_index_instance.get_base_name()
         cls.instances[base_name] = dem_index_instance
         if cls.db_ready:
             return cls.get_index_model(base_name, create_on_not_found)
 
     @classmethod
-    def initialize(cls):
+    def create_and_activate_version_for_each_index_if_none_is_active(
+        cls, create_versions, activate_versions):
+        for index_base_name, dem_index in cls.get_indexes_dict().items():
+            if not cls.get_active_index_version(index_base_name):
+                if create_versions:
+                    # by default this will not create if not changed
+                    cls.create_index(index_base_name)
+                if activate_versions:
+                    cls.activate_index(index_base_name)
+
+    @classmethod
+    def initialize(cls, create_versions=False, activate_versions=False):
+        """
+        Configure DEMIndexManager, loading settings from the database.
+        :param create_versions: if True, create a version if settings
+               have been changed.
+        :param activate_versions: if True, activate the latest version
+               iff none are active.
+        """
         cls.db_ready = True
         if not ('makemigrations' in sys.argv or 'migrate' in sys.argv):
             cls.update_index_models()
+        for dem_index_path in dem_index_paths:
+            dem_index = import_module_element(dem_index_path)
+            cls.add_index(dem_index)
         cls.reinitialize_esindex_instances()
+        if create_versions or activate_versions:
+            cls.create_and_activate_version_for_each_index_if_none_is_active(
+                create_versions, activate_versions)
 
     @classmethod
     def create_index_model(cls, base_name):

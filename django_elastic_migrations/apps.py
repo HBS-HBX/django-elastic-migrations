@@ -21,4 +21,4 @@ class DjangoElasticMigrationsConfig(AppConfig):
     def ready(self):
         # avoid race condition with django app initialization
         from django_elastic_migrations.indexes import DEMIndexManager
-        DEMIndexManager.initialize()
+        DEMIndexManager.initialize(create_versions=True, activate_versions=True)
