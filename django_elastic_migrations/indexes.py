@@ -77,7 +77,7 @@ class DEMIndexManager(object):
             dem_index = import_module_element(dem_index_path)
             cls.add_index(dem_index)
         cls.reinitialize_esindex_instances()
-        if create_versions or activate_versions and not migrating:
+        if not migrating and (create_versions or activate_versions):
             cls.create_and_activate_version_for_each_index_if_none_is_active(
                 create_versions, activate_versions)
 
