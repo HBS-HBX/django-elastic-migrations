@@ -70,13 +70,14 @@ class DEMIndexManager(object):
                iff none are active.
         """
         cls.db_ready = True
-        if not ('makemigrations' in sys.argv or 'migrate' in sys.argv):
+        migrating = 'makemigrations' in sys.argv or 'migrate' in sys.argv
+        if not migrating:
             cls.update_index_models()
         for dem_index_path in dem_index_paths:
             dem_index = import_module_element(dem_index_path)
             cls.add_index(dem_index)
         cls.reinitialize_esindex_instances()
-        if create_versions or activate_versions:
+        if create_versions or activate_versions and not migrating:
             cls.create_and_activate_version_for_each_index_if_none_is_active(
                 create_versions, activate_versions)
 
