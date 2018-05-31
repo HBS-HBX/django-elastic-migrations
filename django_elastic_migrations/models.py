@@ -843,8 +843,11 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
         self.add_log("Getting Reindex Iterator...")
 
+        last_update = None
+        if self._last_update != 'never':
+            last_update = self._last_update
         reindex_iterator = doc_type.get_reindex_iterator(
-            last_updated_datetime=self._last_update)
+            last_updated_datetime=last_update)
 
         # LEAVING THIS IN BECAUE IT HELPS WITH TESTING UPDATING
         # ... rarely want to test updating every document
@@ -852,6 +855,14 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         # reindex_iterator = list(islice(reindex_iterator, 3))
 
         self.add_log("Calling bulk reindex...")
-        bulk(client=es_client, actions=reindex_iterator, refresh=True)
+        success, failed = bulk(
+            client=es_client, actions=reindex_iterator, refresh=True, stats_only=True)
+        self._num_success = success
+        self._num_failed = failed
 
-        self.add_log("Completed with indexing {_index_version_name}", use_self_dict_format=True)
+        self.add_log(
+            ("Completed with indexing {_index_version_name}. "
+             "\n num success: {_num_success}" 
+             "\n num success: {_num_failed}"),
+            use_self_dict_format=True
+        )
