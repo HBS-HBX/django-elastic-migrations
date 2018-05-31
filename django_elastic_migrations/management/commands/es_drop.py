@@ -17,8 +17,8 @@ class Command(ESCommand):
         self.get_index_specifying_arguments(parser, include_older=True)
         parser.add_argument(
             '--es-only', action='store_true',
-            help="Only drop indexes in elasticsearch (!) "
-                 "(probably not what you want, just useful for debugging)"
+            help=("Drop indexes in elasticsearch "
+                  "without updating DEM's IndexVersion ORM model (!)")
         )
         parser.add_argument(
             '--force', action='store_true',

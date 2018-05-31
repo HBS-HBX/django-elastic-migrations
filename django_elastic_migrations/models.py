@@ -238,6 +238,8 @@ class IndexAction(models.Model):
     # text from management command
     log = models.TextField(blank=True)
 
+    argv = models.CharField(max_length=1000, blank=True)
+
     def __init__(self, *args, **kwargs):
         action = self._meta.get_field('action')
         action.default = self.DEFAULT_ACTION
@@ -271,6 +273,7 @@ class IndexAction(models.Model):
     def to_in_progress(self):
         if self.status == self.STATUS_QUEUED:
             self.status = self.STATUS_IN_PROGRESS
+            self.argv = " ".join(sys.argv)
             self.save()
 
     def to_complete(self):

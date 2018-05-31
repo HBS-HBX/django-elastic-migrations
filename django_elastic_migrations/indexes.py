@@ -5,7 +5,7 @@ from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
-from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths
+from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
     IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
@@ -19,6 +19,9 @@ Module Conventions
 * 'ES': classes imported from Elasticsearch are prefixed with this
 * 'DEM': classes belonging to this app are prefixed with this (for Django Elastic Migrations)
 """
+
+
+logger = get_logger()
 
 
 class DEMIndexManager(object):
@@ -70,16 +73,26 @@ class DEMIndexManager(object):
                iff none are active.
         """
         cls.db_ready = True
-        migrating = 'makemigrations' in sys.argv or 'migrate' in sys.argv
-        if not migrating:
-            cls.update_index_models()
-        for dem_index_path in dem_index_paths:
-            dem_index = import_module_element(dem_index_path)
-            cls.add_index(dem_index)
-        cls.reinitialize_esindex_instances()
-        if not migrating and (create_versions or activate_versions):
-            cls.create_and_activate_version_for_each_index_if_none_is_active(
-                create_versions, activate_versions)
+        try:
+            migrating = 'makemigrations' in sys.argv or 'migrate' in sys.argv
+            if not migrating:
+                cls.update_index_models()
+            for dem_index_path in dem_index_paths:
+                dem_index = import_module_element(dem_index_path)
+                cls.add_index(dem_index)
+            cls.reinitialize_esindex_instances()
+            if not migrating and (create_versions or activate_versions):
+                cls.create_and_activate_version_for_each_index_if_none_is_active(
+                    create_versions, activate_versions)
+        except ProgrammingError as e:
+            code, msg = e.args
+            if code == 1146:
+                # non critical; can happen during normal business operation
+                logger.warning(
+                    "Detected an attempt to initialize Django Elastic Migrations "
+                    "without calling ./manage.py migrate to initialize it. Please "
+                    "be sure to call migrate before using elasticsearch with it."
+                )
 
     @classmethod
     def create_index_model(cls, base_name):
