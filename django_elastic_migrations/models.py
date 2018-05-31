@@ -859,10 +859,14 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             client=es_client, actions=reindex_iterator, refresh=True, stats_only=True)
         self._num_success = success
         self._num_failed = failed
+        self._total_docs = success + failed
 
         self.add_log(
-            ("Completed with indexing {_index_version_name}. "
-             "\n num success: {_num_success}" 
-             "\n num success: {_num_failed}"),
+            (
+                " # successful updates: {_num_success}\n" 
+                " # failed updates: {_num_failed}\n"
+                " # total docs attempted to update: {_total_docs}\n"
+                "Completed with indexing {_index_version_name}. "
+            ),
             use_self_dict_format=True
         )
