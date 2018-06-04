@@ -118,6 +118,7 @@ For each of these, use `--help` to see the details.
             return [GoogleSearchDoc(
                 text="a little sample text").to_dict(include_meta=True)]   
    ```
+
 6. Run `./manage.py es_list` to see the index as available:
     ```
     ./manage.py es_list
