@@ -18,7 +18,7 @@ applications a.) using more than one index or b.) deploying changes to
 schemas will need a *consistent* way to `create`, `update`, 
 `activate` and `drop` and `list` their indexes. In addition, if you use 
 [AWS Elasticsearch you cannot stop and apply a new mapping](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/aes-supported-es-operations.html) 
-to your index, so you must create a new index with a new schema
+to your index.  Basically AWS does not provide the 'stop' api so you must create a new index with a new schema
 and then reindex into that schema, and then get your code to start using 
 that new index. This process requires a little care.
 
