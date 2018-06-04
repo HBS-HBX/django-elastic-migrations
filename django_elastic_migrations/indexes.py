@@ -405,7 +405,7 @@ class _DEMDocTypeIndexHandler(object):
 
 class DEMDocType(ESDocType):
     """
-    Django users subclass DEMDocType instead of of Elasticsearch's DocType
+    Django users subclass DEMDocType instead of Elasticsearch's DocType
     to use Django Elastic Migrations. All documentation from their class
     applies here.
     https://elasticsearch-dsl.readthedocs.io/en/latest/api.html#elasticsearch_dsl.DocType
