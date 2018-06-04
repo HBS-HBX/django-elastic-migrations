@@ -106,17 +106,17 @@ For each of these, use `--help` to see the details.
    from django_elastic_migrations.indexes import DEMIndex, DEMDocType
    from elasticsearch_dsl import Text
    
-GoogleIndex = DEMIndex('google')
+    GoogleIndex = DEMIndex('google')
 
 
-@GoogleIndex.doc_type
-class GoogleSearchDoc(DEMDocType):
-    text = TEXT_COMPLEX_ENGLISH_NGRAM_METAPHONE
+    @GoogleIndex.doc_type
+    class GoogleSearchDoc(DEMDocType):
+        text = TEXT_COMPLEX_ENGLISH_NGRAM_METAPHONE
 
-    @classmethod
-    def get_reindex_iterator(self, last_updated_datetime=None):
-        return [GoogleSearchDoc(
-            text="a little sample text").to_dict(include_meta=True)]   
+        @classmethod
+        def get_reindex_iterator(self, last_updated_datetime=None):
+            return [GoogleSearchDoc(
+                text="a little sample text").to_dict(include_meta=True)]   
    ```
 6. Run `./manage.py es_list` to see the index as available:
     ```
