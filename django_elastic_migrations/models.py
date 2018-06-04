@@ -240,6 +240,8 @@ class IndexAction(models.Model):
 
     argv = models.CharField(max_length=1000, blank=True)
 
+    docs_affected = models.IntegerField(default=0)
+
     def __init__(self, *args, **kwargs):
         action = self._meta.get_field('action')
         action.default = self.DEFAULT_ACTION
@@ -768,6 +770,10 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
         proxy = True
 
+    def __init__(self, *args, **kwargs):
+        self.resume_mode = kwargs.pop('resume_mode', False)
+        super(UpdateIndexAction, self).__init__(*args, **kwargs)
+
     def perform_action(self, dem_index, *args, **kwargs):
         self._index_name = self.index.name
         self._index_version_id = dem_index.get_version_id()
@@ -832,24 +838,25 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
         doc_type = dem_index.doc_type()
 
-        self._last_update = self.index_version.get_last_time_update_called(before_action=self)
-        if not self._last_update:
-            self._last_update = 'never'
-        self.add_log(
-            "Checking the last time update was called: "
-            u"\n - index version: {_index_version_name} "
-            u"\n - update date: {_last_update} ", use_self_dict_format=True
-        )
-
         self.add_log("Getting Reindex Iterator...")
 
-        last_update = None
-        if self._last_update != 'never':
-            last_update = self._last_update
-        reindex_iterator = doc_type.get_reindex_iterator(
-            last_updated_datetime=last_update)
+        reindex_iterator = []
 
-        # LEAVING THIS IN BECAUE IT HELPS WITH TESTING UPDATING
+        if self.resume_mode:
+            self._last_update = self.index_version.get_last_time_update_called(before_action=self)
+            if not self._last_update:
+                self._last_update = 'never'
+            self.add_log(
+                "--resume detected; Checking the last time update was called: "
+                u"\n - index version: {_index_version_name} "
+                u"\n - update date: {_last_update} ", use_self_dict_format=True
+            )
+            reindex_iterator = doc_type.get_reindex_iterator(
+                last_updated_datetime=self._last_update)
+        else:
+            reindex_iterator = doc_type.get_reindex_iterator()
+
+        # LEAVING THIS IN BECAUSE IT HELPS WITH TESTING UPDATING
         # ... rarely want to test updating every document
         # from itertools import islice
         # reindex_iterator = list(islice(reindex_iterator, 3))
@@ -860,6 +867,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         self._num_success = success
         self._num_failed = failed
         self._total_docs = success + failed
+        self.docs_affected = success
 
         self.add_log(
             (
