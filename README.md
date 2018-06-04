@@ -119,7 +119,9 @@ For each of these, use `--help` to see the details.
                 text="a little sample text").to_dict(include_meta=True)]   
    ```
 
-6. Run `./manage.py es_list` to see the index as available:
+6. Add your new index to DJANGO_ELASTIC_MIGRATIONS_INDEXES in settings/common.py
+
+7. Run `./manage.py es_list` to see the index as available:
     ```
     ./manage.py es_list
     
@@ -136,7 +138,7 @@ For each of these, use `--help` to see the details.
     take the base name (in which case the activated version is used) 
     or the specific index version name.
     ```
-7. Create the course_search index in elasticsearch with `./manage.py es_create google`:
+8. Create the course_search index in elasticsearch with `./manage.py es_create google`:
     ```
     $> ./manage.py es_create google
     The doc type for index 'google' changed; created a new index version 
@@ -157,13 +159,13 @@ For each of these, use `--help` to see the details.
     take the base name (in which case the activated version is used) 
     or the specific index version name.
     ```
-8. Activate the `course_search-1` index version, so all updates and 
+9. Activate the `course_search-1` index version, so all updates and 
    reads go to it.
     ```
     ./manage.py es_activate course_search
     For index 'course_search', activating 'course_search-1' because you said so.
     ```
-9. Assuming you have implemented `get_reindex_iterator`, you can call 
+10. Assuming you have implemented `get_reindex_iterator`, you can call 
    `./manage.py es_update` to update the index.
     ```
     $> ./manage.py es_update course_search
