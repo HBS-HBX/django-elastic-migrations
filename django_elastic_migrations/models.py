@@ -701,7 +701,7 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                     "You asked to drop index {index_name}, \nbut it is required "
                     "to specify the exact index version you wish to drop. \n"
                     "Try, for example, "
-                    "`./manage.py es_drop {index_name}-{sample_version_num} --mode=version`, \n"
+                    "`./manage.py es_drop {index_name}-{sample_version_num} --exact`, \n"
                     "if version {sample_version_num} is the one you would like to drop.".format(
                         **msg_params
                     )
