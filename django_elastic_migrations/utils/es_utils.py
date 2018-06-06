@@ -1,10 +1,6 @@
 import hashlib
 import json
 
-from elasticsearch_dsl import connections
-
-DEFAULT_ES_CLIENT = connections.create_connection()
-
 
 def get_index_hash_and_json(index):
     spec = index.to_dict()
