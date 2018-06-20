@@ -92,7 +92,7 @@ class CannotDropActiveVersion(DjangoElasticMigrationsException):
 
 class CannotDropAllIndexesWithoutForceArg(DjangoElasticMigrationsCommandError):
     """
-    Raised a user requests to drop all indexes without force arg
+    Raised when a user requests to drop all indexes without force arg
     """
 
 
@@ -100,3 +100,14 @@ class IndexVersionRequired(DjangoElasticMigrationsException):
     """
     Raised when a command requires an index version to be specified.
     """
+
+
+class CannotDropOlderIndexesWithoutForceArg(DjangoElasticMigrationsCommandError):
+    """
+    Raised when a user attempts to call `./manage.py es_drop {indexname} --older`
+    without the required `--force` argument
+    """
+    message = (
+        "Please run ./manage.py es_drop {indexname} --older --force to delete all "
+        "older versions. You were missing the --force argument."
+    )

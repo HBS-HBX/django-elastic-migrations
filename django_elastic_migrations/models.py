@@ -16,7 +16,7 @@ from elasticsearch.helpers import bulk
 
 from django_elastic_migrations import codebase_id, es_client, environment_prefix, DEMIndexManager
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
-    CannotDropActiveVersion, IndexVersionRequired
+    CannotDropActiveVersion, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
 from django_elastic_migrations.utils.log import get_logger
 
 
@@ -697,15 +697,18 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                 msg_params['sample_version_num'] = 123
                 if self.index.active_version:
                     msg_params['sample_version_num'] = self.index.active_version_id
-                raise IndexVersionRequired(
-                    "You asked to drop index {index_name}, \nbut it is required "
-                    "to specify the exact index version you wish to drop. \n"
-                    "Try, for example, "
-                    "`./manage.py es_drop {index_name}-{sample_version_num} --exact`, \n"
-                    "if version {sample_version_num} is the one you would like to drop.".format(
-                        **msg_params
+                if self.older_mode:
+                    raise CannotDropOlderIndexesWithoutForceArg()
+                else:
+                    raise IndexVersionRequired(
+                        "You asked to drop index {index_name}, \nbut it is required "
+                        "to specify the exact index version you wish to drop. \n"
+                        "Try, for example, "
+                        "`./manage.py es_drop {index_name}-{sample_version_num} --exact`, \n"
+                        "if version {sample_version_num} is the one you would like to drop.".format(
+                            **msg_params
+                        )
                     )
-                )
 
             available_versions = []
             if self.older_mode:

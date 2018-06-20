@@ -47,7 +47,7 @@ class Command(BaseCommand):
             "index": (
                 "Depending on mode, the name of index(es) "
                 "to operate on. By default, the active version will be acted upon."
-                "If `--version` is supplied, the specificied versions will be acted upon."
+                "If `--exact` is supplied, the specificied versions will be acted upon."
             ),
             "exact": (
                 "The index names you supply should be considered specific "
@@ -58,11 +58,11 @@ class Command(BaseCommand):
                 'for each index.'
             ),
             "older": (
-                'Operate on versions older than the active index. With --versions, '
+                'Operate on versions older than the active index. With --exact, '
                 'operate on versions older than the specified index.'
             ),
             "newer": (
-                'Operate on versions newer than the active index. With --versions, '
+                'Operate on versions newer than the active index. With --exact, '
                 'operate on versions newer than the specified index.'
             )
         }
