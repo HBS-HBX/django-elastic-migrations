@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=C0111,W6005,W6100
+from __future__ import print_function
 from __future__ import absolute_import, print_function
 
 import os

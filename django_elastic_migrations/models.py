@@ -3,6 +3,7 @@
 Database models for django_elastic_migrations.
 """
 
+from __future__ import print_function
 from __future__ import absolute_import, unicode_literals
 
 import sys

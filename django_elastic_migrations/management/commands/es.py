@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 from django.core.management import BaseCommand, call_command, CommandError
 
 from django_elastic_migrations.utils.log import get_logger
