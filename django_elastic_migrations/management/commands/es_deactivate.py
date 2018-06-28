@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
 

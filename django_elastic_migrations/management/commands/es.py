@@ -1,5 +1,5 @@
 
-from __future__ import print_function
+
 from django.core.management import BaseCommand, call_command, CommandError
 
 from django_elastic_migrations.utils.log import get_logger
@@ -24,12 +24,12 @@ class Command(BaseCommand):
     help = "django-elastic-migrations: base command for search index management"
 
     def add_arguments(self, parser):
-        for cmd, help in commands.items():
+        for cmd, help in list(commands.items()):
             parser.add_argument(
                 "--{}".format(cmd), action="store_true", help=help)
 
     def handle(self, *args, **options):
-        for cmd in commands.keys():
+        for cmd in list(commands.keys()):
             if cmd in options:
                 return call_command("es_{}".format(cmd), *args, **options)
 
@@ -91,7 +91,7 @@ class Command(BaseCommand):
             'newer': include_newer
         }
 
-        for flag, should_use_flag in flags.items():
+        for flag, should_use_flag in list(flags.items()):
             if should_use_flag:
                 cls.get_index_specifying_argument_flag(parser, flag)
 
