@@ -7,5 +7,5 @@ def get_index_hash_and_json(index):
     spec = index.to_dict()
     json_str = json.dumps(spec)
     hash = hashlib.md5()
-    hash.update(json_str)
+    hash.update(json_str.encode('utf-8'))
     return hash.hexdigest(), json_str
