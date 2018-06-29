@@ -888,8 +888,8 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 **bulk_indexing_kwargs
             )
 
-            self._num_success += success or 0
-            self._num_failed += failed or 0
+            self._num_success += success
+            self._num_failed += failed
             self._indexed_docs += success + failed
             self._expected_remaining = total_items - self._indexed_docs
             self.docs_affected += success
