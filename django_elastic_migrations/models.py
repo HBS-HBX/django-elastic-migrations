@@ -872,7 +872,6 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         self._num_batches = len(batches)
         self.docs_affected = 0
 
-        # TODO: support concurrent batch updates
         for self._batch_num, queryset in enumerate(batches, 1):
             reindex_iterator = doc_type.get_reindex_iterator(queryset)
 
