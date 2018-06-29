@@ -844,7 +844,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
         self.add_log("Getting Reindex Iterator...")
 
-        reindex_iterator = []
+        full_queryset = doc_type.get_queryset()
 
         if self.resume_mode:
             self._last_update = self.index_version.get_last_time_update_called(before_action=self)
@@ -855,30 +855,62 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 u"\n - index version: {_index_version_name} "
                 u"\n - update date: {_last_update} ", use_self_dict_format=True
             )
-            reindex_iterator = doc_type.get_reindex_iterator(
-                last_updated_datetime=self._last_update)
-        else:
-            reindex_iterator = doc_type.get_reindex_iterator()
+            full_queryset = doc_type.get_queryset(self._last_update)
 
-        # LEAVING THIS IN BECAUSE IT HELPS WITH TESTING UPDATING
-        # ... rarely want to test updating every document
-        # from itertools import islice
-        # reindex_iterator = list(islice(reindex_iterator, 3))
+        try:
+            total_items = full_queryset.count()
+        except AttributeError:
+            total_items = len(full_queryset)
 
-        self.add_log("Calling bulk reindex...")
-        success, failed = bulk(
-            client=es_client, actions=reindex_iterator, refresh=True, stats_only=True)
-        self._num_success = success
-        self._num_failed = failed
-        self._total_docs = success + failed
-        self.docs_affected = success
+        batches = doc_type.generate_batches(qs=full_queryset, total_items=total_items)
+        bulk_indexing_kwargs = doc_type.get_bulk_indexing_kwargs()
+
+        self._num_success = 0
+        self._num_failed = 0
+        self._indexed_docs = 0
+        self._expected_remaining = total_items
+        self._num_batches = len(batches)
+        self.docs_affected = 0
+
+        # TODO: support concurrent batch updates
+        for self._batch_num, queryset in enumerate(batches, 1):
+            reindex_iterator = doc_type.get_reindex_iterator(queryset)
+
+            # LEAVING THIS IN BECAUSE IT HELPS WITH TESTING UPDATING
+            # ... rarely want to test updating every document
+            # from itertools import islice
+            # reindex_iterator = list(islice(reindex_iterator, 3))
+
+            self.add_log("Bulk index update batch {_batch_num} of {_num_batches}", use_self_dict_format=True)
+
+            success, failed = bulk(
+                client=es_client, actions=reindex_iterator, refresh=True, stats_only=True,
+                **bulk_indexing_kwargs
+            )
+
+            self._num_success += success or 0
+            self._num_failed += failed or 0
+            self._indexed_docs += success + failed
+            self._expected_remaining = total_items - self._indexed_docs
+            self.docs_affected += success
+
+            self.add_log(
+                (
+                    "Indexing {_index_version_name} - batch {_batch_num}:\n"
+                    " # successful updates in batch: {_num_success}\n" 
+                    " # failed updates in batch: {_num_failed}\n"
+                    " # total docs attempted to update thus far: {_indexed_docs}\n"
+                    " # expected remaining: {_expected_remaining}\n"
+                ),
+                use_self_dict_format=True
+            )
 
         self.add_log(
             (
+                "Completed with indexing {_index_version_name}: "
                 " # successful updates: {_num_success}\n" 
                 " # failed updates: {_num_failed}\n"
-                " # total docs attempted to update: {_total_docs}\n"
-                "Completed with indexing {_index_version_name}. "
+                " # total docs attempted to update: {_indexed_docs}\n"
             ),
             use_self_dict_format=True
         )

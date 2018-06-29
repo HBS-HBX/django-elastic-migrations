@@ -4,11 +4,12 @@ import sys
 
 from django.db import ProgrammingError
 from elasticsearch import TransportError
+from elasticsearch.helpers import expand_action
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
 from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
-    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion
+    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 from django_elastic_migrations.utils.loading import import_module_element
 
@@ -416,6 +417,12 @@ class DEMDocType(ESDocType):
     make it the activated version of the index by default.
     """
 
+    """
+    The default size of batches to bulk index at once. 
+    Higher batch sizes require more memory on the indexing server.
+    """
+    BATCH_SIZE = 100
+
     def __init__(self, *args, **kwargs):
         super(DEMDocType, self).__init__(*args, **kwargs)
         # super.__init__ creates the self._doc_type property that we
@@ -424,7 +431,7 @@ class DEMDocType(ESDocType):
             getattr(self, '_doc_type', None))
 
     @classmethod
-    def get_reindex_iterator(self, last_updated_datetime=None):
+    def get_reindex_iterator(cls, queryset):
         """
         Django users override this method. It must return an iterator
         or generator of instantiated DEMDocType subclasses, ready
@@ -433,18 +440,66 @@ class DEMDocType(ESDocType):
         class UsersDocType(DEMDocType)
 
             @classmethod
-            def get_reindex_iterator(cls, last_updated_datetime=None):
-                if last_updated_datetime:
-                    users = User.objects.filter(
-                        last_modified__gte=last_updated_datetime)
-                else:
-                    User.objects.all()
-                return [cls.getDocForUser(u) for u in users]
+            def get_reindex_iterator(cls, queryset):
+                return [cls.getDocForUser(u) for user in queryset]
 
-        :param last_updated_datetime: DateTime
+        :param queryset: queryset of objects to index; result of get_queryset()
         :return: iterator / generator of *DEMDocType instances*
         """
         raise DEMDocTypeRequiresGetReindexIterator()
+
+    @classmethod
+    def get_queryset(cls, last_updated_datetime=None):
+        """
+        Django users override this method. It must return a queryset-like entity
+        that will be subdivided in cls.generate_batches()
+        :param last_updated_datetime:
+        :return:
+        """
+        raise DEMDocTypeRequiresGetQueryset()
+
+    @classmethod
+    def generate_batches(cls, qs=None, batch_size=BATCH_SIZE, total_items=None):
+        """
+        Divide a queryset into batches of BATCH_SIZE entities.
+        If this is an unevaluated django queryset,
+        the result will be a list of unevaluated querysets.
+        :param qs:
+        :param batch_size:
+        :param total_items:
+        :return: list of unevaluated QuerySets
+        """
+        if qs is None:
+            qs = cls.get_queryset()
+
+        if total_items is None:
+            total_items = len(qs)
+
+        finalList = []
+        for i in range(0, total_items, batch_size):
+            # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
+            # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
+            finalList.append(qs[i:i + batch_size])
+        return finalList
+
+    @classmethod
+    def get_bulk_indexing_kwargs(cls):
+        """
+        Override this method to tune parameters to the bulk indexing command:
+        https://elasticsearch-py.readthedocs.io/en/master/helpers.html?highlight=bulk#elasticsearch.helpers.streaming_bulk
+        :return: kwargs object
+        """
+        return {
+            "chunk_size": 500,
+            "max_chunk_bytes": 100 * 1024 * 1024,
+            "raise_on_error": True,
+            "expand_action_callback": expand_action,
+            "raise_on_exception": True,
+            "max_retries": 0,
+            "initial_backoff": 2,
+            "max_backoff": 600,
+            "yield_ok": True
+        }
 
 
 class DEMIndex(ESIndex):
