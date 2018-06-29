@@ -573,9 +573,14 @@ class CreateIndexAction(IndexAction):
             else:
                 self.add_log(
                     "The doc type for index '{_index_name}' has not changed "
-                    "since '{_index_version_name}'; not creating a new index.",
+                    "since '{_index_version_name}'... ",
                     use_self_dict_format=True
                 )
+                created = dem_index.create_if_not_in_es()
+                if created:
+                    self.add_log("   ... but it wasn't found in Elasticsearch! We recreated it there.")
+                else:
+                    self.add_log("  ... did not create a new index.")
         else:
             self.index_version = dem_index.create()
             self._index_version_name = self.index_version.name

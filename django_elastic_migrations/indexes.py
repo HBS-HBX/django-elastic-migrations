@@ -514,6 +514,25 @@ class DEMIndex(ESIndex):
             raise ex
         return index_version
 
+    def create_if_not_in_es(self, **kwargs):
+        """
+        Create the index if it doesn't already exist in elasticsearch.
+        :param kwargs:
+        :return: True if created
+        """
+        index_version = self.get_version_model()
+        try:
+            index = index_version.name
+            body = self.to_dict()
+            self.connection.indices.create(index=index, body=body, **kwargs)
+        except Exception as ex:
+            if isinstance(ex, TransportError):
+                if ex.status_code == 400:
+                    # "resource_already_exists_exception"
+                    return False
+            raise ex
+        return True
+
     def delete(self, **kwargs):
         index_version = self.get_version_model()
         DEMIndexManager.delete_es_created_index(index_version.name, ignore=[400, 404])
