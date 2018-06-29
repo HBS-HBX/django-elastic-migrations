@@ -451,7 +451,7 @@ class DEMDocType(ESDocType):
     @classmethod
     def get_queryset(cls, last_updated_datetime=None):
         """
-        Django users override this method. It must return a queryset-like entity
+        Django users override this method. It must return a sliceable entity
         that will be subdivided in cls.generate_batches()
         :param last_updated_datetime:
         :return:
