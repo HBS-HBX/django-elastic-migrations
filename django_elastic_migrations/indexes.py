@@ -475,12 +475,12 @@ class DEMDocType(ESDocType):
         if total_items is None:
             total_items = len(qs)
 
-        finalList = []
+        batches = []
         for i in range(0, total_items, batch_size):
             # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
             # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
-            finalList.append(qs[i:i + batch_size])
-        return finalList
+            batches.append(qs[i:i + batch_size])
+        return batches
 
     @classmethod
     def get_bulk_indexing_kwargs(cls):
