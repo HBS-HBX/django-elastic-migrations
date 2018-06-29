@@ -3,8 +3,8 @@
 Database models for django_elastic_migrations.
 """
 
-from __future__ import print_function
 from __future__ import absolute_import, unicode_literals
+from __future__ import print_function
 
 import sys
 import traceback
@@ -13,13 +13,11 @@ from django.db import models
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch import TransportError
-from elasticsearch.helpers import bulk
 
-from django_elastic_migrations import codebase_id, es_client, environment_prefix, DEMIndexManager
+from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexManager
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
 from django_elastic_migrations.utils.log import get_logger
-
 
 logger = get_logger()
 
@@ -366,9 +364,9 @@ class GenericModeMixin(object):
         self.add_log(
             "Applying action {action_name} to {num_index_versions} "
             "{mode_name} versions ...".format(
-                action_name = action.action, num_index_versions=len(versions),
+                action_name=action.action, num_index_versions=len(versions),
                 mode_name=self.MODE_NAME
-        ))
+            ))
 
         for version in versions:
             sub_dem_index = DEMIndexManager.get_dem_index(version.name, exact_mode=True)
@@ -377,9 +375,9 @@ class GenericModeMixin(object):
         self.add_log(
             " - Done applying action {action_name} to {num_index_versions} "
             "{mode_name} versions".format(
-                action_name = action.action, num_index_versions=len(versions),
+                action_name=action.action, num_index_versions=len(versions),
                 mode_name=self.MODE_NAME
-        ))
+            ))
 
 
 class OlderModeMixin(GenericModeMixin):
@@ -777,6 +775,14 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
     def __init__(self, *args, **kwargs):
         self.resume_mode = kwargs.pop('resume_mode', False)
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
+        self._batch_num = 0
+        self._expected_remaining = 0
+        self._indexed_docs = 0
+        self._num_batches = 0
+        self._num_failed = 0
+        self._num_success = 0
+        self._total_items = 0
+        self.docs_affected = 0
 
     def perform_action(self, dem_index, *args, **kwargs):
         self._index_name = self.index.name
@@ -842,10 +848,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
         doc_type = dem_index.doc_type()
 
-        self.add_log("Getting Reindex Iterator...")
-
-        full_queryset = doc_type.get_queryset()
-
+        self._last_update = None
         if self.resume_mode:
             self._last_update = self.index_version.get_last_time_update_called(before_action=self)
             if not self._last_update:
@@ -855,61 +858,48 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 u"\n - index version: {_index_version_name} "
                 u"\n - update date: {_last_update} ", use_self_dict_format=True
             )
-            full_queryset = doc_type.get_queryset(self._last_update)
 
-        try:
-            total_items = full_queryset.count()
-        except AttributeError:
-            total_items = len(full_queryset)
-
-        batches = doc_type.generate_batches(qs=full_queryset, total_items=total_items)
-        bulk_indexing_kwargs = doc_type.get_bulk_indexing_kwargs()
-
-        self._num_success = 0
-        self._num_failed = 0
-        self._indexed_docs = 0
-        self._expected_remaining = total_items
-        self._num_batches = len(batches)
-        self.docs_affected = 0
-
-        for self._batch_num, queryset in enumerate(batches, 1):
-            reindex_iterator = doc_type.get_reindex_iterator(queryset)
-
-            # LEAVING THIS IN BECAUSE IT HELPS WITH TESTING UPDATING
-            # ... rarely want to test updating every document
-            # from itertools import islice
-            # reindex_iterator = list(islice(reindex_iterator, 3))
-
-            self.add_log("Bulk index update batch {_batch_num} of {_num_batches}", use_self_dict_format=True)
-
-            success, failed = bulk(
-                client=es_client, actions=reindex_iterator, refresh=True, stats_only=True,
-                **bulk_indexing_kwargs
-            )
-
-            self._num_success += success
-            self._num_failed += failed
-            self._indexed_docs += success + failed
-            self._expected_remaining = total_items - self._indexed_docs
-            self.docs_affected += success
-
-            self.add_log(
-                (
-                    "Indexing {_index_version_name} - batch {_batch_num}:\n"
-                    " # successful updates in batch: {_num_success}\n" 
-                    " # failed updates in batch: {_num_failed}\n"
-                    " # total docs attempted to update thus far: {_indexed_docs}\n"
-                    " # expected remaining: {_expected_remaining}\n"
-                ),
-                use_self_dict_format=True
-            )
+        self.add_log("Starting batched bulk update ...")
+        doc_type.batched_bulk_index(
+            last_updated_datetime=self._last_update,
+            before_batch_cb=self.before_batch_update,
+            after_batch_cb=self.batch_after_update
+        )
 
         self.add_log(
             (
                 "Completed with indexing {_index_version_name}: "
-                " # successful updates: {_num_success}\n" 
+                " # successful updates: {_num_success}\n"
                 " # failed updates: {_num_failed}\n"
                 " # total docs attempted to update: {_indexed_docs}\n"
+            ),
+            use_self_dict_format=True
+        )
+
+    def before_batch_update(self, batch_num, num_batches, total_items):
+        self._batch_num=batch_num
+        self._num_batches=num_batches
+        self._total_items = total_items
+        self._expected_remaining = total_items
+
+        self.add_log("Bulk index update batch {_batch_num} of {_num_batches}", use_self_dict_format=True)
+
+    def batch_after_update(self, success, failed, batch_num, num_batches, total_items):
+        self._num_success += success
+        self._num_failed += failed
+        self._batch_num = batch_num
+        self._num_batches = num_batches
+        self._indexed_docs += success + failed
+        self._expected_remaining = total_items - self._indexed_docs
+        self.docs_affected += success
+
+        self.add_log(
+            (
+                "Indexing {_index_version_name} - batch {_batch_num}:\n"
+                " # successful updates in batch: {_num_success}\n"
+                " # failed updates in batch: {_num_failed}\n"
+                " # total docs attempted to update thus far: {_indexed_docs}\n"
+                " # expected remaining: {_expected_remaining}\n"
             ),
             use_self_dict_format=True
         )

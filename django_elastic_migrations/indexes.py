@@ -4,7 +4,7 @@ import sys
 
 from django.db import ProgrammingError
 from elasticsearch import TransportError
-from elasticsearch.helpers import expand_action
+from elasticsearch.helpers import expand_action, bulk
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
 from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger
@@ -473,7 +473,10 @@ class DEMDocType(ESDocType):
             qs = cls.get_queryset()
 
         if total_items is None:
-            total_items = len(qs)
+            try:
+                total_items = qs.count()
+            except AttributeError:
+                total_items = len(qs)
 
         batches = []
         for i in range(0, total_items, batch_size):
@@ -500,6 +503,40 @@ class DEMDocType(ESDocType):
             "max_backoff": 600,
             "yield_ok": True
         }
+
+    @classmethod
+    def bulk_index(cls, reindex_iterator):
+        """
+        Execute Elasticsearch's bulk indexing helper, passing in the result of
+        cls.get_bulk_indexing_kwargs()
+        :param reindex_iterator: an iterator of DocType instances from cls.get_reindex_iterator()
+        :return: (num_success, num_failed)
+        """
+        kwargs = cls.get_bulk_indexing_kwargs()
+        success, failed = bulk(
+            client=es_client, actions=reindex_iterator, refresh=True, stats_only=True,
+            **kwargs
+        )
+        return success, failed
+
+    @classmethod
+    def batched_bulk_index(cls, last_updated_datetime=None, before_batch_cb=None, after_batch_cb=None):
+        queryset = cls.get_queryset(last_updated_datetime)
+
+        try:
+            total_items = queryset.count()
+        except AttributeError:
+            total_items = len(queryset)
+
+        batches = cls.generate_batches(qs=queryset, total_items=total_items)
+        num_batches = len(batches)
+        for batch_num, batch_queryset in enumerate(batches, 1):
+            before_batch_cb(batch_num, num_batches, total_items)
+
+            reindex_iterator = cls.get_reindex_iterator(batch_queryset)
+            success, failed = cls.bulk_index(reindex_iterator)
+
+            after_batch_cb(success, failed, batch_num, num_batches, total_items)
 
 
 class DEMIndex(ESIndex):
