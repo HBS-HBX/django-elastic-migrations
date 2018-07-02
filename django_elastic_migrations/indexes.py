@@ -532,12 +532,14 @@ class DEMDocType(ESDocType):
         batches = cls.generate_batches(qs=queryset, total_items=total_items)
         num_batches = len(batches)
         for batch_num, batch_queryset in enumerate(batches, 1):
-            before_batch_cb(batch_num, num_batches, total_items)
+            if before_batch_cb:
+                before_batch_cb(batch_num, num_batches, total_items)
 
             reindex_iterator = cls.get_reindex_iterator(batch_queryset)
             success, failed = cls.bulk_index(reindex_iterator)
 
-            after_batch_cb(success, failed, batch_num, num_batches, total_items)
+            if after_batch_cb:
+                after_batch_cb(success, failed, batch_num, num_batches, total_items)
 
 
 class DEMIndex(ESIndex):
