@@ -520,8 +520,9 @@ class DEMDocType(ESDocType):
         return success, failed
 
     @classmethod
-    def batched_bulk_index(cls, last_updated_datetime=None, before_batch_cb=None, after_batch_cb=None):
-        queryset = cls.get_queryset(last_updated_datetime)
+    def batched_bulk_index(cls, queryset=None, last_updated_datetime=None, before_batch_cb=None, after_batch_cb=None):
+        if queryset is None:
+            queryset = cls.get_queryset(last_updated_datetime)
 
         try:
             total_items = queryset.count()
