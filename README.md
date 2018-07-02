@@ -104,6 +104,7 @@ For each of these, use `--help` to see the details.
 5. Create an `DEMIndex`:
    ```
    from django_elastic_migrations.indexes import DEMIndex, DEMDocType
+   from models import GoogleSearch
    from elasticsearch_dsl import Text
    
     GoogleIndex = DEMIndex('google')
@@ -114,9 +115,22 @@ For each of these, use `--help` to see the details.
         text = TEXT_COMPLEX_ENGLISH_NGRAM_METAPHONE
 
         @classmethod
-        def get_reindex_iterator(self, last_updated_datetime=None):
-            return [GoogleSearchDoc(
-                text="a little sample text").to_dict(include_meta=True)]   
+        def get_queryset(self, last_updated_datetime=None):
+            """
+            return a queryset or a sliceable list of items to pass to 
+            get_reindex_iterator
+            """
+            qs = GoogleSearch.objects.all()
+            if last_updated_datetime:
+                qs.filter(last_modified__gt=last_updated_datetime)
+            return qs
+
+        @classmethod
+        def get_reindex_iterator(self, queryset):
+            return [
+                GoogleSearchDoc(
+                    text="a little sample text").to_dict(
+                    include_meta=True) for g in queryset]   
    ```
 
 6. Add your new index to DJANGO_ELASTIC_MIGRATIONS_INDEXES in settings/common.py
@@ -249,6 +263,16 @@ params = {
 }
 call_command('dumpdata', **params)
 ```
+
+### Tuning
+By default, `/.manage.py es_update` will divide the result of 
+`DEMDocType.get_queryset()` into batches of size `DocType.BATCH_SIZE`. 
+Override this number to change the batch size. 
+
+There are many configurable paramters to Elasticsearch's [bulk updater](https://elasticsearch-py.readthedocs.io/en/master/helpers.html?highlight=bulk#elasticsearch.helpers.streaming_bulk).
+To provide a custom value, override `DEMDocType.get_bulk_indexing_kwargs()`
+and return the kwargs you would like to customize.
+
 
 ## Development
 

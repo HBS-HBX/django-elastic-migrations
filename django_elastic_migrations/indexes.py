@@ -4,11 +4,12 @@ import sys
 
 from django.db import ProgrammingError
 from elasticsearch import TransportError
+from elasticsearch.helpers import expand_action, bulk
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
 from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
-    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion
+    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 from django_elastic_migrations.utils.loading import import_module_element
 
@@ -416,6 +417,12 @@ class DEMDocType(ESDocType):
     make it the activated version of the index by default.
     """
 
+    """
+    The default size of batches to bulk index at once. 
+    Higher batch sizes require more memory on the indexing server.
+    """
+    BATCH_SIZE = 100
+
     def __init__(self, *args, **kwargs):
         super(DEMDocType, self).__init__(*args, **kwargs)
         # super.__init__ creates the self._doc_type property that we
@@ -424,7 +431,7 @@ class DEMDocType(ESDocType):
             getattr(self, '_doc_type', None))
 
     @classmethod
-    def get_reindex_iterator(self, last_updated_datetime=None):
+    def get_reindex_iterator(cls, queryset):
         """
         Django users override this method. It must return an iterator
         or generator of instantiated DEMDocType subclasses, ready
@@ -433,18 +440,103 @@ class DEMDocType(ESDocType):
         class UsersDocType(DEMDocType)
 
             @classmethod
-            def get_reindex_iterator(cls, last_updated_datetime=None):
-                if last_updated_datetime:
-                    users = User.objects.filter(
-                        last_modified__gte=last_updated_datetime)
-                else:
-                    User.objects.all()
-                return [cls.getDocForUser(u) for u in users]
+            def get_reindex_iterator(cls, queryset):
+                return [cls.getDocForUser(u) for user in queryset]
 
-        :param last_updated_datetime: DateTime
+        :param queryset: queryset of objects to index; result of get_queryset()
         :return: iterator / generator of *DEMDocType instances*
         """
         raise DEMDocTypeRequiresGetReindexIterator()
+
+    @classmethod
+    def get_queryset(cls, last_updated_datetime=None):
+        """
+        Django users override this method. It must return a sliceable entity
+        that will be subdivided in cls.generate_batches()
+        :param last_updated_datetime:
+        :return:
+        """
+        raise DEMDocTypeRequiresGetQueryset()
+
+    @classmethod
+    def generate_batches(cls, qs=None, batch_size=BATCH_SIZE, total_items=None):
+        """
+        Divide a queryset into batches of BATCH_SIZE entities.
+        If this is an unevaluated django queryset,
+        the result will be a list of unevaluated querysets.
+        :param qs:
+        :param batch_size:
+        :param total_items:
+        :return: list of unevaluated QuerySets
+        """
+        if qs is None:
+            qs = cls.get_queryset()
+
+        if total_items is None:
+            try:
+                total_items = qs.count()
+            except AttributeError:
+                total_items = len(qs)
+
+        batches = []
+        for i in range(0, total_items, batch_size):
+            # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
+            # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
+            batches.append(qs[i:i + batch_size])
+        return batches
+
+    @classmethod
+    def get_bulk_indexing_kwargs(cls):
+        """
+        Override this method to tune parameters to the bulk indexing command:
+        https://elasticsearch-py.readthedocs.io/en/master/helpers.html?highlight=bulk#elasticsearch.helpers.streaming_bulk
+        :return: kwargs object
+        """
+        return {
+            "chunk_size": 500,
+            "max_chunk_bytes": 100 * 1024 * 1024,
+            "raise_on_error": True,
+            "expand_action_callback": expand_action,
+            "raise_on_exception": True,
+            "max_retries": 0,
+            "initial_backoff": 2,
+            "max_backoff": 600,
+            "yield_ok": True
+        }
+
+    @classmethod
+    def bulk_index(cls, reindex_iterator):
+        """
+        Execute Elasticsearch's bulk indexing helper, passing in the result of
+        cls.get_bulk_indexing_kwargs()
+        :param reindex_iterator: an iterator of DocType instances from cls.get_reindex_iterator()
+        :return: (num_success, num_failed)
+        """
+        kwargs = cls.get_bulk_indexing_kwargs()
+        success, failed = bulk(
+            client=es_client, actions=reindex_iterator, refresh=True, stats_only=True,
+            **kwargs
+        )
+        return success, failed
+
+    @classmethod
+    def batched_bulk_index(cls, last_updated_datetime=None, before_batch_cb=None, after_batch_cb=None):
+        queryset = cls.get_queryset(last_updated_datetime)
+
+        try:
+            total_items = queryset.count()
+        except AttributeError:
+            total_items = len(queryset)
+
+        batches = cls.generate_batches(qs=queryset, total_items=total_items)
+        num_batches = len(batches)
+        for batch_num, batch_queryset in enumerate(batches, 1):
+            before_batch_cb(batch_num, num_batches, total_items)
+
+            reindex_iterator = cls.get_reindex_iterator(batch_queryset)
+            success, failed = cls.bulk_index(reindex_iterator)
+
+            after_batch_cb(success, failed, batch_num, num_batches, total_items)
 
 
 class DEMIndex(ESIndex):
@@ -513,6 +605,25 @@ class DEMIndex(ESIndex):
             index_version.delete()
             raise ex
         return index_version
+
+    def create_if_not_in_es(self, **kwargs):
+        """
+        Create the index if it doesn't already exist in elasticsearch.
+        :param kwargs:
+        :return: True if created
+        """
+        index_version = self.get_version_model()
+        try:
+            index = index_version.name
+            body = self.to_dict()
+            self.connection.indices.create(index=index, body=body, **kwargs)
+        except Exception as ex:
+            if isinstance(ex, TransportError):
+                if ex.status_code == 400:
+                    # "resource_already_exists_exception"
+                    return False
+            raise ex
+        return True
 
     def delete(self, **kwargs):
         index_version = self.get_version_model()

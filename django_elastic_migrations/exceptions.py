@@ -73,6 +73,15 @@ class DEMDocTypeRequiresGetReindexIterator(DjangoElasticMigrationsException):
                "implement DEMDocType.get_reindex_iterator(self, last_updated_datetime=None)")
 
 
+class DEMDocTypeRequiresGetQueryset(DjangoElasticMigrationsException):
+    """
+    Raised when ./manage.py es_update tries to call DEMDocType.get_queryset()
+    on a subclass, but the subclass has not implemented this.
+    """
+    message = ("To run ./manage.py es_update my_index, my_index needs to "
+               "implement DEMDocType.get_queryset()")
+
+
 class DEMIndexVersionCodebaseMismatchError(DjangoElasticMigrationsException):
     """
     Raised when calling ./manage.py es_update, and the json hash of the
