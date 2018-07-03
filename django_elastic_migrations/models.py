@@ -212,10 +212,10 @@ class IndexAction(models.Model):
     ACTION_DEACTIVATE_INDEX = 'deactivate_index'
     ACTION_CLEAR_INDEX = 'clear_index'
     ACTION_DROP_INDEX = 'drop_index'
-    ACTIONS_ALL = {
+    ACTIONS_ALL = [
         ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX,
         ACTION_DEACTIVATE_INDEX, ACTION_CLEAR_INDEX, ACTION_DROP_INDEX
-    }
+    ]
     ACTIONS_ALL_CHOICES = [(i, i) for i in ACTIONS_ALL]
 
     DEFAULT_ACTION = ACTION_CREATE_INDEX
@@ -882,8 +882,8 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         )
 
     def before_batch_update(self, batch_num, num_batches, total_items):
-        self._batch_num=batch_num
-        self._num_batches=num_batches
+        self._batch_num = batch_num
+        self._num_batches = num_batches
         self._total_items = total_items
         self._expected_remaining = total_items
 
