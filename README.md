@@ -243,6 +243,26 @@ For each of these, use `--help` to see the details.
     
     ```
 
+### Excluding from dumpdata
+When calling [django's dumpdata command](https://docs.djangoproject.com/en/2.0/ref/django-admin/#dumpdata),
+you likely will want to exclude the database tables used in this app:
+
+```
+from django.core.management import call_command
+params = {
+    'database': 'default',
+    'exclude': [
+        # we don't want to include django_elastic_migrations in dumpdata, 
+        # because it's environment specific
+        'django_elastic_migrations.index',
+        'django_elastic_migrations.indexversion',
+        'django_elastic_migrations.indexaction'
+    ],
+    'indent': 3,
+    'output': 'path/to/my/file.json'
+}
+call_command('dumpdata', **params)
+```
 
 ### Tuning
 By default, `/.manage.py es_update` will divide the result of 
