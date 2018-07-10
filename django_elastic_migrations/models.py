@@ -346,9 +346,7 @@ class IndexAction(models.Model):
                 )
                 parent.docs_affected += num_docs
                 parent.save()
-                print("parent id {} new docs affected: {}".format(parent.id, parent.docs_affected))
         self.parent.refresh_from_db()
-        print(self.parent.id, self.parent.docs_affected)
 
 
 """
@@ -808,6 +806,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         self.resume_mode = kwargs.pop('resume_mode', False)
         # :param workers: number of workers to parallelize indexing
         self.workers = kwargs.pop('workers', 0)
+        self.batch_size = kwargs.pop('batch_size', 0)
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
         self._batch_num = 0
         self._expected_remaining = 0
@@ -835,11 +834,20 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             )
 
         self.add_log("Starting batched bulk update ...")
+        batch_size = doc_type.BATCH_SIZE
+        if self.batch_size:
+            batch_size = self.batch_size
+            self.add_log("using manually specified batch size of {}".format(batch_size))
+        else:
+            self.add_log("using class default batch size of {}".format(batch_size))
+
         success, failed = doc_type.batched_bulk_index(
             last_updated_datetime=self._last_update,
             workers=self.workers,
-            update_index_action=self
+            update_index_action=self,
+            batch_size=batch_size,
         )
+
         self.refresh_from_db()
         self._num_success, self._num_failed = success, failed
         self._indexed_docs = success + failed

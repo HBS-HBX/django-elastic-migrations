@@ -280,7 +280,7 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
-    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0):
+    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0, batch_size=None):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
@@ -291,7 +291,12 @@ class DEMIndexManager(object):
         """
         # avoid circular import
         from django_elastic_migrations.models import UpdateIndexAction
-        action = UpdateIndexAction(newer_mode=newer_mode, resume_mode=resume_mode, workers=workers)
+        action = UpdateIndexAction(
+            newer_mode=newer_mode,
+            resume_mode=resume_mode,
+            workers=workers,
+            batch_size=batch_size
+        )
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
@@ -581,7 +586,7 @@ class DEMDocType(ESDocType):
     @classmethod
     def batched_bulk_index(
         cls, queryset=None, workers=0, last_updated_datetime=None, verbosity=1,
-        update_index_action=None):
+        update_index_action=None, batch_size=None):
 
         qs = queryset
 
@@ -614,8 +619,10 @@ class DEMDocType(ESDocType):
             )
             update_index_action.save()
 
+        if not batch_size:
+            batch_size = cls.BATCH_SIZE
         cls.generate_batches(
-            qs, cls.BATCH_SIZE, total_items=total,
+            qs, batch_size, total_items=total,
             update_index_action=update_index_action, verbosity=verbosity)
 
         update_index_action.refresh_from_db()

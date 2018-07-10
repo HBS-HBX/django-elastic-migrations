@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-from django_elastic_migrations.indexes import DEMDocType
-
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
 from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
@@ -31,11 +29,20 @@ class Command(ESCommand):
                 "DJANGO_ELASTIC_MIGRATIONS_RECREATE_CONNECTIONS function paths to your Django settings."
             )
         )
+        parser.add_argument(
+            '--batch_size', nargs='?', default=0, type=int,
+            help=(
+                "Determines the number of documents to index per batch, used for \n"
+                "tuning memory."
+                "Manually overrides the BATCH_SIZE specified on the index. \n"
+            )
+        )
 
     def handle(self, *args, **options):
         indexes, exact_mode, apply_all, _, newer_mode = self.get_index_specifying_options(options)
         resume_mode = options.get('resume', False)
         workers = options.get('workers')
+        batch_size = options.get('batch_size', 0)
 
         if apply_all:
             DEMIndexManager.update_index(
@@ -43,7 +50,8 @@ class Command(ESCommand):
                 exact_mode=exact_mode,
                 newer_mode=newer_mode,
                 resume_mode=resume_mode,
-                workers=workers
+                workers=workers,
+                batch_size=batch_size
             )
         elif indexes:
             for index_name in indexes:
@@ -52,5 +60,6 @@ class Command(ESCommand):
                     exact_mode=exact_mode,
                     newer_mode=newer_mode,
                     resume_mode=resume_mode,
-                    workers=workers
+                    workers=workers,
+                    batch_size=batch_size
                 )
