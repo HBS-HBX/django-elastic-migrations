@@ -280,7 +280,7 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
-    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0, batch_size=None):
+    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0, batch_size=None, verbosity=1):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
@@ -288,6 +288,8 @@ class DEMIndexManager(object):
         :param exact_mode: whether to take index name as the literal es index name
         :param resume_mode: if True, only update items that have changed since last update index
         :param workers: number of workers to parallelize indexing
+        :param batch_size: If greater than zero, override the index-specific batch size
+        :param verbosity: set to 2 to get debug level messages in multiprocessing
         """
         # avoid circular import
         from django_elastic_migrations.models import UpdateIndexAction
@@ -295,7 +297,8 @@ class DEMIndexManager(object):
             newer_mode=newer_mode,
             resume_mode=resume_mode,
             workers=workers,
-            batch_size=batch_size
+            batch_size=batch_size,
+            verbosity=verbosity
         )
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
@@ -533,7 +536,7 @@ class DEMDocType(ESDocType):
                 parent=update_index_action
             )
             batch_index_action.set_task_kwargs({
-                "batch_num": start_index + 1,
+                "batch_num": start_index // batch_size + 1,
                 "pks": ids_in_batch,
                 "start_index": start_index,
                 "end_index": end_index,

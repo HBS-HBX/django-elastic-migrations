@@ -249,6 +249,7 @@ class IndexAction(models.Model):
     def __init__(self, *args, **kwargs):
         action = self._meta.get_field('action')
         action.default = self.DEFAULT_ACTION
+        self.verbosity = kwargs.pop('verbosity', 1)
         super(IndexAction, self).__init__(*args, **kwargs)
 
     def __str__(self):
@@ -338,6 +339,7 @@ class IndexAction(models.Model):
         affected to the parent's docs affected
         :param num_docs: int, number of docs changed in Elasticsearch
         """
+        parent_docs_affected = self.parent.docs_affected
         if self.parent and num_docs:
             with transaction.atomic():
                 parent = (
@@ -345,8 +347,9 @@ class IndexAction(models.Model):
                         .get(id=self.parent.id)
                 )
                 parent.docs_affected += num_docs
+                parent_docs_affected = parent_docs_affected
                 parent.save()
-        self.parent.refresh_from_db()
+        return parent_docs_affected
 
 
 """
@@ -846,6 +849,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             workers=self.workers,
             update_index_action=self,
             batch_size=batch_size,
+            verbosity=self.verbosity
         )
 
         self.refresh_from_db()
@@ -853,7 +857,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         self._indexed_docs = success + failed
         self.docs_affected = success
         if not failed:
-            self.add_log("Removing completed child tasks, because there were no failures")
+            self.add_log("Removing completed child tasks, because there were no failures\n")
             self.children.all().delete()
 
         self.add_log(
@@ -928,34 +932,6 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 "Handling update of index '{_index_name}' using its active index version "
                 "'{_index_version_name}'", use_self_dict_format=True)
 
-    def before_batch_update(self, batch_num, num_batches, total_items):
-        self._batch_num = batch_num
-        self._num_batches = num_batches
-        self._total_items = total_items
-        self._expected_remaining = total_items
-
-        self.add_log("Bulk index update batch {_batch_num} of {_num_batches}", use_self_dict_format=True)
-
-    def batch_after_update(self, success, failed, batch_num, num_batches, total_items):
-        self._num_success += success
-        self._num_failed += failed
-        self._batch_num = batch_num
-        self._num_batches = num_batches
-        self._indexed_docs += success + failed
-        self._expected_remaining = total_items - self._indexed_docs
-        self.docs_affected += success
-
-        self.add_log(
-            (
-                "Indexing {_index_version_name} - batch {_batch_num}:\n"
-                " # successful updates in batch: {_num_success}\n"
-                " # failed updates in batch: {_num_failed}\n"
-                " # total docs attempted to update thus far: {_indexed_docs}\n"
-                " # expected remaining: {_expected_remaining}\n"
-            ),
-            use_self_dict_format=True
-        )
-
 
 class PartialUpdateIndexAction(UpdateIndexAction):
     """
@@ -1000,6 +976,8 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         total = kwargs["total_items"]
         verbosity = kwargs["verbosity"]
         max_retries = kwargs["max_retries"]
+        self._batch_num = kwargs["batch_num"]
+        self._max_batch_num = kwargs["max_batch_num"]
 
         qs = doc_type.get_queryset()
         current_qs = qs[start:end]
@@ -1007,10 +985,11 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         is_parent_process = hasattr(os, "getppid") and os.getpid() == os.getppid()
 
         if verbosity >= 2:
+            max_end = min(end, total)
             if is_parent_process:
-                self.add_log("  indexed %s - %d of %d." % (start + 1, end, total))
+                self.add_log("  indexed %s - %d of %d." % (start + 1, max_end, total))
             else:
-                self.add_log("  indexed %s - %d of %d (worker PID: %s)." % (start + 1, end, total, os.getpid()))
+                self.add_log("  indexed %s - %d of %d (worker PID: %s)." % (start + 1, max_end, total, os.getpid()))
 
         retries = 0
         success, failed = (0, 0)
@@ -1045,16 +1024,27 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         self._num_success = success
         self.docs_affected = success
-        self.add_to_parent_docs_affected(success)
+        self._parent_docs_affected = self.add_to_parent_docs_affected(success)
+        self._total_docs_remaining = total - self._parent_docs_affected
+        self._runtime = timezone.now() - self.start
+        batches_remaining = self._max_batch_num - self._batch_num
+        remaining_time = self._runtime * batches_remaining
+        self._runtime_remaining = str(remaining_time)
         self._num_failed = failed
         self._indexed_docs = success + failed
+        self._pid = os.getpid()
 
         self.add_log(
             (
-                "Completed with partial update index {_index_version_name}: \n"
-                " # successful updates: {_num_success}\n"
-                " # failed updates: {_num_failed}\n"
-                " # total docs attempted to update: {_indexed_docs}\n"
+                "Completed with {_index_version_name} update batch {_batch_num}/{_max_batch_num}: \n"
+                " # batch successful updates: {_num_success}\n"
+                " # batch failed updates: {_num_failed}\n"
+                " # batch docs attempted to update: {_indexed_docs}\n"
+                " # total docs updated: {_parent_docs_affected}\n"
+                " # total docs remaining: {_total_docs_remaining}\n"
+                " # batch runtime: {_runtime}\n"
+                " # projected, simplified linear runtime remaining: {_runtime_remaining}\n"
+                " # pid: {_pid}\n"
             ),
             use_self_dict_format=True
         )

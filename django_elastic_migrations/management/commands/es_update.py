@@ -30,7 +30,7 @@ class Command(ESCommand):
             )
         )
         parser.add_argument(
-            '--batch_size', nargs='?', default=0, type=int,
+            '--batch-size', nargs='?', default=0, type=int,
             help=(
                 "Determines the number of documents to index per batch, used for \n"
                 "tuning memory."
@@ -43,6 +43,7 @@ class Command(ESCommand):
         resume_mode = options.get('resume', False)
         workers = options.get('workers')
         batch_size = options.get('batch_size', 0)
+        verbosity = options.get('verbosity')
 
         if apply_all:
             DEMIndexManager.update_index(
@@ -51,7 +52,8 @@ class Command(ESCommand):
                 newer_mode=newer_mode,
                 resume_mode=resume_mode,
                 workers=workers,
-                batch_size=batch_size
+                batch_size=batch_size,
+                verbosity=verbosity
             )
         elif indexes:
             for index_name in indexes:
@@ -61,5 +63,6 @@ class Command(ESCommand):
                     newer_mode=newer_mode,
                     resume_mode=resume_mode,
                     workers=workers,
-                    batch_size=batch_size
+                    batch_size=batch_size,
+                    verbosity=verbosity
                 )

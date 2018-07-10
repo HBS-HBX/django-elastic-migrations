@@ -161,8 +161,9 @@ class DjangoMultiProcess(object):
 
         if num_workers is None:
 
-            # always use at least one thread; leave one cpu for other stuff
-            self.num_workers = cpu_count() - 1
+            # always use at least one thread
+            # TODO: consider leaving one cpu remaining for timer updates, etc
+            self.num_workers = cpu_count()
             if self.num_workers < 2:
                 self.num_workers = 1
 
