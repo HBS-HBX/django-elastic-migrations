@@ -430,6 +430,7 @@ class DEMDocType(ESDocType):
     """
     The default size of batches to bulk index at once. 
     Higher batch sizes require more memory on the indexing server.
+    Also, higher batch sizes may lead to less concurrency in the case of using the --workers option.
     """
     BATCH_SIZE = 1000
 
