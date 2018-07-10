@@ -1,5 +1,6 @@
 # coding=utf-8
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 import sys
 
 from django.db import ProgrammingError
@@ -12,6 +13,7 @@ from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeReq
     IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 from django_elastic_migrations.utils.loading import import_module_element
+from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiProcess
 
 """
 indexes.py - Django-facing API for interacting with Django Elastic Migrations
@@ -21,7 +23,6 @@ Module Conventions
 * 'ES': classes imported from Elasticsearch are prefixed with this
 * 'DEM': classes belonging to this app are prefixed with this (for Django Elastic Migrations)
 """
-
 
 logger = get_logger()
 
@@ -146,7 +147,7 @@ class DEMIndexManager(object):
         if exact_mode and index_name:
             separator_index = index_name.rindex("-")
             base_name = index_name[:separator_index]
-            version_number = index_name[separator_index+1:]
+            version_number = index_name[separator_index + 1:]
             index_name = base_name
         if version_number:
             return DEMIndex(index_name, version_id=version_number)
@@ -279,17 +280,18 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
-    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False):
+    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
         :param index_name: the name to use
         :param exact_mode: whether to take index name as the literal es index name
         :param resume_mode: if True, only update items that have changed since last update index
+        :param workers: number of workers to parallelize indexing
         """
         # avoid circular import
         from django_elastic_migrations.models import UpdateIndexAction
-        action = UpdateIndexAction(newer_mode=newer_mode, resume_mode=resume_mode)
+        action = UpdateIndexAction(newer_mode=newer_mode, resume_mode=resume_mode, workers=workers)
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
@@ -423,6 +425,16 @@ class DEMDocType(ESDocType):
     """
     BATCH_SIZE = 100
 
+    """
+    The name of the id attribute on the indexing model. Override in subclass to change.
+    """
+    PK_ATTRIBUTE = 'id'
+
+    """
+    The maximum number of times to retry an update of a set of documents
+    """
+    MAX_RETRIES = 5
+
     def __init__(self, *args, **kwargs):
         super(DEMDocType, self).__init__(*args, **kwargs)
         # super.__init__ creates the self._doc_type property that we
@@ -459,14 +471,23 @@ class DEMDocType(ESDocType):
         raise DEMDocTypeRequiresGetQueryset()
 
     @classmethod
-    def generate_batches(cls, qs=None, batch_size=BATCH_SIZE, total_items=None):
+    def get_db_objects_by_id(cls, ids):
+        return cls.get_queryset().filter(**{"{}__in".format(cls.PK_ATTRIBUTE): ids})
+
+    @classmethod
+    def generate_batches(cls, qs=None, batch_size=BATCH_SIZE, total_items=None, update_index_action=None, verbosity=1,
+                         max_retries=MAX_RETRIES):
         """
         Divide a queryset into batches of BATCH_SIZE entities.
         If this is an unevaluated django queryset,
         the result will be a list of unevaluated querysets.
-        :param qs:
-        :param batch_size:
-        :param total_items:
+        :param qs: the queryset to use; will call cls.get_queryset() if not supplied
+        :param batch_size: the number of items to index at once, specified for memory reasons
+        :param total_items: the total items in the queryset
+        :param update_index_action: if an IndexAction is passed,
+               generate PartialUpdateIndexActions for each batch, each pointing to the parent IndexAction
+        :param verbosity: the logging verbosity
+        :param max_retries: the maximum number of times to attempt to retry the batch reindex
         :return: list of unevaluated QuerySets
         """
         if qs is None:
@@ -479,10 +500,36 @@ class DEMDocType(ESDocType):
                 total_items = len(qs)
 
         batches = []
-        for i in range(0, total_items, batch_size):
+
+        # importing to avoid circular loop
+        from django_elastic_migrations.models import PartialUpdateIndexAction
+        for start_index in range(0, total_items, batch_size):
             # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
             # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
-            batches.append(qs[i:i + batch_size])
+            end_index = start_index + batch_size
+            batch_qs = qs[start_index:end_index]
+            ids_in_batch = list(batch_qs.values_list(cls.PK_ATTRIBUTE, flat=True))
+
+            batch_index_action = PartialUpdateIndexAction(
+                index=update_index_action.index,
+                index_version=update_index_action.index_version,
+                parent=update_index_action
+            )
+            batch_index_action.set_task_kwargs({
+                "batch_num": start_index + 1,
+                "pks": ids_in_batch,
+                "start_index": start_index,
+                "end_index": end_index,
+                "max_batch_num": (total_items // batch_size) + 1,
+                "total_items": total_items,
+                "batch_num_items": len(ids_in_batch),
+                "verbosity": verbosity,
+                "max_retries": max_retries
+            })
+            batches.append(batch_index_action)
+
+        PartialUpdateIndexAction.objects.bulk_create(batches)
+
         return batches
 
     @classmethod
@@ -520,26 +567,70 @@ class DEMDocType(ESDocType):
         return success, failed
 
     @classmethod
-    def batched_bulk_index(cls, queryset=None, last_updated_datetime=None, before_batch_cb=None, after_batch_cb=None):
-        if queryset is None:
-            queryset = cls.get_queryset(last_updated_datetime)
+    def batched_bulk_index(
+        cls, queryset=None, workers=0, last_updated_datetime=None, verbosity=1,
+        update_index_action=None):
+
+        qs = queryset
+
+        if qs is None:
+            qs = cls.get_queryset(last_updated_datetime)
 
         try:
-            total_items = queryset.count()
+            total = qs.count()
         except AttributeError:
-            total_items = len(queryset)
+            total = len(qs)
 
-        batches = cls.generate_batches(qs=queryset, total_items=total_items)
-        num_batches = len(batches)
-        for batch_num, batch_queryset in enumerate(batches, 1):
-            if before_batch_cb:
-                before_batch_cb(batch_num, num_batches, total_items)
+        # importing to avoid circular loop
+        from django_elastic_migrations.models import PartialUpdateIndexAction
 
-            reindex_iterator = cls.get_reindex_iterator(batch_queryset)
-            success, failed = cls.bulk_index(reindex_iterator)
+        if update_index_action is None:
+            # TODO: fill in index and index_version when called from bulk upload
 
-            if after_batch_cb:
-                after_batch_cb(success, failed, batch_num, num_batches, total_items)
+            update_index_action = PartialUpdateIndexAction(
+                index=None,
+                index_version=None
+            )
+            update_index_action.save()
+
+        cls.generate_batches(
+            qs, cls.BATCH_SIZE, total_items=total,
+            update_index_action=update_index_action, verbosity=verbosity)
+
+        update_index_action.refresh_from_db()
+        sub_action_ids = list(update_index_action.children.all().values_list("id", flat=True))
+
+        results = []
+        if workers == 0:
+            for sub_action_id in sub_action_ids:
+                result = PartialUpdateIndexAction.do_partial_update(sub_action_id)
+                results.append(result)
+        else:
+            django_multiprocess = None
+
+            # importing to avoid circular loop
+            from django_elastic_migrations.models import UpdateIndexAction
+            if workers == UpdateIndexAction.USE_ALL_WORKERS:
+                # default is to use all workers
+                workers = None
+
+            django_multiprocess = DjangoMultiProcess(workers, debug_print=True)
+
+            with django_multiprocess:
+                django_multiprocess.map(
+                    PartialUpdateIndexAction.do_partial_update,
+                    sub_action_ids)
+
+            results = django_multiprocess.results()
+
+        num_successes = 0
+        num_failures = 0
+        if results:
+            for result in results:
+                result_successes, result_failures = result
+                num_successes += result_successes
+                num_failures += result_failures
+        return num_successes, num_failures
 
 
 class DEMIndex(ESIndex):

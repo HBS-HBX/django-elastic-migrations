@@ -3,6 +3,7 @@ from django.core.management import call_command
 
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
+from django_elastic_migrations.models import UpdateIndexAction
 
 
 class Command(ESCommand):
@@ -16,17 +17,25 @@ class Command(ESCommand):
                   "the last ./manage.py es_update. NOTE: DEMDocType subclass "
                   "needs to implement this.")
         )
+        parser.add_argument(
+            '--workers', nargs="?",
+            default=0,
+            const=UpdateIndexAction.USE_ALL_WORKERS,
+            help='Allows for the use multiple workers to parallelize indexing.'
+        )
 
     def handle(self, *args, **options):
         indexes, exact_mode, apply_all, _, newer_mode = self.get_index_specifying_options(options)
         resume_mode = options.get('resume', False)
+        workers = options.get('workers')
 
         if apply_all:
             DEMIndexManager.update_index(
                 'all',
                 exact_mode=exact_mode,
                 newer_mode=newer_mode,
-                resume_mode=resume_mode
+                resume_mode=resume_mode,
+                workers=workers
             )
         elif indexes:
             for index_name in indexes:
@@ -34,5 +43,6 @@ class Command(ESCommand):
                     index_name,
                     exact_mode=exact_mode,
                     newer_mode=newer_mode,
-                    resume_mode=resume_mode
+                    resume_mode=resume_mode,
+                    workers=workers
                 )
