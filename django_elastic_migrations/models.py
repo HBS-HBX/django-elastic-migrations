@@ -1056,8 +1056,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
     def do_partial_update(index_action_id):
         # importing here to avoid a circular loop
         index_action = PartialUpdateIndexAction.objects.get(id=index_action_id)
-        index_version = index_action.index_version
-        dem_index = DEMIndexManager.get_dem_index(index_version.name, exact_mode=True)
+        dem_index = DEMIndexManager.get_dem_index(index_action.index.name)
         return index_action.start_action(dem_index)
 
     @staticmethod

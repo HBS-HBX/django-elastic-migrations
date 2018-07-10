@@ -1,9 +1,10 @@
 from __future__ import print_function
-from django.core.management import call_command
+
+from django_elastic_migrations.indexes import DEMDocType
 
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
-from django_elastic_migrations.models import UpdateIndexAction
+from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
 
 
 class Command(ESCommand):
@@ -20,7 +21,7 @@ class Command(ESCommand):
         parser.add_argument(
             '--workers', nargs="?",
             default=0,
-            const=UpdateIndexAction.USE_ALL_WORKERS,
+            const=USE_ALL_WORKERS,
             help=(
                 "Allows for using multiple workers to parallelize indexing. \n"
                 "To use all available workers, simply supply --workers. \n"

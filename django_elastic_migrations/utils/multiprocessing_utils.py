@@ -1,5 +1,6 @@
 # coding=utf-8
 from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 import time
 
 from django.db import reset_queries
@@ -21,17 +22,18 @@ from django.conf import settings
 from django.core.cache import caches
 from elasticsearch_dsl import connections
 
-from django_elastic_migrations import get_logger as get_dem_logger, es_client
-
+from django_elastic_migrations import get_logger as get_dem_logger
 
 logger = get_dem_logger()
 
-
 """
 Django Multiprocessing Utility Functions ↓
-Adapted from Jeremy Robin's Medium article "Django Multiprocessing," Sept 2017
+Adapted from Jeremy Robin's "Django Multiprocessing":
 https://engineering.talentpair.com/django-multiprocessing-153dbcf51dab
 """
+
+
+USE_ALL_WORKERS = 999
 
 
 class Timer(object):
@@ -152,10 +154,10 @@ class DjangoMultiProcess(object):
     """
 
     queue = None
-    item_count = 1
+    job_count = 1
     workers = []
 
-    def __init__(self, num_workers=None, max_workers=None, debug_print=False, status_interval=20):
+    def __init__(self, num_workers=None, max_workers=None, log_debug_info=False, status_interval=20):
 
         if num_workers is None:
 
@@ -170,11 +172,11 @@ class DjangoMultiProcess(object):
         else:
             self.num_workers = num_workers
 
-        self.debug_print = debug_print
+        self.log_debug_info = log_debug_info
 
         self.status_interval = status_interval
 
-        if debug_print:
+        if log_debug_info:
             logger.debug("Using %s workers" % self.num_workers)
 
         # synchronous result queue will be instantiated in self.map()
@@ -186,22 +188,22 @@ class DjangoMultiProcess(object):
 
     def map(self, func, iterable):
 
-        # this synchronous queue is passed to child processes, so they can append
+        # this synchronous queue is passed to child processes, so they can append results
         self.queue = Manager().Queue()
-        self.item_count = len(iterable) or 1
+        self.job_count = len(iterable) or 1
 
         for worker_idx in range(self.num_workers):
 
-            items = []
+            jobs = []
 
-            for idx, item in enumerate(iterable):
+            for idx, job in enumerate(iterable):
                 if idx % self.num_workers == worker_idx:
-                    items.append(item)
+                    jobs.append(job)
 
-            if self.debug_print:
-                logger.debug("Working on %s items of %s in worker %s" % (len(items), len(iterable), worker_idx))
+            if self.log_debug_info:
+                logger.debug("Working on {} of {} jobs in worker {}".format(len(jobs), len(iterable), worker_idx))
 
-            p = Process(target=threadwrapper(func), args=[self.queue, items])
+            p = Process(target=threadwrapper(func), args=[self.queue, jobs])
             p.start()
             self.workers.append(p)
 
@@ -224,12 +226,12 @@ class DjangoMultiProcess(object):
                 interval_secs = proc_timer.done() // 1000
 
                 # if we've exceeded status interval, print out & reset counter
-                if self.debug_print and interval_secs >= self.status_interval:
+                if self.log_debug_info and interval_secs >= self.status_interval:
                     proc_timer = Timer()
 
                     total_secs = total_time.done() // 1000
 
-                    percent = (self.queue.qsize() * 100) // self.item_count
+                    percent = (self.queue.qsize() * 100) // self.job_count
                     logger.debug("--------- {}% done ({}s elapsed) ---------".format(percent, total_secs))
 
     def results(self):

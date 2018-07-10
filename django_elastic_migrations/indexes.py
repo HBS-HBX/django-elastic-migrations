@@ -13,7 +13,7 @@ from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeReq
     IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 from django_elastic_migrations.utils.loading import import_module_element
-from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiProcess
+from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiProcess, USE_ALL_WORKERS
 
 """
 indexes.py - Django-facing API for interacting with Django Elastic Migrations
@@ -423,7 +423,7 @@ class DEMDocType(ESDocType):
     The default size of batches to bulk index at once. 
     Higher batch sizes require more memory on the indexing server.
     """
-    BATCH_SIZE = 100
+    BATCH_SIZE = 1000
 
     """
     The name of the id attribute on the indexing model. Override in subclass to change.
@@ -473,6 +473,18 @@ class DEMDocType(ESDocType):
     @classmethod
     def get_db_objects_by_id(cls, ids):
         return cls.get_queryset().filter(**{"{}__in".format(cls.PK_ATTRIBUTE): ids})
+
+    @classmethod
+    def get_dem_index(cls):
+        # TODO: what should happen if DEMDocType instance has no active version?
+        # currently, if this exact version is not found, it will return None
+        return DEMIndexManager.get_dem_index(cls._doc_type.index, exact_mode=True)
+
+    @classmethod
+    def get_index_model(cls):
+        dem_index = cls.get_dem_index()
+        index_model = dem_index.get_index_model()
+        return index_model
 
     @classmethod
     def generate_batches(cls, qs=None, batch_size=BATCH_SIZE, total_items=None, update_index_action=None, verbosity=1,
@@ -585,11 +597,20 @@ class DEMDocType(ESDocType):
         from django_elastic_migrations.models import PartialUpdateIndexAction
 
         if update_index_action is None:
-            # TODO: fill in index and index_version when called from bulk upload
-
+            # this is only the case when an individual index
+            # calls batched_bulk_index() on their own
+            index_model = cls.get_index_model()
+            active_index_version = index_model.active_version
+            if not active_index_version:
+                warning = (
+                    "No active index version found for {}; \n"
+                    "aborting bulk upload.".format(index_model.name)
+                )
+                logger.warning(warning)
+                return 0, total
             update_index_action = PartialUpdateIndexAction(
-                index=None,
-                index_version=None
+                index=index_model,
+                index_version=active_index_version
             )
             update_index_action.save()
 
@@ -608,13 +629,12 @@ class DEMDocType(ESDocType):
         else:
             django_multiprocess = None
 
-            # importing to avoid circular loop
-            from django_elastic_migrations.models import UpdateIndexAction
-            if workers == UpdateIndexAction.USE_ALL_WORKERS:
+            if workers == USE_ALL_WORKERS:
                 # default is to use all workers
                 workers = None
 
-            django_multiprocess = DjangoMultiProcess(workers, debug_print=True)
+            django_multiprocess = DjangoMultiProcess(
+                workers, log_debug_info=verbosity > 1)
 
             with django_multiprocess:
                 django_multiprocess.map(
@@ -627,9 +647,10 @@ class DEMDocType(ESDocType):
         num_failures = 0
         if results:
             for result in results:
-                result_successes, result_failures = result
-                num_successes += result_successes
-                num_failures += result_failures
+                if result:
+                    result_successes, result_failures = result
+                    num_successes += result_successes
+                    num_failures += result_failures
         return num_successes, num_failures
 
 
@@ -794,7 +815,7 @@ class DEMIndex(ESIndex):
 
     def get_version_model(self):
         """
-        If this index was instantiated with an id, return the VersionModel associated
+        If this index was instantiated with an id, return the IndexVersion associated
         with it. If not, return the active version index name
         :return:
         """
