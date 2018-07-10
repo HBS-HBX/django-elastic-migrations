@@ -21,7 +21,14 @@ class Command(ESCommand):
             '--workers', nargs="?",
             default=0,
             const=UpdateIndexAction.USE_ALL_WORKERS,
-            help='Allows for the use multiple workers to parallelize indexing.'
+            help=(
+                "Allows for using multiple workers to parallelize indexing. \n"
+                "To use all available workers, simply supply --workers. \n"
+                "To use a certain number of workers, supply --workers 8. \n"
+                "If this option is used, it is recommended to implement and add \n"
+                "DJANGO_ELASTIC_MIGRATIONS_CLOSE_CONNECTIONS and "
+                "DJANGO_ELASTIC_MIGRATIONS_RECREATE_CONNECTIONS function paths to your Django settings."
+            )
         )
 
     def handle(self, *args, **options):
