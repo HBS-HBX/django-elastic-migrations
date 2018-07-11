@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-"""
-Database models for django_elastic_migrations.
-"""
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-from __future__ import absolute_import, unicode_literals, print_function
-
+import json
 import sys
+import time
 import traceback
 
-from django.db import models
+import os
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch import TransportError
@@ -17,6 +16,7 @@ from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexM
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
 from django_elastic_migrations.utils.log import get_logger
+from django_elastic_migrations.utils.multiprocessing_utils import close_service_connections
 
 logger = get_logger()
 
@@ -48,7 +48,7 @@ class Index(models.Model):
         Get the versions"
         :return:
         """
-        return self.indexversion_set.filter(deleted_time__isnull=True).last()
+        return self.indexversion_set.filter(deleted_time__isnull=True, prefix=environment_prefix).last()
 
     def get_new_version(self, dem_index=None):
         """
@@ -75,12 +75,6 @@ class Index(models.Model):
 
     def get_available_versions_with_prefix(self, prefix=environment_prefix):
         return self.get_available_versions().filter(prefix=prefix)
-
-    def get_nonactivated_versions(self):
-        qs = self.get_available_versions()
-        if self.active_version:
-            return qs.exclude(id__in=[self.active_version.id])
-        return qs
 
     def _get_other_versions(
         self, given_version=None, prefix=environment_prefix, older=True):
@@ -211,9 +205,10 @@ class IndexAction(models.Model):
     ACTION_DEACTIVATE_INDEX = 'deactivate_index'
     ACTION_CLEAR_INDEX = 'clear_index'
     ACTION_DROP_INDEX = 'drop_index'
+    ACTION_PARTIAL_UPDATE_INDEX = 'partial_update_index'
     ACTIONS_ALL = [
         ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX,
-        ACTION_DEACTIVATE_INDEX, ACTION_CLEAR_INDEX, ACTION_DROP_INDEX
+        ACTION_DEACTIVATE_INDEX, ACTION_CLEAR_INDEX, ACTION_DROP_INDEX, ACTION_PARTIAL_UPDATE_INDEX
     ]
     ACTIONS_ALL_CHOICES = [(i, i) for i in ACTIONS_ALL]
 
@@ -222,6 +217,9 @@ class IndexAction(models.Model):
     # linked models
     index = models.ForeignKey(Index)
     index_version = models.ForeignKey(IndexVersion, null=True)
+
+    # if this IndexAction has a parent IndexAction, its id is here
+    parent = models.ForeignKey("self", null=True, related_name="children")
 
     # which management command was run
     action = models.CharField(choices=ACTIONS_ALL_CHOICES, max_length=64)
@@ -240,9 +238,12 @@ class IndexAction(models.Model):
 
     docs_affected = models.IntegerField(default=0)
 
+    task_kwargs = models.TextField(verbose_name="json of kwargs to pass to action", default="{}")
+
     def __init__(self, *args, **kwargs):
         action = self._meta.get_field('action')
         action.default = self.DEFAULT_ACTION
+        self.verbosity = kwargs.pop('verbosity', 1)
         super(IndexAction, self).__init__(*args, **kwargs)
 
     def __str__(self):
@@ -294,8 +295,9 @@ class IndexAction(models.Model):
         self.index = index_instance
         self.to_in_progress()
         try:
-            self.perform_action(dem_index, *args, **kwargs)
+            result = self.perform_action(dem_index, *args, **kwargs)
             self.to_complete()
+            return result
         except Exception as ex:
             log_params = {
                 "action": self.action,
@@ -325,6 +327,24 @@ class IndexAction(models.Model):
         index_action.save()
         return index_action
 
+    def add_to_parent_docs_affected(self, num_docs):
+        """
+        If this IndexAction has a parent IndexAction, atomically add the number of docs
+        affected to the parent's docs affected
+        :param num_docs: int, number of docs changed in Elasticsearch
+        """
+        parent_docs_affected = self.parent.docs_affected
+        if self.parent and num_docs:
+            with transaction.atomic():
+                parent = (
+                    IndexAction.objects.select_for_update()
+                        .get(id=self.parent.id)
+                )
+                parent.docs_affected += num_docs
+                parent_docs_affected = parent_docs_affected
+                parent.save()
+        return parent_docs_affected
+
 
 """
 ↓ Action Mixins Below ↓
@@ -333,6 +353,7 @@ Mixins are used to provide handling for common parameters
 """
 
 
+# noinspection PyUnresolvedReferences
 class GenericModeMixin(object):
     """
     Used to pop a kwarg off and attach it to self in an IndexAction
@@ -772,12 +793,17 @@ class DropIndexAction(OlderModeMixin, IndexAction):
 class UpdateIndexAction(NewerModeMixin, IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_UPDATE_INDEX
 
+    USE_ALL_WORKERS = 999
+
     class Meta:
         # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
         proxy = True
 
     def __init__(self, *args, **kwargs):
         self.resume_mode = kwargs.pop('resume_mode', False)
+        # :param workers: number of workers to parallelize indexing
+        self.workers = kwargs.pop('workers', 0)
+        self.batch_size = kwargs.pop('batch_size', 0)
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
         self._batch_num = 0
         self._expected_remaining = 0
@@ -789,6 +815,56 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         self.docs_affected = 0
 
     def perform_action(self, dem_index, *args, **kwargs):
+        self.prepare_action(dem_index)
+
+        doc_type = dem_index.doc_type()
+
+        self._last_update = None
+        if self.resume_mode:
+            self._last_update = self.index_version.get_last_time_update_called(before_action=self)
+            if not self._last_update:
+                self._last_update = 'never'
+            self.add_log(
+                "--resume detected; Checking the last time update was called: "
+                u"\n - index version: {_index_version_name} "
+                u"\n - update date: {_last_update} ", use_self_dict_format=True
+            )
+
+        self.add_log("Starting batched bulk update ...")
+        batch_size = doc_type.BATCH_SIZE
+        if self.batch_size:
+            batch_size = self.batch_size
+            self.add_log("using manually specified batch size of {}".format(batch_size))
+        else:
+            self.add_log("using class default batch size of {}".format(batch_size))
+
+        success, failed = doc_type.batched_bulk_index(
+            last_updated_datetime=self._last_update,
+            workers=self.workers,
+            update_index_action=self,
+            batch_size=batch_size,
+            verbosity=self.verbosity
+        )
+
+        self.refresh_from_db()
+        self._num_success, self._num_failed = success, failed
+        self._indexed_docs = success + failed
+        self.docs_affected = success
+        if not failed:
+            self.add_log("Removing completed child tasks, because there were no failures\n")
+            self.children.all().delete()
+
+        self.add_log(
+            (
+                "Completed with indexing {_index_version_name}: "
+                " # successful updates: {_num_success}\n"
+                " # failed updates: {_num_failed}\n"
+                " # total docs attempted to update: {_indexed_docs}\n"
+            ),
+            use_self_dict_format=True
+        )
+
+    def prepare_action(self, dem_index):
         self._index_name = self.index.name
         self._index_version_id = dem_index.get_version_id()
 
@@ -850,60 +926,129 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 "Handling update of index '{_index_name}' using its active index version "
                 "'{_index_version_name}'", use_self_dict_format=True)
 
+
+class PartialUpdateIndexAction(UpdateIndexAction):
+    """
+    An IndexAction that updates a subset of the documents.
+    Kwargs are saved in the database and can be refreshed.
+    """
+
+    DEFAULT_ACTION = IndexAction.ACTION_PARTIAL_UPDATE_INDEX
+    REQUIRED_TASK_KWARGS = [
+        "batch_num",
+        "pks",
+        "start_index",
+        "end_index",
+        "max_batch_num",
+        "total_items",
+        "batch_num_items",
+        "verbosity",
+        "max_retries"
+    ]
+
+    class Meta:
+        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
+        proxy = True
+
+    def set_task_kwargs(self, kwargs):
+        new_kwargs = {}
+        for required_attribute in self.REQUIRED_TASK_KWARGS:
+            new_kwargs[required_attribute] = kwargs[required_attribute]
+        self.task_kwargs = json.dumps(new_kwargs)
+
+    def perform_action(self, dem_index, *args, **kwargs):
+        self.add_log("Starting partial bulk update ...")
+
+        kwargs = json.loads(self.task_kwargs)
+
+        self.prepare_action(dem_index)
+
         doc_type = dem_index.doc_type()
 
-        self._last_update = None
-        if self.resume_mode:
-            self._last_update = self.index_version.get_last_time_update_called(before_action=self)
-            if not self._last_update:
-                self._last_update = 'never'
-            self.add_log(
-                "--resume detected; Checking the last time update was called: "
-                "\n - index version: {_index_version_name} "
-                "\n - update date: {_last_update} ", use_self_dict_format=True
-            )
+        start = kwargs["start_index"]
+        end = kwargs["end_index"]
+        total = kwargs["total_items"]
+        verbosity = kwargs["verbosity"]
+        max_retries = kwargs["max_retries"]
+        self._batch_num = kwargs["batch_num"]
+        self._max_batch_num = kwargs["max_batch_num"]
 
-        self.add_log("Starting batched bulk update ...")
-        doc_type.batched_bulk_index(
-            last_updated_datetime=self._last_update,
-            before_batch_cb=self.before_batch_update,
-            after_batch_cb=self.batch_after_update
-        )
+        qs = doc_type.get_queryset()
+        current_qs = qs[start:end]
+
+        is_parent_process = hasattr(os, "getppid") and os.getpid() == os.getppid()
+
+        if verbosity >= 2:
+            max_end = min(end, total)
+            if is_parent_process:
+                self.add_log("  indexed %s - %d of %d." % (start + 1, max_end, total))
+            else:
+                self.add_log("  indexed %s - %d of %d (worker PID: %s)." % (start + 1, max_end, total, os.getpid()))
+
+        retries = 0
+        success, failed = (0, 0)
+        reindex_iterator = doc_type.get_reindex_iterator(current_qs)
+        while retries < max_retries:
+            try:
+                success, failed = doc_type.bulk_index(reindex_iterator)
+                if verbosity >= 2 and retries:
+                    self.add_log('Completed indexing {} - {}, tried {}/{} times'.format(
+                        start + 1, end, retries + 1, max_retries))
+                break
+            except Exception as exc:
+                retries += 1
+                error_context = {
+                    'start': start + 1,
+                    'end': end,
+                    'retries': retries,
+                    'max_retries': max_retries,
+                    'pid': os.getpid(),
+                    'exc': exc
+                }
+                error_msg = 'Failed indexing %(start)s - %(end)s (retry %(retries)s/%(max_retries)s): %(exc)s'
+                if not is_parent_process:
+                    error_msg += ' (pid %(pid)s): %(exc)s'
+                if retries >= max_retries:
+                    logger.error(error_msg, error_context, exc_info=True)
+                    raise
+                elif verbosity >= 2:
+                    logger.warning(error_msg, error_context, exc_info=True)
+                # If going to try again, sleep a bit before
+                time.sleep(2 ** retries)
+
+        self._num_success = success
+        self.docs_affected = success
+        self._parent_docs_affected = self.add_to_parent_docs_affected(success)
+        self._total_docs_remaining = total - self._parent_docs_affected
+        self._runtime = timezone.now() - self.start
+        batches_remaining = self._max_batch_num - self._batch_num
+        remaining_time = self._runtime * batches_remaining
+        self._runtime_remaining = str(remaining_time)
+        self._num_failed = failed
+        self._indexed_docs = success + failed
+        self._pid = os.getpid()
 
         self.add_log(
             (
-                "Completed with indexing {_index_version_name}: "
-                " # successful updates: {_num_success}\n"
-                " # failed updates: {_num_failed}\n"
-                " # total docs attempted to update: {_indexed_docs}\n"
+                "Completed with {_index_version_name} update batch {_batch_num}/{_max_batch_num}: \n"
+                " # batch successful updates: {_num_success}\n"
+                " # batch failed updates: {_num_failed}\n"
+                " # batch docs attempted to update: {_indexed_docs}\n"
+                " # total docs updated: {_parent_docs_affected}\n"
+                " # total docs remaining: {_total_docs_remaining}\n"
+                " # batch runtime: {_runtime}\n"
+                " # projected, simplified linear runtime remaining: {_runtime_remaining}\n"
+                " # pid: {_pid}\n"
             ),
             use_self_dict_format=True
         )
+        return self._num_success, self._num_failed
 
-    def before_batch_update(self, batch_num, num_batches, total_items):
-        self._batch_num = batch_num
-        self._num_batches = num_batches
-        self._total_items = total_items
-        self._expected_remaining = total_items
-
-        self.add_log("Bulk index update batch {_batch_num} of {_num_batches}", use_self_dict_format=True)
-
-    def batch_after_update(self, success, failed, batch_num, num_batches, total_items):
-        self._num_success += success
-        self._num_failed += failed
-        self._batch_num = batch_num
-        self._num_batches = num_batches
-        self._indexed_docs += success + failed
-        self._expected_remaining = total_items - self._indexed_docs
-        self.docs_affected += success
-
-        self.add_log(
-            (
-                "Indexing {_index_version_name} - batch {_batch_num}:\n"
-                " # successful updates in batch: {_num_success}\n"
-                " # failed updates in batch: {_num_failed}\n"
-                " # total docs attempted to update thus far: {_indexed_docs}\n"
-                " # expected remaining: {_expected_remaining}\n"
-            ),
-            use_self_dict_format=True
-        )
+    @staticmethod
+    def do_partial_update(index_action_id):
+        # importing here to avoid a circular loop
+        index_action = PartialUpdateIndexAction.objects.get(id=index_action_id)
+        index_version = index_action.index_version
+        dem_index_exact_name = index_version.name
+        dem_index = DEMIndexManager.get_dem_index(dem_index_exact_name, exact_mode=True)
+        return index_action.start_action(dem_index)

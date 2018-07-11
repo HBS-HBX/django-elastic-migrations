@@ -43,6 +43,19 @@ if not dem_index_paths:
         "]"
     )
 
+
+user_close_service_connections = None
+user_close_service_connections_path = getattr(settings, "DJANGO_ELASTIC_MIGRATIONS_CLOSE_CONNECTIONS", "")
+if user_close_service_connections_path:
+    user_close_service_connections = loading.import_module_element(user_close_service_connections_path)
+
+
+user_recreate_service_connections = None
+user_recreate_service_connections_path = getattr(settings, "DJANGO_ELASTIC_MIGRATIONS_RECREATE_CONNECTIONS", "")
+if user_recreate_service_connections_path:
+    user_recreate_service_connections = loading.import_module_element(user_recreate_service_connections_path)
+
+
 es_test_prefix = "test_"
 
 
