@@ -48,7 +48,7 @@ class Index(models.Model):
         Get the versions"
         :return:
         """
-        return self.indexversion_set.filter(deleted_time__isnull=True).last()
+        return self.indexversion_set.filter(deleted_time__isnull=True, prefix=environment_prefix).last()
 
     def get_new_version(self, dem_index=None):
         """
@@ -75,12 +75,6 @@ class Index(models.Model):
 
     def get_available_versions_with_prefix(self, prefix=environment_prefix):
         return self.get_available_versions().filter(prefix=prefix)
-
-    def get_nonactivated_versions(self):
-        qs = self.get_available_versions()
-        if self.active_version:
-            return qs.exclude(id__in=[self.active_version.id])
-        return qs
 
     def _get_other_versions(
         self, given_version=None, prefix=environment_prefix, older=True):
@@ -161,23 +155,8 @@ class IndexVersion(models.Model):
 
     @property
     def name(self):
-        """
-        This is the name to use for queries to elasticsearch.
-        It includes the environment prefix.
-        :return:
-        """
-        return "{environment_prefix}{dem_index_exact_name}".format(
+        return "{environment_prefix}{base_name}-{id}".format(
             environment_prefix=self.prefix,
-            dem_index_exact_name=self.dem_index_exact_name)
-
-    @property
-    def dem_index_exact_name(self):
-        """
-        This is the index name to use to look up this index version in the
-        DEMIndexManager. It does NOT include the environment prefix.
-        :return:
-        """
-        return "{base_name}-{id}".format(
             base_name=self.index.name, id=self.id)
 
     def get_last_time_update_called(self, before_action=None):
@@ -1070,19 +1049,6 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         # importing here to avoid a circular loop
         index_action = PartialUpdateIndexAction.objects.get(id=index_action_id)
         index_version = index_action.index_version
-        dem_index_exact_name = index_version.dem_index_exact_name
+        dem_index_exact_name = index_version.name
         dem_index = DEMIndexManager.get_dem_index(dem_index_exact_name, exact_mode=True)
         return index_action.start_action(dem_index)
-
-    @staticmethod
-    def do_parallel_worker_partial_update(index_action_id):
-        """
-        This method is called via a multiprocessing worker.
-        Django doesn't like to share the same connection in multiprocessing,
-        so we need to close the connections first, then call do_worker.
-        :param index_action_id: the id of the IndexAction to execute
-        :return: results of the action
-        """
-        close_service_connections()
-        # TBD: Request that the connection clear out any transient sessions, file handles, etc
-        return PartialUpdateIndexAction.do_partial_update(index_action_id)

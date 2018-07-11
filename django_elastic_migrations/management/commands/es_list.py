@@ -58,7 +58,7 @@ class Command(ESCommand):
             try:
                 for dem_index in indexes:
                     dem_index_model = dem_index.get_index_model()
-                    index_versions = dem_index_model.get_available_versions()
+                    index_versions = dem_index_model.get_available_versions_with_prefix()
                     if index_versions:
                         for index_version in index_versions:
                             num_docs = DEMIndexManager.get_es_index_doc_count(index_version.name)

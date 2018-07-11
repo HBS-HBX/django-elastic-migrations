@@ -147,6 +147,10 @@ class DEMIndexManager(object):
         if exact_mode and index_name:
             separator_index = index_name.rindex("-")
             base_name = index_name[:separator_index]
+            if environment_prefix and base_name.startswith(environment_prefix):
+                # strip the environment prefix, which isn't in the indexes dict
+                new_base_name = base_name[len(environment_prefix):]
+                base_name = new_base_name
             version_number = index_name[separator_index + 1:]
             index_name = base_name
         if version_number:
@@ -609,6 +613,7 @@ class DEMDocType(ESDocType):
             # handles the case when an individual index
             # calls batched_bulk_index() on their own, outside of es_update.
             index_model = cls.get_index_model()
+
             active_index_version = index_model.active_version
             if not active_index_version:
                 warning = (
@@ -617,10 +622,12 @@ class DEMDocType(ESDocType):
                 )
                 logger.warning(warning)
                 return 0, total
+
             update_index_action = PartialUpdateIndexAction(
                 index=index_model,
                 index_version=active_index_version
             )
+
             update_index_action.save()
 
         if not batch_size:
@@ -816,7 +823,7 @@ class DEMIndex(ESIndex):
         return get_index_hash_and_json(es_index)
 
     def get_index_model(self):
-        return DEMIndexManager.get_index_model(self.__base_name, False)
+        return DEMIndexManager.get_index_model(self.__base_name, create_on_not_found=False)
 
     def get_num_docs(self):
         return self.search().query(ESQ('match_all')).count()
