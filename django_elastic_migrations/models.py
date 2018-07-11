@@ -161,8 +161,23 @@ class IndexVersion(models.Model):
 
     @property
     def name(self):
-        return "{environment_prefix}{base_name}-{id}".format(
+        """
+        This is the name to use for queries to elasticsearch.
+        It includes the environment prefix.
+        :return:
+        """
+        return "{environment_prefix}{dem_index_exact_name}".format(
             environment_prefix=self.prefix,
+            dem_index_exact_name=self.dem_index_exact_name)
+
+    @property
+    def dem_index_exact_name(self):
+        """
+        This is the index name to use to look up this index version in the
+        DEMIndexManager. It does NOT include the environment prefix.
+        :return:
+        """
+        return "{base_name}-{id}".format(
             base_name=self.index.name, id=self.id)
 
     def get_last_time_update_called(self, before_action=None):
@@ -1054,7 +1069,9 @@ class PartialUpdateIndexAction(UpdateIndexAction):
     def do_partial_update(index_action_id):
         # importing here to avoid a circular loop
         index_action = PartialUpdateIndexAction.objects.get(id=index_action_id)
-        dem_index = DEMIndexManager.get_dem_index(index_action.index.name)
+        index_version = index_action.index_version
+        dem_index_exact_name = index_version.dem_index_exact_name
+        dem_index = DEMIndexManager.get_dem_index(dem_index_exact_name, exact_mode=True)
         return index_action.start_action(dem_index)
 
     @staticmethod

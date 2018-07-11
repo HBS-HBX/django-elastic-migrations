@@ -606,8 +606,8 @@ class DEMDocType(ESDocType):
         from django_elastic_migrations.models import PartialUpdateIndexAction
 
         if update_index_action is None:
-            # this is only the case when an individual index
-            # calls batched_bulk_index() on their own
+            # handles the case when an individual index
+            # calls batched_bulk_index() on their own, outside of es_update.
             index_model = cls.get_index_model()
             active_index_version = index_model.active_version
             if not active_index_version:
