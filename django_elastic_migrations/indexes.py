@@ -533,7 +533,13 @@ class DEMDocType(ESDocType):
             # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
             end_index = start_index + batch_size
             batch_qs = qs[start_index:end_index]
-            ids_in_batch = list(batch_qs.values_list(cls.PK_ATTRIBUTE, flat=True))
+            try:
+                ids_in_batch = list(batch_qs.values_list(cls.PK_ATTRIBUTE, flat=True))
+            except TypeError as e:
+                if "values_list() got an unexpected keyword argument 'flat'" in e:
+                    ids_in_batch = [str(id) for id in list(batch_qs.values_list(cls.PK_ATTRIBUTE))]
+                else:
+                    raise
 
             batch_index_action = PartialUpdateIndexAction(
                 index=update_index_action.index,
