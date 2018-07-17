@@ -1011,7 +1011,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         start = kwargs["start_index"]
         end = kwargs["end_index"]
-        total = kwargs["total_docs_expected"]
+        self._total_docs_expected = kwargs["total_docs_expected"]
         verbosity = kwargs["verbosity"]
         max_retries = kwargs["max_retries"]
         self._batch_num = kwargs["batch_num"]
@@ -1066,7 +1066,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         self._num_success = success
         self.docs_affected = success
         self._parent_docs_affected = self.add_to_parent_docs_affected(success)
-        self._total_docs_remaining = total - self._parent_docs_affected
+        self._total_docs_remaining = self._total_docs_expected - self._parent_docs_affected
         self._runtime = timezone.now() - self.start
         batches_remaining = self._max_batch_num - self._batch_num
         remaining_time = self._runtime * batches_remaining
@@ -1081,6 +1081,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                 " # batch failed updates: {_num_failed}\n"
                 " # batch docs attempted to update: {_indexed_docs}\n"
                 " # total docs updated: {_parent_docs_affected}\n"
+                " # total docs expected: {_total_docs_expected}\n"
                 " # total docs remaining: {_total_docs_remaining}\n"
                 " # batch runtime: {_runtime}\n"
                 " # projected, simplified linear runtime remaining: {_runtime_remaining}\n"
