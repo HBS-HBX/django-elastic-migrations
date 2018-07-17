@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import datetime
 import json
 import sys
 import time
@@ -349,7 +350,7 @@ class IndexAction(models.Model):
                         .get(id=self.parent.id)
                 )
                 parent.docs_affected += num_docs
-                parent_docs_affected = parent_docs_affected
+                parent_docs_affected = parent.docs_affected
                 parent.save()
         return parent_docs_affected
 
@@ -895,6 +896,24 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             else:
                 self.add_logs("No child tasks found! Please ensure there was work to be done.", level=logger.WARNING)
 
+        self._runtime = timezone.now() - self.start
+        self._docs_per_sec = self._indexed_docs / self._runtime.total_seconds()
+
+        runtimes = []
+        docs_per_batch = []
+        for child in self.children.all():
+            delta = child.end - child.start
+            runtimes.append(delta.total_seconds())
+            docs_per_batch.append(child.docs_affected)
+
+        self._avg_batch_runtime = 'unknown'
+        if runtimes:
+            self._avg_batch_runtime = str(datetime.timedelta(seconds=sum(runtimes) / len(runtimes)))
+
+        self._avg_docs_per_batch = 'unknown'
+        if docs_per_batch:
+            self._avg_docs_per_batch = sum(docs_per_batch) / len(docs_per_batch)
+
         self.add_log(
             (
                 "Completed updating index {_index_version_name}: \n"
@@ -902,6 +921,10 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 " # failed updates: {_num_failed}\n"
                 " # total docs attempted to update: {_indexed_docs}\n"
                 " # batch size: {batch_size}\n"
+                " # batch avg num docs: {_avg_docs_per_batch}\n"
+                " # batch avg runtime: {_avg_batch_runtime}\n"
+                " # total runtime: {_runtime}\n"
+                " # docs per second: {_docs_per_sec}\n"
                 " # workers: {workers}\n"
                 " # verbosity: {verbosity}\n"
             ),
@@ -1065,14 +1088,26 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         self._num_success = success
         self.docs_affected = success
-        self._parent_docs_affected = self.add_to_parent_docs_affected(success)
-        self._total_docs_remaining = self._total_docs_expected - self._parent_docs_affected
-        self._runtime = timezone.now() - self.start
-        batches_remaining = self._max_batch_num - self._batch_num
-        remaining_time = self._runtime * batches_remaining
-        self._runtime_remaining = str(remaining_time)
         self._num_failed = failed
         self._indexed_docs = success + failed
+
+        self._parent_docs_affected = int(self.add_to_parent_docs_affected(success))
+        self._parent_runtime = timezone.now() - self.parent.start
+        self._runtime = timezone.now() - self.start
+
+        self._total_docs_remaining = self._total_docs_expected - self._parent_docs_affected
+        if self._parent_docs_affected:
+            self._parent_docs_per_sec = self._parent_docs_affected / self._parent_runtime.total_seconds()
+        else:
+            self._parent_docs_per_sec = self._indexed_docs / self._runtime.total_seconds()
+
+        self._total_docs_remaining_pct = 100 * self._total_docs_remaining // self._total_docs_expected
+        self._parent_docs_affected_pct = 100 - self._total_docs_remaining_pct
+        if self._parent_docs_per_sec:
+            self._expected_parent_runtime = str(datetime.timedelta(
+                seconds= self._total_docs_remaining / self._parent_docs_per_sec))
+        else:
+            self._expected_parent_runtime = 'unknown'
 
         self.add_log(
             (
@@ -1080,11 +1115,11 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                 " # batch successful updates: {_num_success}\n"
                 " # batch failed updates: {_num_failed}\n"
                 " # batch docs attempted to update: {_indexed_docs}\n"
-                " # total docs updated: {_parent_docs_affected}\n"
-                " # total docs expected: {_total_docs_expected}\n"
-                " # total docs remaining: {_total_docs_remaining}\n"
                 " # batch runtime: {_runtime}\n"
-                " # projected, simplified linear runtime remaining: {_runtime_remaining}\n"
+                " # parent total docs updated: {_parent_docs_affected} ({_parent_docs_affected_pct}%)\n"
+                " # parent total docs expected: {_total_docs_expected}\n"
+                " # parent total docs remaining: {_total_docs_remaining} ({_total_docs_remaining_pct}%)\n"
+                " # parent estimated runtime remaining: {_expected_parent_runtime}\n"
                 " # pid: {_pid}\n"
             ),
             use_self_dict_format=True
