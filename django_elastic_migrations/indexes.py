@@ -528,6 +528,7 @@ class DEMDocType(ESDocType):
 
         # importing to avoid circular loop
         from django_elastic_migrations.models import PartialUpdateIndexAction
+        log_messages = []
         for start_index in range(0, total_items, batch_size):
             # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
             # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
@@ -546,7 +547,7 @@ class DEMDocType(ESDocType):
                 index_version=update_index_action.index_version,
                 parent=update_index_action
             )
-            batch_index_action.set_task_kwargs({
+            task_kwargs = {
                 "batch_num": start_index // batch_size + 1,
                 "pks": ids_in_batch,
                 "start_index": start_index,
@@ -556,10 +557,21 @@ class DEMDocType(ESDocType):
                 "batch_num_items": len(ids_in_batch),
                 "verbosity": verbosity,
                 "max_retries": max_retries
-            })
+            }
+            batch_index_action.set_task_kwargs(task_kwargs)
             batches.append(batch_index_action)
 
+            log_messages.append(
+                "Queueing partial update index task {batch_num}/{max_batch_num}: \n"
+                "  - start_index: {start_index}\n"
+                "  - end_index: {end_index}\n"
+                "  - batch_num_items: {batch_num_items}\n".format(**task_kwargs)
+            )
+
         PartialUpdateIndexAction.objects.bulk_create(batches)
+
+        log_messages.append("Done queueing partial update index tasks. Total Items: {}".format(total_items))
+        update_index_action.add_logs(log_messages)
 
         return batches
 
@@ -638,6 +650,7 @@ class DEMDocType(ESDocType):
 
         if not batch_size:
             batch_size = cls.BATCH_SIZE
+
         cls.generate_batches(
             qs, batch_size, total_items=total,
             update_index_action=update_index_action, verbosity=verbosity)
@@ -657,8 +670,7 @@ class DEMDocType(ESDocType):
                 # default is to use all workers
                 workers = None
 
-            django_multiprocess = DjangoMultiProcess(
-                workers, log_debug_info=verbosity > 1)
+            django_multiprocess = DjangoMultiProcess(workers, log_debug_info=verbosity > 1)
 
             with django_multiprocess:
                 django_multiprocess.map(

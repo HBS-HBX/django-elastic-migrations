@@ -159,11 +159,13 @@ class DjangoMultiProcess(object):
 
     def __init__(self, num_workers=None, max_workers=None, log_debug_info=False, status_interval=20):
 
+        vcpus = cpu_count()
+
         if num_workers is None:
 
             # always use at least one thread
-            # TODO: consider leaving one cpu remaining for timer updates, etc
-            self.num_workers = cpu_count()
+            # leave one cpu remaining for timer updates, etc
+            self.num_workers = vcpus - 1
             if self.num_workers < 2:
                 self.num_workers = 1
 
@@ -177,8 +179,7 @@ class DjangoMultiProcess(object):
 
         self.status_interval = status_interval
 
-        if log_debug_info:
-            logger.debug("Using %s workers" % self.num_workers)
+        logger.info("Using {} multiprocessing workers out of {} logical CPUs".format(self.num_workers, vcpus))
 
         # synchronous result queue will be instantiated in self.map()
         self.queue = None
@@ -233,7 +234,7 @@ class DjangoMultiProcess(object):
                     total_secs = total_time.done() // 1000
 
                     percent = (self.queue.qsize() * 100) // self.job_count
-                    logger.debug("--------- {}% done ({}s elapsed) ---------".format(percent, total_secs))
+                    logger.info("--------- {}% done ({}s elapsed) ---------".format(percent, total_secs))
 
     def results(self):
         """

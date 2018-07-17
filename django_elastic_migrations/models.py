@@ -5,6 +5,7 @@ import json
 import sys
 import time
 import traceback
+from multiprocessing import cpu_count
 
 import os
 from django.db import models, transaction
@@ -16,7 +17,7 @@ from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexM
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
 from django_elastic_migrations.utils.log import get_logger
-from django_elastic_migrations.utils.multiprocessing_utils import close_service_connections
+from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
 
 logger = get_logger()
 
@@ -261,6 +262,12 @@ class IndexAction(models.Model):
             msg = msg.format(**self.__dict__)
         logger.log(level, msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
+        if commit and not 'test' in sys.argv:
+            self.save()
+
+    def add_logs(self, msgs, commit=True, use_self_dict_format=False, level=logger.INFO):
+        for msg in msgs:
+            self.add_log(msg, commit=False, use_self_dict_format=use_self_dict_format, level=level)
         if commit and not 'test' in sys.argv:
             self.save()
 
@@ -831,35 +838,71 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             )
 
         self.add_log("Starting batched bulk update ...")
-        batch_size = doc_type.BATCH_SIZE
         if self.batch_size:
-            batch_size = self.batch_size
-            self.add_log("using manually specified batch size of {}".format(batch_size))
+            self.add_log("using manually specified batch size of {}".format(self.batch_size))
         else:
-            self.add_log("using class default batch size of {}".format(batch_size))
+            self.batch_size = doc_type.BATCH_SIZE
+            self.add_log("using class default batch size of {}".format(self.batch_size))
+
+        if self.workers:
+            self.workers = int(self.workers)
+            self._num_vcpus = cpu_count()
+            self.add_log("detected {_num_vcpus} logical cpus", use_self_dict_format=True)
+
+            if self.workers == USE_ALL_WORKERS:
+                self.workers = self._num_vcpus - 1
+                if self.workers < 2:
+                    self.workers = 1
+                self.add_log("using multiprocessing with {workers} worker(s) out of {_num_vcpus} logcial CPUs", use_self_dict_format=True)
+
+            else:
+                self.add_log("using multiprocessing with {workers} worker(s)", use_self_dict_format=True)
+
+        self.add_log(
+            (
+                "About to update index {_index_version_name}:\n"
+                " # batch size: {batch_size}\n"
+                " # workers: {workers}\n"
+                " # verbosity: {verbosity}\n"
+            ),
+            use_self_dict_format=True
+        )
 
         success, failed = doc_type.batched_bulk_index(
             last_updated_datetime=self._last_update,
             workers=self.workers,
             update_index_action=self,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             verbosity=self.verbosity
         )
 
         self.refresh_from_db()
         self._num_success, self._num_failed = success, failed
-        self._indexed_docs = success + failed
-        self.docs_affected = success
-        if not failed:
-            self.add_log("Removing completed child tasks, because there were no failures\n")
-            self.children.all().delete()
+        self._indexed_docs = self._num_success + self._num_failed
+        self.docs_affected = self._num_success
+
+        child_statuses = self.children.values_list('status', flat=True)
+        if all([c == IndexAction.STATUS_COMPLETE for c in child_statuses]):
+            self.add_log("All child tasks are completed successfully")
+        else:
+            bad_children = list(self.children.exclude(status__in=IndexAction.STATUS_COMPLETE))
+            if bad_children:
+                err_logs = []
+                for bad_child in bad_children:
+                    err_logs.append("task id {} has status {}".format(bad_child.id, bad_child.status))
+                self.add_logs(err_logs)
+            else:
+                self.add_logs("No child tasks found! Please ensure there was work to be done.", level=logger.WARNING)
 
         self.add_log(
             (
-                "Completed with indexing {_index_version_name}: "
+                "Completed updating index {_index_version_name}: "
                 " # successful updates: {_num_success}\n"
                 " # failed updates: {_num_failed}\n"
                 " # total docs attempted to update: {_indexed_docs}\n"
+                " # batch size: {batch_size}\n"
+                " # workers: {workers}\n"
+                " # verbosity: {verbosity}\n"
             ),
             use_self_dict_format=True
         )
