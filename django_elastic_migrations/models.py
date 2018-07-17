@@ -262,13 +262,13 @@ class IndexAction(models.Model):
             msg = msg.format(**self.__dict__)
         logger.log(level, msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
-        if commit and not 'test' in sys.argv:
+        if commit and 'test' not in sys.argv:
             self.save()
 
     def add_logs(self, msgs, commit=True, use_self_dict_format=False, level=logger.INFO):
         for msg in msgs:
             self.add_log(msg, commit=False, use_self_dict_format=use_self_dict_format, level=level)
-        if commit and not 'test' in sys.argv:
+        if commit and 'test' not in sys.argv:
             self.save()
 
     def perform_action(self, dem_index, *args, **kwargs):
@@ -897,7 +897,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
         self.add_log(
             (
-                "Completed updating index {_index_version_name}: "
+                "Completed updating index {_index_version_name}: \n"
                 " # successful updates: {_num_success}\n"
                 " # failed updates: {_num_failed}\n"
                 " # total docs attempted to update: {_indexed_docs}\n"
@@ -984,7 +984,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         "start_index",
         "end_index",
         "max_batch_num",
-        "total_items",
+        "total_docs_expected",
         "batch_num_items",
         "verbosity",
         "max_retries"
@@ -1011,23 +1011,27 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         start = kwargs["start_index"]
         end = kwargs["end_index"]
-        total = kwargs["total_items"]
+        total = kwargs["total_docs_expected"]
         verbosity = kwargs["verbosity"]
         max_retries = kwargs["max_retries"]
         self._batch_num = kwargs["batch_num"]
+        self._start_index = start
+        self._end_index = end
         self._max_batch_num = kwargs["max_batch_num"]
+        self._pid = os.getpid()
+
+        self.add_log(
+            (
+                "Starting with {_index_version_name} update batch {_batch_num}/{_max_batch_num}: \n"
+                " # batch start index: {_start_index}\n"
+                " # batch end index: {_end_index}\n"
+                " # pid: {_pid}"
+            ),
+            use_self_dict_format=True
+        )
 
         qs = doc_type.get_queryset()
         current_qs = qs[start:end]
-
-        is_parent_process = hasattr(os, "getppid") and os.getpid() == os.getppid()
-
-        if verbosity >= 2:
-            max_end = min(end, total)
-            if is_parent_process:
-                self.add_log("  indexed %s - %d of %d." % (start + 1, max_end, total))
-            else:
-                self.add_log("  indexed %s - %d of %d (worker PID: %s)." % (start + 1, max_end, total, os.getpid()))
 
         retries = 0
         success, failed = (0, 0)
@@ -1050,8 +1054,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                     'exc': exc
                 }
                 error_msg = 'Failed indexing %(start)s - %(end)s (retry %(retries)s/%(max_retries)s): %(exc)s'
-                if not is_parent_process:
-                    error_msg += ' (pid %(pid)s): %(exc)s'
+                error_msg += ' (pid %(pid)s): %(exc)s'
                 if retries >= max_retries:
                     logger.error(error_msg, error_context, exc_info=True)
                     raise
@@ -1070,7 +1073,6 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         self._runtime_remaining = str(remaining_time)
         self._num_failed = failed
         self._indexed_docs = success + failed
-        self._pid = os.getpid()
 
         self.add_log(
             (
