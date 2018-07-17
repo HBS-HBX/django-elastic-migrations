@@ -280,6 +280,7 @@ class IndexAction(models.Model):
 
     def to_in_progress(self):
         if self.status == self.STATUS_QUEUED:
+            self.start = timezone.now()
             self.status = self.STATUS_IN_PROGRESS
             self.argv = " ".join(sys.argv)
             self.save()
