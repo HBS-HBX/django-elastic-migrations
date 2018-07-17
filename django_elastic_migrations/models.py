@@ -16,7 +16,7 @@ from elasticsearch import TransportError
 from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexManager
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
-from django_elastic_migrations.utils.log import get_logger
+from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
 
 logger = get_logger()
