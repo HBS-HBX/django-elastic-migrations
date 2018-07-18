@@ -1,8 +1,13 @@
 from __future__ import print_function
 
-from django_elastic_migrations import DEMIndexManager
+from dateutil.parser import parse as dateutil_parse
+
+from django_elastic_migrations import DEMIndexManager, get_logger
 from django_elastic_migrations.management.commands.es import ESCommand
 from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
+
+
+logger = get_logger()
 
 
 class Command(ESCommand):
@@ -37,6 +42,13 @@ class Command(ESCommand):
                 "Manually overrides the BATCH_SIZE specified on the index. \n"
             )
         )
+        parser.add_argument(
+            "-s",
+            "--start",
+            dest="start_date",
+            help="The start date for indexing. Can be any dateutil-parsable string;"
+                 " YYYY-MM-DDTHH:MM:SS is recommended to avoid confusion",
+        )
 
     def handle(self, *args, **options):
         indexes, exact_mode, apply_all, _, newer_mode = self.get_index_specifying_options(options)
@@ -44,6 +56,14 @@ class Command(ESCommand):
         workers = options.get('workers')
         batch_size = options.get('batch_size', 0)
         verbosity = options.get('verbosity')
+        start_date = options.get('start_date')
+
+        if start_date is not None:
+            if resume_mode:
+                logger.warning("--start takes precedence over --resume mode!")
+            start_date = dateutil_parse(start_date)
+            if start_date:
+                resume_mode = False
 
         if apply_all:
             DEMIndexManager.update_index(
@@ -53,7 +73,8 @@ class Command(ESCommand):
                 resume_mode=resume_mode,
                 workers=workers,
                 batch_size=batch_size,
-                verbosity=verbosity
+                verbosity=verbosity,
+                start_date=start_date
             )
         elif indexes:
             for index_name in indexes:
@@ -64,5 +85,6 @@ class Command(ESCommand):
                     resume_mode=resume_mode,
                     workers=workers,
                     batch_size=batch_size,
-                    verbosity=verbosity
+                    verbosity=verbosity,
+                    start_date=start_date
                 )

@@ -284,7 +284,7 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
-    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0, batch_size=None, verbosity=1):
+    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0, batch_size=None, verbosity=1, start_date=None):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
@@ -302,7 +302,8 @@ class DEMIndexManager(object):
             resume_mode=resume_mode,
             workers=workers,
             batch_size=batch_size,
-            verbosity=verbosity
+            verbosity=verbosity,
+            start_date=start_date
         )
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 

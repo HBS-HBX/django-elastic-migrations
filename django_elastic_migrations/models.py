@@ -814,6 +814,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         # :param workers: number of workers to parallelize indexing
         self.workers = kwargs.pop('workers', 0)
         self.batch_size = kwargs.pop('batch_size', 0)
+        self.start_date = kwargs.pop('start_date', None)
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
         self._batch_num = 0
         self._expected_remaining = 0
@@ -830,7 +831,13 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         doc_type = dem_index.doc_type()
 
         self._last_update = None
-        if self.resume_mode:
+
+        if self.start_date:
+            self._last_update = self.start_date
+            self.add_log(
+                "--start detected; Using start date {_last_update}", use_self_dict_format=True
+            )
+        elif self.resume_mode:
             self._last_update = self.index_version.get_last_time_update_called(before_action=self)
             if not self._last_update:
                 self._last_update = 'never'
