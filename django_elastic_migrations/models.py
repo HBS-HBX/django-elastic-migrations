@@ -9,6 +9,7 @@ import traceback
 from multiprocessing import cpu_count
 
 import os
+import random
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
@@ -1024,7 +1025,6 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         self.task_kwargs = json.dumps(new_kwargs)
 
     def perform_action(self, dem_index, *args, **kwargs):
-        self.add_log("Starting partial bulk update ...")
 
         kwargs = json.loads(self.task_kwargs)
 
@@ -1053,6 +1053,8 @@ class PartialUpdateIndexAction(UpdateIndexAction):
             use_self_dict_format=True
         )
 
+        # ensure workers don't overload dbs by being sync'd up
+        time.sleep(random.random()*2)
         qs = doc_type.get_queryset()
         current_qs = qs[start:end]
 
