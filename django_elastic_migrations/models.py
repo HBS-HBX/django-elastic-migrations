@@ -1011,7 +1011,8 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         "total_docs_expected",
         "batch_num_items",
         "verbosity",
-        "max_retries"
+        "max_retries",
+        "workers"
     ]
 
     class Meta:
@@ -1034,6 +1035,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         start = kwargs["start_index"]
         end = kwargs["end_index"]
+        self._workers = kwargs["workers"]
         self._total_docs_expected = kwargs["total_docs_expected"]
         verbosity = kwargs["verbosity"]
         max_retries = kwargs["max_retries"]
@@ -1053,8 +1055,12 @@ class PartialUpdateIndexAction(UpdateIndexAction):
             use_self_dict_format=True
         )
 
-        # ensure workers don't overload dbs by being sync'd up
-        time.sleep(random.random()*2)
+        if self._workers and self._total_docs_expected:
+            # ensure workers don't overload dbs by being sync'd up
+            # if we're less than 25% done, put a little shuffle in between the workers to dither query load
+            if (self.parent.docs_affected / self._total_docs_expected) < 0.25:
+                time.sleep(random.random()*2)
+
         qs = doc_type.get_queryset()
         current_qs = qs[start:end]
 
@@ -1122,6 +1128,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                 " # parent total docs expected: {_total_docs_expected}\n"
                 " # parent total docs remaining: {_total_docs_remaining} ({_total_docs_remaining_pct}%)\n"
                 " # parent estimated runtime remaining: {_expected_parent_runtime}\n"
+                " # num workers {_workers}\n"
                 " # pid: {_pid}\n"
             ),
             use_self_dict_format=True

@@ -527,7 +527,7 @@ class DEMDocType(ESDocType):
 
     @classmethod
     def generate_batches(cls, qs=None, batch_size=BATCH_SIZE, total_items=None, update_index_action=None, verbosity=1,
-                         max_retries=MAX_RETRIES):
+                         max_retries=MAX_RETRIES, workers=0):
         """
         Divide a queryset into batches of BATCH_SIZE entities.
         If this is an unevaluated django queryset,
@@ -581,7 +581,8 @@ class DEMDocType(ESDocType):
                 "total_docs_expected": total_docs,
                 "batch_num_items": len(ids_in_batch),
                 "verbosity": verbosity,
-                "max_retries": max_retries
+                "max_retries": max_retries,
+                "workers": workers
             }
             batch_index_action.set_task_kwargs(task_kwargs)
             batches.append(batch_index_action)
@@ -674,7 +675,7 @@ class DEMDocType(ESDocType):
             batch_size = cls.BATCH_SIZE
 
         cls.generate_batches(
-            qs, batch_size, total_items=total,
+            qs, batch_size, total_items=total, workers=workers,
             update_index_action=update_index_action, verbosity=verbosity)
 
         update_index_action.refresh_from_db()
