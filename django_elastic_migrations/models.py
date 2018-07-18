@@ -1064,8 +1064,9 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         if self._workers and self._total_docs_expected:
             # ensure workers don't overload dbs by being sync'd up
-            # if we're less than 25% done, put a little shuffle in between the workers to dither query load
-            if (self.parent.docs_affected / self._total_docs_expected) < 0.25:
+            # if we're less than 10% done, put a little randomness
+            # in between the workers to dither query load
+            if (self.parent.docs_affected / self._total_docs_expected) < 0.1:
                 time.sleep(random.random()*2)
 
         qs = doc_type.get_queryset()
