@@ -1,7 +1,7 @@
 
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
-from django_elastic_migrations.utils.log import get_logger
+from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
 
 logger = get_logger()

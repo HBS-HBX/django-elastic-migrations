@@ -2,7 +2,7 @@
 
 from django.core.management import BaseCommand, call_command, CommandError
 
-from django_elastic_migrations.utils.log import get_logger
+from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
 
 logger = get_logger()

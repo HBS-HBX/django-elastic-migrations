@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import datetime
 import json
 import sys
 import time
 import traceback
+from multiprocessing import cpu_count
 
 import os
+import random
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
@@ -15,8 +18,8 @@ from elasticsearch import TransportError
 from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexManager
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersion, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
-from django_elastic_migrations.utils.log import get_logger
-from django_elastic_migrations.utils.multiprocessing_utils import close_service_connections
+from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
+from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
 
 logger = get_logger()
 
@@ -261,7 +264,13 @@ class IndexAction(models.Model):
             msg = msg.format(**self.__dict__)
         logger.log(level, msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
-        if commit and not 'test' in sys.argv:
+        if commit and 'test' not in sys.argv:
+            self.save()
+
+    def add_logs(self, msgs, commit=True, use_self_dict_format=False, level=logger.INFO):
+        for msg in msgs:
+            self.add_log(msg, commit=False, use_self_dict_format=use_self_dict_format, level=level)
+        if commit and 'test' not in sys.argv:
             self.save()
 
     def perform_action(self, dem_index, *args, **kwargs):
@@ -273,6 +282,7 @@ class IndexAction(models.Model):
 
     def to_in_progress(self):
         if self.status == self.STATUS_QUEUED:
+            self.start = timezone.now()
             self.status = self.STATUS_IN_PROGRESS
             self.argv = " ".join(sys.argv)
             self.save()
@@ -341,7 +351,7 @@ class IndexAction(models.Model):
                         .get(id=self.parent.id)
                 )
                 parent.docs_affected += num_docs
-                parent_docs_affected = parent_docs_affected
+                parent_docs_affected = parent.docs_affected
                 parent.save()
         return parent_docs_affected
 
@@ -804,6 +814,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         # :param workers: number of workers to parallelize indexing
         self.workers = kwargs.pop('workers', 0)
         self.batch_size = kwargs.pop('batch_size', 0)
+        self.start_date = kwargs.pop('start_date', None)
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
         self._batch_num = 0
         self._expected_remaining = 0
@@ -820,7 +831,13 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         doc_type = dem_index.doc_type()
 
         self._last_update = None
-        if self.resume_mode:
+
+        if self.start_date:
+            self._last_update = self.start_date
+            self.add_log(
+                "--start detected; Using start date {_last_update}", use_self_dict_format=True
+            )
+        elif self.resume_mode:
             self._last_update = self.index_version.get_last_time_update_called(before_action=self)
             if not self._last_update:
                 self._last_update = 'never'
@@ -831,35 +848,93 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             )
 
         self.add_log("Starting batched bulk update ...")
-        batch_size = doc_type.BATCH_SIZE
         if self.batch_size:
-            batch_size = self.batch_size
-            self.add_log("using manually specified batch size of {}".format(batch_size))
+            self.add_log("using manually specified batch size of {}".format(self.batch_size))
         else:
-            self.add_log("using class default batch size of {}".format(batch_size))
+            self.batch_size = doc_type.BATCH_SIZE
+            self.add_log("using class default batch size of {}".format(self.batch_size))
+
+        if self.workers:
+            self.workers = int(self.workers)
+            self._num_vcpus = cpu_count()
+            self.add_log("detected {_num_vcpus} logical cpus", use_self_dict_format=True)
+
+            if self.workers == USE_ALL_WORKERS:
+                self.workers = self._num_vcpus - 1
+                if self.workers < 2:
+                    self.workers = 1
+                self.add_log("using multiprocessing with {workers} worker(s) out of {_num_vcpus} logcial CPUs", use_self_dict_format=True)
+
+            else:
+                self.add_log("using multiprocessing with {workers} worker(s)", use_self_dict_format=True)
+
+        self.add_log(
+            (
+                "About to update index {_index_version_name}:\n"
+                " # batch size: {batch_size}\n"
+                " # workers: {workers}\n"
+                " # verbosity: {verbosity}\n"
+            ),
+            use_self_dict_format=True
+        )
 
         success, failed = doc_type.batched_bulk_index(
             last_updated_datetime=self._last_update,
             workers=self.workers,
             update_index_action=self,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             verbosity=self.verbosity
         )
 
         self.refresh_from_db()
         self._num_success, self._num_failed = success, failed
-        self._indexed_docs = success + failed
-        self.docs_affected = success
-        if not failed:
-            self.add_log("Removing completed child tasks, because there were no failures\n")
-            self.children.all().delete()
+        self._indexed_docs = self._num_success + self._num_failed
+        self.docs_affected = self._num_success
+
+        child_statuses = self.children.values_list('status', flat=True)
+        if all([c == IndexAction.STATUS_COMPLETE for c in child_statuses]):
+            self.add_log("All child tasks are completed successfully")
+        else:
+            bad_children = list(self.children.exclude(status__in=IndexAction.STATUS_COMPLETE))
+            if bad_children:
+                err_logs = []
+                for bad_child in bad_children:
+                    err_logs.append("task id {} has status {}".format(bad_child.id, bad_child.status))
+                self.add_logs(err_logs)
+            else:
+                self.add_logs("No child tasks found! Please ensure there was work to be done.", level=logger.WARNING)
+
+        self._runtime = timezone.now() - self.start
+        self._docs_per_sec = self._indexed_docs / self._runtime.total_seconds()
+
+        runtimes = []
+        docs_per_batch = []
+        for child in self.children.all():
+            delta = child.end - child.start
+            runtimes.append(delta.total_seconds())
+            docs_per_batch.append(child.docs_affected)
+
+        self._avg_batch_runtime = 'unknown'
+        if runtimes:
+            self._avg_batch_runtime = str(datetime.timedelta(seconds=sum(runtimes) / len(runtimes)))
+
+        self._avg_docs_per_batch = 'unknown'
+        if docs_per_batch:
+            self._avg_docs_per_batch = sum(docs_per_batch) / len(docs_per_batch)
 
         self.add_log(
             (
-                "Completed with indexing {_index_version_name}: "
+                "Completed updating index {_index_version_name}: \n"
                 " # successful updates: {_num_success}\n"
                 " # failed updates: {_num_failed}\n"
                 " # total docs attempted to update: {_indexed_docs}\n"
+                " # batch size: {batch_size}\n"
+                " # batch avg num docs: {_avg_docs_per_batch}\n"
+                " # batch avg runtime: {_avg_batch_runtime}\n"
+                " # total runtime: {_runtime}\n"
+                " # docs per second: {_docs_per_sec}\n"
+                " # workers: {workers}\n"
+                " # verbosity: {verbosity}\n"
             ),
             use_self_dict_format=True
         )
@@ -940,10 +1015,11 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         "start_index",
         "end_index",
         "max_batch_num",
-        "total_items",
+        "total_docs_expected",
         "batch_num_items",
         "verbosity",
-        "max_retries"
+        "max_retries",
+        "workers"
     ]
 
     class Meta:
@@ -957,7 +1033,6 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         self.task_kwargs = json.dumps(new_kwargs)
 
     def perform_action(self, dem_index, *args, **kwargs):
-        self.add_log("Starting partial bulk update ...")
 
         kwargs = json.loads(self.task_kwargs)
 
@@ -967,23 +1042,35 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         start = kwargs["start_index"]
         end = kwargs["end_index"]
-        total = kwargs["total_items"]
+        self._workers = kwargs["workers"]
+        self._total_docs_expected = kwargs["total_docs_expected"]
         verbosity = kwargs["verbosity"]
         max_retries = kwargs["max_retries"]
         self._batch_num = kwargs["batch_num"]
+        self._start_index = start
+        self._end_index = end
         self._max_batch_num = kwargs["max_batch_num"]
+        self._pid = os.getpid()
+
+        self.add_log(
+            (
+                "Starting with {_index_version_name} update batch {_batch_num}/{_max_batch_num}: \n"
+                " # batch start index: {_start_index}\n"
+                " # batch end index: {_end_index}\n"
+                " # pid: {_pid}"
+            ),
+            use_self_dict_format=True
+        )
+
+        if self._workers and self._total_docs_expected:
+            # ensure workers don't overload dbs by being sync'd up
+            # if we're less than 10% done, put a little randomness
+            # in between the workers to dither query load
+            if (self.parent.docs_affected / self._total_docs_expected) < 0.1:
+                time.sleep(random.random()*2)
 
         qs = doc_type.get_queryset()
         current_qs = qs[start:end]
-
-        is_parent_process = hasattr(os, "getppid") and os.getpid() == os.getppid()
-
-        if verbosity >= 2:
-            max_end = min(end, total)
-            if is_parent_process:
-                self.add_log("  indexed %s - %d of %d." % (start + 1, max_end, total))
-            else:
-                self.add_log("  indexed %s - %d of %d (worker PID: %s)." % (start + 1, max_end, total, os.getpid()))
 
         retries = 0
         success, failed = (0, 0)
@@ -1006,8 +1093,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                     'exc': exc
                 }
                 error_msg = 'Failed indexing %(start)s - %(end)s (retry %(retries)s/%(max_retries)s): %(exc)s'
-                if not is_parent_process:
-                    error_msg += ' (pid %(pid)s): %(exc)s'
+                error_msg += ' (pid %(pid)s): %(exc)s'
                 if retries >= max_retries:
                     logger.error(error_msg, error_context, exc_info=True)
                     raise
@@ -1018,15 +1104,26 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         self._num_success = success
         self.docs_affected = success
-        self._parent_docs_affected = self.add_to_parent_docs_affected(success)
-        self._total_docs_remaining = total - self._parent_docs_affected
-        self._runtime = timezone.now() - self.start
-        batches_remaining = self._max_batch_num - self._batch_num
-        remaining_time = self._runtime * batches_remaining
-        self._runtime_remaining = str(remaining_time)
         self._num_failed = failed
         self._indexed_docs = success + failed
-        self._pid = os.getpid()
+
+        self._parent_docs_affected = int(self.add_to_parent_docs_affected(success))
+        self._parent_runtime = timezone.now() - self.parent.start
+        self._runtime = timezone.now() - self.start
+
+        self._total_docs_remaining = self._total_docs_expected - self._parent_docs_affected
+        if self._parent_docs_affected:
+            self._parent_docs_per_sec = self._parent_docs_affected / self._parent_runtime.total_seconds()
+        else:
+            self._parent_docs_per_sec = self._indexed_docs / self._runtime.total_seconds()
+
+        self._total_docs_remaining_pct = 100 * self._total_docs_remaining // self._total_docs_expected
+        self._parent_docs_affected_pct = 100 - self._total_docs_remaining_pct
+        if self._parent_docs_per_sec:
+            self._expected_parent_runtime = str(datetime.timedelta(
+                seconds= self._total_docs_remaining / self._parent_docs_per_sec))
+        else:
+            self._expected_parent_runtime = 'unknown'
 
         self.add_log(
             (
@@ -1034,10 +1131,12 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                 " # batch successful updates: {_num_success}\n"
                 " # batch failed updates: {_num_failed}\n"
                 " # batch docs attempted to update: {_indexed_docs}\n"
-                " # total docs updated: {_parent_docs_affected}\n"
-                " # total docs remaining: {_total_docs_remaining}\n"
                 " # batch runtime: {_runtime}\n"
-                " # projected, simplified linear runtime remaining: {_runtime_remaining}\n"
+                " # parent total docs updated: {_parent_docs_affected} ({_parent_docs_affected_pct}%)\n"
+                " # parent total docs expected: {_total_docs_expected}\n"
+                " # parent total docs remaining: {_total_docs_remaining} ({_total_docs_remaining_pct}%)\n"
+                " # parent estimated runtime remaining: {_expected_parent_runtime}\n"
+                " # num workers {_workers}\n"
                 " # pid: {_pid}\n"
             ),
             use_self_dict_format=True

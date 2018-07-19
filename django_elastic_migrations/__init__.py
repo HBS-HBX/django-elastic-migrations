@@ -8,7 +8,7 @@ from __future__ import absolute_import, unicode_literals
 import sys
 
 from django_elastic_migrations.utils import loading
-from django_elastic_migrations.utils.log import get_logger
+from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
 __version__ = '0.1.3'
 

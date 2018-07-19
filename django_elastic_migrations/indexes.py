@@ -284,7 +284,7 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
-    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0, batch_size=None, verbosity=1):
+    def update_index(cls, index_name, exact_mode=False, newer_mode=False, resume_mode=False, workers=0, batch_size=None, verbosity=1, start_date=None):
         """
         Given the named index, update the documents. By default, it only
         updates since the time of the last update.
@@ -302,7 +302,8 @@ class DEMIndexManager(object):
             resume_mode=resume_mode,
             workers=workers,
             batch_size=batch_size,
-            verbosity=verbosity
+            verbosity=verbosity,
+            start_date=start_date
         )
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
@@ -500,8 +501,34 @@ class DEMDocType(ESDocType):
         return index_model
 
     @classmethod
+    def get_queryset_count(cls, qs):
+        """
+        Given the queryset, find the number of items in the queryset.
+        This should return the number of items that can be batched for indexing.
+        This is not necessarily the same as the total number of docs for indexing, though it can be.
+        :param qs: queryset
+        :return: int
+        """
+        total_items = 0
+        try:
+            total_items = qs.count()
+        except AttributeError:
+            total_items = len(qs)
+        return total_items
+
+    @classmethod
+    def get_total_docs(cls, qs):
+        """
+        Given the queryset, what are the total number of expected indexable documents?
+        Override if it is not equal to the number of top level items in the queryset.
+        :param qs:
+        :return: int
+        """
+        return cls.get_queryset_count(qs)
+
+    @classmethod
     def generate_batches(cls, qs=None, batch_size=BATCH_SIZE, total_items=None, update_index_action=None, verbosity=1,
-                         max_retries=MAX_RETRIES):
+                         max_retries=MAX_RETRIES, workers=0):
         """
         Divide a queryset into batches of BATCH_SIZE entities.
         If this is an unevaluated django queryset,
@@ -519,15 +546,15 @@ class DEMDocType(ESDocType):
             qs = cls.get_queryset()
 
         if total_items is None:
-            try:
-                total_items = qs.count()
-            except AttributeError:
-                total_items = len(qs)
+            total_items = cls.get_queryset_count(qs)
+
+        total_docs = cls.get_total_docs(qs)
 
         batches = []
 
         # importing to avoid circular loop
         from django_elastic_migrations.models import PartialUpdateIndexAction
+        log_messages = []
         for start_index in range(0, total_items, batch_size):
             # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
             # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
@@ -546,20 +573,32 @@ class DEMDocType(ESDocType):
                 index_version=update_index_action.index_version,
                 parent=update_index_action
             )
-            batch_index_action.set_task_kwargs({
+            task_kwargs = {
                 "batch_num": start_index // batch_size + 1,
                 "pks": ids_in_batch,
                 "start_index": start_index,
                 "end_index": end_index,
                 "max_batch_num": (total_items // batch_size) + 1,
-                "total_items": total_items,
+                "total_docs_expected": total_docs,
                 "batch_num_items": len(ids_in_batch),
                 "verbosity": verbosity,
-                "max_retries": max_retries
-            })
+                "max_retries": max_retries,
+                "workers": workers
+            }
+            batch_index_action.set_task_kwargs(task_kwargs)
             batches.append(batch_index_action)
 
+            log_messages.append(
+                "Queueing partial update index task {batch_num}/{max_batch_num}: \n"
+                "  - start_index: {start_index}\n"
+                "  - end_index: {end_index}\n"
+                "  - batch_num_items: {batch_num_items}\n".format(**task_kwargs)
+            )
+
         PartialUpdateIndexAction.objects.bulk_create(batches)
+
+        log_messages.append("Done queueing partial update index tasks. Total Docs Expected: {}".format(total_docs))
+        update_index_action.add_logs(log_messages)
 
         return batches
 
@@ -607,10 +646,7 @@ class DEMDocType(ESDocType):
         if qs is None:
             qs = cls.get_queryset(last_updated_datetime)
 
-        try:
-            total = qs.count()
-        except AttributeError:
-            total = len(qs)
+        total = cls.get_queryset_count(qs)
 
         # importing to avoid circular loop
         from django_elastic_migrations.models import PartialUpdateIndexAction
@@ -638,8 +674,9 @@ class DEMDocType(ESDocType):
 
         if not batch_size:
             batch_size = cls.BATCH_SIZE
+
         cls.generate_batches(
-            qs, batch_size, total_items=total,
+            qs, batch_size, total_items=total, workers=workers,
             update_index_action=update_index_action, verbosity=verbosity)
 
         update_index_action.refresh_from_db()
@@ -657,8 +694,7 @@ class DEMDocType(ESDocType):
                 # default is to use all workers
                 workers = None
 
-            django_multiprocess = DjangoMultiProcess(
-                workers, log_debug_info=verbosity > 1)
+            django_multiprocess = DjangoMultiProcess(workers, log_debug_info=verbosity > 1)
 
             with django_multiprocess:
                 django_multiprocess.map(
