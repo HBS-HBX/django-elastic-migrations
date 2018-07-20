@@ -27,11 +27,11 @@ def get_version(*file_paths):
 VERSION = get_version('django_elastic_migrations', '__init__.py')
 
 # usage: python setup.py tag pushes a new version tag
-# if sys.argv[-1] == 'tag':
-#     print("Tagging the version on github:")
-#     os.system("git tag -a %s -m 'version %s'" % (VERSION, VERSION))
-#     os.system("git push origin %s" % VERSION)
-#     sys.exit()
+if sys.argv[-1] == 'tag':
+    print("Tagging the version on github:")
+    os.system("git tag -a %s -m 'version %s'" % (VERSION, VERSION))
+    os.system("git push origin %s" % VERSION)
+    sys.exit()
 
 README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
 CHANGELOG = open(os.path.join(os.path.dirname(__file__), 'CHANGELOG.md')).read()
@@ -42,8 +42,8 @@ setup(
     description="""Migrate Elasticsearch Schemas in Django""",
     long_description=README + '\n\n' + CHANGELOG,
     author='Harvard Business School, HBX Department',
-    author_email='dschroeder@hbs.edu',
-    url='https://stash.hbxcloud.com/users/pnore/repos/django-elastic-migrations/browse',
+    author_email='pnore@hbs.edu',
+    url='https://github.com/HBS-HBX/django_elastic_migrations',
     packages=[
         'django_elastic_migrations',
     ],
