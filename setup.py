@@ -47,6 +47,7 @@ setup(
     packages=[
         'django_elastic_migrations',
     ],
+    license='MIT',
     include_package_data=True,
     install_requires=[
         "Django>=1.8,<2.1", "elasticsearch-dsl>=6.0.0", "texttable>=1.2.1",
@@ -61,7 +62,7 @@ setup(
         'Framework :: Django :: 1.11',
         'Framework :: Django :: 2.0',
         'Intended Audience :: Developers',
-        'License :: Other/Proprietary License',
+        'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
