@@ -88,7 +88,10 @@ For each of these, use `--help` to see the details.
 #### Installation
 0. Ensure that Elasticsearch 6.0 or later is accessible, and you have 
    configured a singleton client in `path.to.your.es_client`.
-1. Put a reference to this package in your `requirements.txt`
+1. Put a reference to this package in your `requirements.txt`:
+   `-e git://github.com/HBS-HBX/django_elastic_migrations.git#egg=django_elastic_migrations`
+   1. if you like, you can pin to a specific relase:
+      `-e git://github.com/HBS-HBX/django_elastic_migrations.git@0.5.1#egg=django_elastic_migrations`
 2. Add `django_elastic_migrations` to `INSTALLED_APPS` in your Django
    settings file
 3. Add the following information to your Django settings file:
