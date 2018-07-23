@@ -236,7 +236,7 @@ For each of these, use `--help` to see the details.
 
         def _post_teardown(self):
             DEMIndexManager.test_post_teardown()
-            super(HBXTestCase, self)._post_teardown()
+            super(MyTestCase, self)._post_teardown()
     ```
 
 ### Excluding from dumpdata
