@@ -217,7 +217,9 @@ For each of these, use `--help` to see the details.
 
 
 ### Integration Testing
-1. Put the following in your settings: 
+1. (optional) update `DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX` in
+   your Django settings. The default test prefix is `test_`.  Every
+   test will create its own indexes.
     ```
     if 'test' in sys.argv:
         DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = 'test_'
@@ -225,25 +227,16 @@ For each of these, use `--help` to see the details.
 2. Override TestCase - `test_utilities.py`
     ```
     from django_elastic_migrations import DEMIndexManager
-    
-    es_test_prefix = settings.DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX
-    
-    def _setup_django_elastic_migration_schemas():
-        """
-        Create the test elasticsearch indexes
-        """
-        DEMIndexManager.drop_index(
-            'all', force=True, just_prefix=es_test_prefix)
-        DEMIndexManager.create_index('all', force=True)
-        DEMIndexManager.activate_index('all')
-        DEMIndexManager.initialize()
-    
+
     class MyTestCase(TestCase):
     
         def _pre_setup(self):
+            DEMIndexManager.test_pre_setup()
             super(MyTestCase, self)._pre_setup()
-            _setup_django_elastic_migration_schemas()
-    
+
+        def _post_teardown(self):
+            DEMIndexManager.test_post_teardown()
+            super(HBXTestCase, self)._post_teardown()
     ```
 
 ### Excluding from dumpdata

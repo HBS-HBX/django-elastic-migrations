@@ -719,8 +719,6 @@ class DEMIndex(ESIndex):
     Django users subclass DEMIndex instead of elasticsearch-dsl-py's Index
     to use Django Elastic Migrations. Most documentation from their class
     applies here.
-
-    Change from Elasticsearch: several convenience methods were
     """
 
     def __init__(self, name, using=es_client, version_id=None):
