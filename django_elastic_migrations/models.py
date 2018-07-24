@@ -312,7 +312,7 @@ class IndexAction(models.Model):
             log_params = {
                 "action": self.action,
                 "doc": ex.__doc__ or "",
-                "msg": ex.message,
+                "msg": str(ex),
                 "stack": u''.join(traceback.format_exc())
             }
             msg = (
