@@ -1,0 +1,5 @@
+# Core requirements for using this application
+
+Django==1.9.8             # Web application framework
+elasticsearch-dsl         # Used for connecting to elasticsearch
+texttable                 # Printing tabular data from management commands
