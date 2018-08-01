@@ -91,14 +91,9 @@ LOGGING = {
 }
 logging_config.dictConfig(LOGGING)
 
-logger = logging.getLogger(__name__)
-logger.debug("using cwd {}".format(root()))
-logger.debug("using python path: {}".format(sys.path))
-logger.debug(os.listdir(root()))
-try:
-    logger.debug("{}".format([str(p) for p in os.environ['PYTHONPATH'].split(os.pathsep)]))
-except KeyError:
-    logger.debug("os.environ['PYTHONPATH'] wasn't defined")
+# logger = logging.getLogger(__name__)
+# logger.debug("using cwd {}".format(root()))
+# logger.debug("using python path: {}".format(sys.path))
 
 DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "tests.es_config.ES_CLIENT"
 DJANGO_ELASTIC_MIGRATIONS_RECREATE_CONNECTIONS = "tests.es_config.dem_recreate_service_connections"

@@ -30,8 +30,9 @@ logger.debug("using DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = {}".format(settings.DJ
 try:
     es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
 except ImportError:
-    logger.warning("DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT {} not found: ".format(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
-    from tests.es_config import ES_CLIENT as es_client
+    logger.error("DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT {} not found. Please check your python path and django settings ".format(
+        settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
+    raise
 
 codebase_id = getattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID', "")
 
