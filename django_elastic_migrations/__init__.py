@@ -31,7 +31,7 @@ try:
     es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
 except ImportError:
     logger.warning("DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT {} not found: ".format(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
-    from tests.es_config import ES_CLIENT
+    from tests.es_config import ES_CLIENT as es_client
 
 codebase_id = getattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID', "")
 

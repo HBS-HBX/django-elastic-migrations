@@ -9,6 +9,8 @@ from __future__ import print_function
 from __future__ import absolute_import, unicode_literals
 
 import logging
+import os
+import sys
 from logging import config as logging_config
 import subprocess
 
@@ -77,7 +79,7 @@ LOGGING = {
             "handlers": [
                 "console"
             ],
-            "level": "INFO",
+            "level": "DEBUG",
             "propagate": True
         },
         "django_elastic_migrations": {
@@ -90,8 +92,12 @@ LOGGING = {
 logging_config.dictConfig(LOGGING)
 
 logger = logging.getLogger(__name__)
-logger.info("using cwd {}".format(root()))
-logger.debug("this is debug msg")
+logger.debug("using cwd {}".format(root()))
+logger.debug("using python path: {}".format(sys.path))
+try:
+    logger.debug("{}".format([str(p) for p in os.environ['PYTHONPATH'].split(os.pathsep)]))
+except KeyError:
+    logger.debug("os.environ['PYTHONPATH'] wasn't defined")
 
 DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "tests.es_config.ES_CLIENT"
 DJANGO_ELASTIC_MIGRATIONS_RECREATE_CONNECTIONS = "tests.es_config.dem_recreate_service_connections"
