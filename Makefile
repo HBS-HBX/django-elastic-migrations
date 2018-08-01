@@ -47,13 +47,13 @@ requirements: ## install development environment requirements
 	pip-sync requirements/dev.txt requirements/test.txt
 
 coverage: clean ## check code coverage quickly with the default Python
-	coverage run ./runtests.py tests
+	coverage run ./manage.py test
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
 test: clean ## run tests in the current virtualenv
-	python ./runtests.py
+	./manage.py test
 
 diff_cover: test
 	diff-cover coverage.xml
