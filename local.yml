@@ -1,0 +1,43 @@
+# creates a dev elasticsearch (& Kibana, if you want)
+# start:
+#   docker-compose up
+# stop:
+#   docker-compose down
+# delete:
+#   docker-compose kill
+
+version: '2.1'
+
+services:
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.0.1
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      - "discovery.type=single-node"
+      - "transport.host=127.0.0.1"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_count"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+# uncomment to get kibana, which can be useful for analyzing index contents
+# this is currently not a required part of testing infrastructure, just left here for convenience
+#  kibana:
+#    image: docker.elastic.co/kibana/kibana:6.0.1
+#    depends_on:
+#      elastic:
+#        condition: service_healthy
+#    links:
+#      - elastic
+#    ports:
+#      - 5601:5601
+#    environment:
+#      - "ELASTICSEARCH_URL=http://elastic:9200"
+#    healthcheck:
+#        test: ["CMD", "curl", "-f", "http://localhost:5601"]
+#        interval: 10s
+#        timeout: 10s
+#        retries: 10

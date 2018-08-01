@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import sys
 
+import django
 from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch.helpers import expand_action, bulk
@@ -104,7 +105,7 @@ class DEMIndexManager(object):
             try:
                 index_model = DEMIndexModel.objects.create(name=base_name)
                 cls.index_models[base_name] = index_model
-            except ProgrammingError:
+            except (ProgrammingError, django.db.utils.OperationalError):
                 # the app is starting up and the database isn't available
                 pass
 
@@ -251,7 +252,7 @@ class DEMIndexManager(object):
             from django_elastic_migrations.models import Index as DEMIndexModel
             try:
                 cls.index_models = {i.name: i for i in DEMIndexModel.objects.all()}
-            except ProgrammingError:
+            except (ProgrammingError, django.db.utils.OperationalError):
                 # the app is starting up and the database isn't available
                 pass
 
@@ -727,7 +728,7 @@ class DEMIndex(ESIndex):
         :param using: the elasticsearch client to use
         """
         prefixed_name = "{}{}".format(environment_prefix, name)
-        super(DEMIndex, self).__init__(prefixed_name, using)
+        super(DEMIndex, self).__init__(prefixed_name, using=using)
         self.__prefixed_name = prefixed_name
         self.__base_name = name
         self.__doc_type = None
@@ -892,9 +893,11 @@ class DEMIndex(ESIndex):
         our_index_hash, _ = self.get_index_hash_and_json()
         return our_index_hash == their_index_hash
 
-    def save(self):
+    def save(self, using=None):
+        if using is None:
+            using = es_client
         try:
-            super(DEMIndex, self).save()
+            super(DEMIndex, self).save(using=using)
         except ValueError as ex:
             if "Empty value" in ex.message and not self.get_active_version_index_name():
                 msg = (

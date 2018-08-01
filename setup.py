@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=C0111,W6005,W6100
-from __future__ import print_function
 from __future__ import absolute_import, print_function
 
 import os
@@ -33,8 +32,10 @@ if sys.argv[-1] == 'tag':
     os.system("git push origin %s" % VERSION)
     sys.exit()
 
-README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
-CHANGELOG = open(os.path.join(os.path.dirname(__file__), 'CHANGELOG.md')).read()
+# README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
+# CHANGELOG = open(os.path.join(os.path.dirname(__file__), 'CHANGELOG.md')).read()
+README = 'readme'
+CHANGELOG = 'changelog'
 
 setup(
     name='django-elastic-migrations',
@@ -43,7 +44,7 @@ setup(
     long_description=README + '\n\n' + CHANGELOG,
     author='Harvard Business School, HBX Department',
     author_email='pnore@hbs.edu',
-    url='https://github.com/HBS-HBX/django_elastic_migrations',
+    url='https://github.com/HBS-HBX/django-elastic-migrations',
     packages=[
         'django_elastic_migrations',
     ],

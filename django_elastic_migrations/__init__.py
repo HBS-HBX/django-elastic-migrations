@@ -59,7 +59,7 @@ if user_recreate_service_connections_path:
 es_test_prefix = "test_"
 
 
-if 'test' in sys.argv:
+if 'test' in sys.argv and not environment_prefix == es_test_prefix:
     environment_prefix = '{}{}'.format(es_test_prefix, environment_prefix)
 
 from django_elastic_migrations import apps, indexes

@@ -8,5 +8,7 @@ coverage:
       default:
         enabled: yes
         target: 100%
+  ignore:
+    - "tests/*.py"
 
 comment: false

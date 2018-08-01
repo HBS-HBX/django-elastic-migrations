@@ -275,13 +275,28 @@ and return the kwargs you would like to customize.
 This project uses `make` to manage the build process. Type `make help`
 to see the available `make` targets.
 
-### Requirements
+### Elasticsearch Docker Compose
 
-Then, `make requirements` runs the pip install. 
+`docker-compose -f local.yml up`
+
+[See docs/docker_setup for more info](./docs/docker_setup.rst)
+
+
+### Requirements
+*`make upgrade`* upgrades the dependencies of the requirements to latest
+version. This process also excludes `django` and `elasticsearch-dsl`
+from the `requirements/test.txt` so they can be injected with different
+versions by tox during matrix testing.
+
+*`make requirements`* runs the pip install.
 
 This project also uses [`pip-tools`](https://github.com/jazzband/pip-tools).
 The `requirements.txt` files are generated and pinned to latest versions 
-with `make upgrade`. 
+with `make upgrade`.
+
+### Local Tests
+
+Run `/.manage.py test --settings=bcore.settings
 
 ### Updating Egg Info
 
