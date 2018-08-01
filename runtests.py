@@ -17,6 +17,7 @@ try:
         except AttributeError:
             pass
         else:
+            print("Testing in cwd {}".format(os.getcwd()))
             setup()
 
         return settings
