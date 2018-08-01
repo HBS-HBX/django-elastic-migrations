@@ -8,6 +8,8 @@ Django applications, so these settings will not be used.
 from __future__ import print_function
 from __future__ import absolute_import, unicode_literals
 
+import logging
+from logging import config as logging_config
 import subprocess
 
 import django
@@ -85,6 +87,11 @@ LOGGING = {
         },
     },
 }
+logging_config.dictConfig(LOGGING)
+
+logger = logging.getLogger(__name__)
+logger.info("using cwd {}".format(root()))
+logger.debug("this is debug msg")
 
 DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "tests.es_config.ES_CLIENT"
 DJANGO_ELASTIC_MIGRATIONS_RECREATE_CONNECTIONS = "tests.es_config.dem_recreate_service_connections"

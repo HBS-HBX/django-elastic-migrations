@@ -10,7 +10,7 @@ import sys
 from django_elastic_migrations.utils import loading
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
-__version__ = '0.5.3'
+__version__ = '0.6.0'
 
 default_app_config = 'django_elastic_migrations.apps.DjangoElasticMigrationsConfig'  # pylint: disable=invalid-name
 
@@ -26,8 +26,12 @@ if not hasattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT'):
         'to use for indexing.')
 
 logger.debug("using DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = {}".format(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
-es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
 
+try:
+    es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
+except ImportError:
+    logger.warning("DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT {} not found: ".format(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
+    from tests.es_config import ES_CLIENT
 
 codebase_id = getattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID', "")
 
