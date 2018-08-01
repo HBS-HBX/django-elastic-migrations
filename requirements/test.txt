@@ -11,9 +11,16 @@ coverage==4.5.1
 idna==2.7                 # via requests
 ipaddress==1.0.22         # via elasticsearch-dsl
 multiprocessing-logging==0.2.6
+packaging==17.1           # via tox
+pluggy==0.7.1             # via tox
+py==1.5.4                 # via tox
+pyparsing==2.2.0          # via packaging
 python-dateutil==2.7.3    # via elasticsearch-dsl
 pytz==2018.5              # via django
 requests==2.19.1          # via codecov
-six==1.11.0               # via elasticsearch-dsl, python-dateutil
+six==1.11.0               # via elasticsearch-dsl, packaging, python-dateutil, tox
 texttable==1.4.0
+tox-battery==0.5.1
+tox==3.1.2
 urllib3==1.23             # via elasticsearch, requests
+virtualenv==16.0.0        # via tox
