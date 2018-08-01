@@ -94,6 +94,7 @@ logging_config.dictConfig(LOGGING)
 logger = logging.getLogger(__name__)
 logger.debug("using cwd {}".format(root()))
 logger.debug("using python path: {}".format(sys.path))
+logger.debug(os.listdir(root()))
 try:
     logger.debug("{}".format([str(p) for p in os.environ['PYTHONPATH'].split(os.pathsep)]))
 except KeyError:
