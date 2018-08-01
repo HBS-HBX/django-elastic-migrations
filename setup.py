@@ -32,10 +32,8 @@ if sys.argv[-1] == 'tag':
     os.system("git push origin %s" % VERSION)
     sys.exit()
 
-# README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
-# CHANGELOG = open(os.path.join(os.path.dirname(__file__), 'CHANGELOG.md')).read()
-README = 'readme'
-CHANGELOG = 'changelog'
+README = open('README.md').read()
+CHANGELOG = open('CHANGELOG.rst').read()
 
 setup(
     name='django-elastic-migrations',
