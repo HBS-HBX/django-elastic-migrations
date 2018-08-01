@@ -25,15 +25,15 @@ before_install:
   - sudo apt-get update && sudo apt-get install elasticsearch -y
   - sudo service elasticsearch start
 
-# command to install dependencies, e.g. pip install -r requirements.txt
+# command to install dependencies (e.g. tox)
 install: pip install -r requirements/test.txt
 
 # sleep for elasticsearch
 before_script:
   - sleep 10
 
-# command to run tests using coverage, e.g. python setup.py test
-script: tox -e $TOX_ENV -- --elasticsearch
+# command to run tests
+script: tox -e $TOX_ENV
 
 after_success:
   - codecov -e $TOX_ENV
