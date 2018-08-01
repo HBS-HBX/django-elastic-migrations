@@ -18,6 +18,7 @@ matrix:
 #      python: 3.6
 
 before_install:
+  - pip install --upgrade pip
   # work around https://github.com/travis-ci/travis-ci/issues/8363
   - pip install codecov
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
@@ -26,7 +27,7 @@ before_install:
   - sudo service elasticsearch start
 
 # command to install dependencies (e.g. tox)
-install: pip install -r requirements/test.txt
+install: pip install -r requirements/travis.txt
 
 # sleep for elasticsearch
 before_script:

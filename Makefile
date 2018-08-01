@@ -34,6 +34,7 @@ upgrade: ## update the requirements/*.txt files with the latest packages satisfy
 	pip-compile --upgrade -o requirements/dev.txt requirements/base.in requirements/dev.in requirements/quality.in
 	pip-compile --upgrade -o requirements/quality.txt requirements/quality.in
 	pip-compile --upgrade -o requirements/test.txt requirements/base.in requirements/test.in
+	pip-compile --upgrade -o requirements/travis.txt requirements/travis.in
 	# Let tox control the Django and elasticsearch-dsl version for tests
 	sed '/django==/d' requirements/test.txt | sed '/elasticsearch-dsl==/d' | sed '/elasticsearch==/d' > requirements/test.tmp
 	mv requirements/test.tmp requirements/test.txt

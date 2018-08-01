@@ -47,7 +47,6 @@ SECRET_KEY = 'insecure-secret-key'
 
 # parameters to pass to base Elasticsearch() instance
 # https://elasticsearch-py.readthedocs.io/en/master/api.html#elasticsearch
-# override in app vars
 ELASTICSEARCH_PARAMS = {
     'hosts': [
         'localhost:9200'
