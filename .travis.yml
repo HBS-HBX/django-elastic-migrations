@@ -25,8 +25,8 @@ before_install:
   - sudo apt-get update && sudo apt-get install elasticsearch -y
   - sudo service elasticsearch start
 
-# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
-install: pip install -r requirements_test.txt
+# command to install dependencies, e.g. pip install -r requirements.txt
+install: pip install -r requirements/test.txt
 
 # sleep for elasticsearch
 before_script:
