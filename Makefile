@@ -1,5 +1,5 @@
 .PHONY: clean coverage help \
-	quality requirements selfcheck syncdb test test-all upgrade validate
+	quality requirements selfcheck syncdb load test test-all upgrade validate
 
 .DEFAULT_GOAL := help
 
@@ -54,6 +54,9 @@ coverage: clean ## check code coverage quickly with the default Python
 
 syncdb: clean ## setup local sqlite db
 	./manage.py migrate --run-syncdb
+
+load: syncdb ## load fixtures into sqlite
+	./manage.py loaddata tests/tests_initial.json
 
 test: syncdb ## run tests in the current virtualenv
 	./manage.py test

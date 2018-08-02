@@ -13,7 +13,7 @@ click==6.7                # via pip-tools
 configparser==3.5.0       # via pydocstyle
 diff-cover==1.0.4
 distlib==0.2.7            # via caniusepython3
-django==1.11.14
+django==1.11.15
 elasticsearch-dsl==6.1.0
 elasticsearch==6.3.0      # via elasticsearch-dsl
 first==2.0.1              # via pip-tools
