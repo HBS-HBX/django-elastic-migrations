@@ -1,6 +1,7 @@
 # Requirements for code quality checks
 
 caniusepython3            # Additional Python 3 compatibility pylint checks
+edx-lint                  # includes pylint, pylint-django, etc; configured use pylintrc
 isort                     # to standardize order of imports
 pycodestyle               # PEP 8 compliance validation
 pydocstyle                # PEP 257 compliance validation

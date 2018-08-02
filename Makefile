@@ -65,7 +65,6 @@ diff_cover: test
 	diff-cover coverage.xml
 
 test-all: ## run tests on every supported Python/Django combination
-	# tox -e quality
 	tox
 
 validate: quality test ## run tests and quality checks

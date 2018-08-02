@@ -296,9 +296,15 @@ This project also uses [`pip-tools`](https://github.com/jazzband/pip-tools).
 The `requirements.txt` files are generated and pinned to latest versions 
 with `make upgrade`.
 
-### Local Tests
+### Running Tests Locally
 
-`make test`
+Run `make test`. To run all tests and quality checks locally,
+run `make test-all`.
+
+To just run linting, `make quality`. Please note that if any of the
+linters return a nonzero code, it will give an `InvocationError` error
+at the end. See [tox's documentation for `InvocationError`](https://tox.readthedocs.io/en/latest/example/general.html#understanding-invocationerror-exit-codes)
+for more information.
 
 ### Updating Egg Info
 
