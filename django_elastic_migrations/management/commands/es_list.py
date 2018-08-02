@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager
