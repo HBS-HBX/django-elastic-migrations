@@ -7,7 +7,7 @@ from django_elastic_migrations.management.commands.es import ESCommand
 from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
 
 
-logger = get_logger()
+log = get_logger()
 
 
 class Command(ESCommand):
@@ -60,7 +60,7 @@ class Command(ESCommand):
 
         if start_date is not None:
             if resume_mode:
-                logger.warning("--start takes precedence over --resume mode!")
+                log.warning("--start takes precedence over --resume mode!")
             start_date = dateutil_parse(start_date)
             if start_date:
                 resume_mode = False

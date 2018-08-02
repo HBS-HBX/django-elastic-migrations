@@ -306,6 +306,9 @@ linters return a nonzero code, it will give an `InvocationError` error
 at the end. See [tox's documentation for `InvocationError`](https://tox.readthedocs.io/en/latest/example/general.html#understanding-invocationerror-exit-codes)
 for more information.
 
+We use `edx_lint` to compile `pylintrc`. To update the rules,
+change `pylintrc_tweaks` and run `make pylintrc`.
+
 ### Updating Egg Info
 
 To update the `egg-info` directory, run `python setup.py egg_info`

@@ -3,7 +3,7 @@ from django.conf import settings
 from elasticsearch_dsl import Text, Q
 
 from django_elastic_migrations.indexes import DEMIndex, DEMDocType
-from models import Movie
+from tests.models import Movie
 
 
 class GenericDocType(DEMDocType):

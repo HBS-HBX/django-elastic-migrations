@@ -1,5 +1,5 @@
 .PHONY: clean coverage help \
-	quality requirements selfcheck syncdb load test test-all upgrade validate
+	quality requirements selfcheck syncdb load test test-all upgrade validate pylintrc
 
 .DEFAULT_GOAL := help
 
@@ -71,3 +71,6 @@ validate: quality test ## run tests and quality checks
 
 selfcheck: ## check that the Makefile is well-formed
 	@echo "The Makefile is well-formed."
+
+pylintrc: ## check that the Makefile is well-formed
+	edx_lint write pylintrc
