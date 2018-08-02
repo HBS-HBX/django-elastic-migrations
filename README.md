@@ -298,7 +298,7 @@ with `make upgrade`.
 
 ### Local Tests
 
-Run `/.manage.py test --settings=bcore.settings
+`make test`
 
 ### Updating Egg Info
 

@@ -1,5 +1,5 @@
 .PHONY: clean coverage help \
-	quality requirements selfcheck test test-all upgrade validate
+	quality requirements selfcheck syncdb test test-all upgrade validate
 
 .DEFAULT_GOAL := help
 
@@ -52,7 +52,10 @@ coverage: clean ## check code coverage quickly with the default Python
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
-test: clean ## run tests in the current virtualenv
+syncdb: clean ## setup local sqlite db
+	./manage.py migrate --run-syncdb
+
+test: syncdb ## run tests in the current virtualenv
 	./manage.py test
 
 diff_cover: test

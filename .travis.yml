@@ -26,8 +26,9 @@ before_install:
   - sudo apt-get update && sudo apt-get install elasticsearch -y
   - sudo service elasticsearch start
 
-# command to install dependencies (e.g. tox)
-install: pip install -r requirements/travis.txt
+install:
+  - pip install -r requirements/travis.txt
+  - ./manage.py migrate --run-syncdb
 
 # sleep for elasticsearch
 before_script:
