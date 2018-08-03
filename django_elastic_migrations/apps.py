@@ -5,9 +5,6 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 django_elastic_migrations Django application initialization.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import, unicode_literals
-
 from django.apps import AppConfig
 
 
