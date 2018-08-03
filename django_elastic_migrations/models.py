@@ -312,14 +312,14 @@ class IndexAction(models.Model):
             log_params = {
                 "action": self.action,
                 "doc": ex.__doc__ or "",
-                "msg": ex.message,
-                "stack": u''.join(traceback.format_exc())
+                "msg": str(ex),
+                "stack": ''.join(traceback.format_exc())
             }
             msg = (
-                u"While completing {action}, encountered exception: "
-                u"\n - message: {msg} "
-                u"\n - exception doc: {doc} "
-                u"\n - exception stack: {stack} ".format(**log_params)
+                "While completing {action}, encountered exception: "
+                "\n - message: {msg} "
+                "\n - exception doc: {doc} "
+                "\n - exception stack: {stack} ".format(**log_params)
             )
             self.add_log(msg, level=logger.ERROR)
             self.to_aborted()
