@@ -898,6 +898,9 @@ class DEMIndex(ESIndex):
             using = es_client
         try:
             super(DEMIndex, self).save(using=using)
+        except TypeError as te:
+            if "unexpected keyword argument 'using'" in str(te):
+                super(DEMIndex, self).save()
         except ValueError as ex:
             if "Empty value" in ex.message and not self.get_active_version_index_name():
                 msg = (
