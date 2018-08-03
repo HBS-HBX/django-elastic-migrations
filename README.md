@@ -4,6 +4,8 @@ Django Elastic Migrations provides a way to control the deployment of
 multiple Elasticsearch schemas over time.
 
 [![Build Status](https://travis-ci.com/HBS-HBX/django-elastic-migrations.svg?branch=master)](https://travis-ci.com/HBS-HBX/django-elastic-migrations)
+[![codecov](https://codecov.io/gh/HBS-HBX/django-elastic-migrations/branch/master/graph/badge.svg)](https://codecov.io/gh/HBS-HBX/django-elastic-migrations)
+
 
 ## Overview
 
