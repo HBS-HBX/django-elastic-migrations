@@ -7,7 +7,7 @@ dist: trusty
 
 matrix:
   include:
-    - env: TOX_ENV=py36-django19-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+    - env: TOX_ENV=py27-django19-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
       python: 2.7
     - env: TOX_ENV=py27-django19-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
       python: 2.7
