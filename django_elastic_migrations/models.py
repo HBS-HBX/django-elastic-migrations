@@ -1030,7 +1030,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         new_kwargs = {}
         for required_attribute in self.REQUIRED_TASK_KWARGS:
             new_kwargs[required_attribute] = kwargs[required_attribute]
-        self.task_kwargs = json.dumps(new_kwargs)
+        self.task_kwargs = json.dumps(new_kwargs, sort_keys=True)
 
     def perform_action(self, dem_index, *args, **kwargs):
 

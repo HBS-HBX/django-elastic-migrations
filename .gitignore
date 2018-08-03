@@ -61,8 +61,5 @@ output/*/index.html
 requirements/private.in
 requirements/private.txt
 
-# tox environment temporary artifacts
-tests/__init__.py
-
 # Development task artifacts
 default.db

@@ -10,7 +10,7 @@ import sys
 from django_elastic_migrations.utils import loading
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
-__version__ = '0.5.3'
+__version__ = '0.6.0'
 
 default_app_config = 'django_elastic_migrations.apps.DjangoElasticMigrationsConfig'  # pylint: disable=invalid-name
 
@@ -25,9 +25,14 @@ if not hasattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT'):
         'This should be the python path to the elasticsearch client '
         'to use for indexing.')
 
+logger.debug("using DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = {}".format(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
 
-es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
-
+try:
+    es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
+except ImportError:
+    logger.error("DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT {} not found. Please check your python path and django settings ".format(
+        settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
+    raise
 
 codebase_id = getattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_GET_CODEBASE_ID', "")
 
@@ -59,7 +64,7 @@ if user_recreate_service_connections_path:
 es_test_prefix = "test_"
 
 
-if 'test' in sys.argv:
+if 'test' in sys.argv and not environment_prefix == es_test_prefix:
     environment_prefix = '{}{}'.format(es_test_prefix, environment_prefix)
 
 from django_elastic_migrations import apps, indexes

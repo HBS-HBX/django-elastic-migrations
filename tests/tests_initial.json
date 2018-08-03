@@ -1,0 +1,30 @@
+[
+  {
+    "model": "tests.movie",
+    "pk": 1,
+    "fields": {
+      "title": "Melancholia",
+      "year": "2011",
+      "runtime": "135",
+      "genre": "Drama, Sci-Fi",
+      "director": "Lars von Trier",
+      "writer": "Lars von Trier",
+      "actors": "Kirsten Dunst, Charlotte Gainsbourg, Alexander Skarsgård, Brady Corbet",
+      "plot": "Two sisters find their already strained relationship challenged as a mysterious new planet threatens to collide with Earth."
+    }
+  },
+  {
+    "model": "tests.movie",
+    "pk": 2,
+    "fields": {
+      "title": "Star Wars: Episode IV - A New Hope",
+      "year": "1977",
+      "runtime": "121",
+      "genre": "Action, Adventure, Fantasy",
+      "director": "George Lucas",
+      "writer": "George Lucas",
+      "actors": "Mark Hamill, Harrison Ford, Carrie Fisher, Peter Cushing",
+      "plot": "Luke Skywalker joins forces with a Jedi Knight, a cocky pilot, a Wookiee and two droids to save the galaxy from the Empire's world-destroying battle-station, while also attempting to rescue Princess Leia from the evil Darth Vader."
+    }
+  }
+]

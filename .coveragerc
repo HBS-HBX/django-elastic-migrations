@@ -4,7 +4,7 @@ data_file = .coverage
 source=django_elastic_migrations
 omit =
     test_settings
-    *migrations*
+    */migrations/*
     *admin.py
     *static*
     *templates*

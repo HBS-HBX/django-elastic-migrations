@@ -1,7 +1,9 @@
 # Django Elastic Migrations
 
 Django Elastic Migrations provides a way to control the deployment of
-multiple Elasticsearch schemas over time. 
+multiple Elasticsearch schemas over time.
+
+[![Build Status](https://travis-ci.com/HBS-HBX/django-elastic-migrations.svg?branch=master)](https://travis-ci.com/HBS-HBX/django-elastic-migrations)
 
 ## Overview
 
@@ -275,13 +277,37 @@ and return the kwargs you would like to customize.
 This project uses `make` to manage the build process. Type `make help`
 to see the available `make` targets.
 
-### Requirements
+### Elasticsearch Docker Compose
 
-Then, `make requirements` runs the pip install. 
+`docker-compose -f local.yml up`
+
+[See docs/docker_setup for more info](./docs/docker_setup.rst)
+
+
+### Requirements
+*`make upgrade`* upgrades the dependencies of the requirements to latest
+version. This process also excludes `django` and `elasticsearch-dsl`
+from the `requirements/test.txt` so they can be injected with different
+versions by tox during matrix testing.
+
+*`make requirements`* runs the pip install.
 
 This project also uses [`pip-tools`](https://github.com/jazzband/pip-tools).
 The `requirements.txt` files are generated and pinned to latest versions 
-with `make upgrade`. 
+with `make upgrade`.
+
+### Running Tests Locally
+
+Run `make test`. To run all tests and quality checks locally,
+run `make test-all`.
+
+To just run linting, `make quality`. Please note that if any of the
+linters return a nonzero code, it will give an `InvocationError` error
+at the end. See [tox's documentation for `InvocationError`](https://tox.readthedocs.io/en/latest/example/general.html#understanding-invocationerror-exit-codes)
+for more information.
+
+We use `edx_lint` to compile `pylintrc`. To update the rules,
+change `pylintrc_tweaks` and run `make pylintrc`.
 
 ### Updating Egg Info
 
