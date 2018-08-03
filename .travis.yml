@@ -11,13 +11,14 @@ matrix:
       python: 2.7
     - env: TOX_ENV=py27-django19-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
       python: 2.7
-  allow_failures:
-    - env: TOX_ENV=py27-django19-es62 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 2.7
-    - env: TOX_ENV=py36-django19-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
-    - env: TOX_ENV=py36-django18-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
+# TBD support - will be implemented in #5
+#  allow_failures:
+#    - env: TOX_ENV=py27-django19-es62 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+#      python: 2.7
+#    - env: TOX_ENV=py36-django19-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+#      python: 3.6
+#    - env: TOX_ENV=py36-django18-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+#      python: 3.6
 
 before_install:
   - pip install --upgrade pip
