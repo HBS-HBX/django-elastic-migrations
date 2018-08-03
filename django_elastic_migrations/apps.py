@@ -8,8 +8,6 @@ django_elastic_migrations Django application initialization.
 from __future__ import print_function
 from __future__ import absolute_import, unicode_literals
 
-import logging
-
 from django.apps import AppConfig
 
 
