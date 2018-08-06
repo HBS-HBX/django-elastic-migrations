@@ -22,12 +22,10 @@ class GenericDocType(DEMDocType):
     @classmethod
     def get_reindex_iterator(cls, queryset):
         """
-        Overrides DEMDocType.get_reindex_iterator; returns an iterator
-        where each item is a DocType instance dict for elasticsearch to
-        index, complete with the id. By default, uses all users in
-        the database (!)
-        :param queryset of HBXUsers
-        :return: iterator of UserSearchDoc.to_dict(include_meta=True)
+        returns an iterator where each item is a DocType instance dict
+        for elasticsearch to index, complete with the id.
+        :param queryset
+        :return: iterator of GenericDocType.to_dict(include_meta=True)
         """
         user_docs = [
             cls.get_document(u) for u in queryset
