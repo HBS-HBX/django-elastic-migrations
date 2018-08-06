@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+0.7.0 (2018-08-06)
+~~~~~~~~~~~~~~~~~~
+* fixed gh #5: "add python 3 support and tests"
+
 0.6.1 (2018-08-03)
 ~~~~~~~~~~~~~~~~~~
 * fixed gh #9: "using elasticsearch-dsl 6.1, TypeError in DEMIndex.save"
