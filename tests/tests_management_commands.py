@@ -1,9 +1,10 @@
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 from django.core.management import call_command
 
 from django_elastic_migrations.models import Index, IndexAction
 from django_elastic_migrations.utils.test_utils import DEMTestCase
-from models import Movie
-from search import MovieSearchIndex, MovieSearchDoc
+from tests.models import Movie
+from tests.search import MovieSearchIndex, MovieSearchDoc
 
 
 class TestEsUpdateManagementCommand(DEMTestCase):
