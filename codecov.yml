@@ -1,12 +1,11 @@
 coverage:
+  round: nearest
+  range: 0..100
+
   status:
-    project:
-      default:
-        enabled: yes
-        target: auto
-    patch:
-      default:
-        enabled: yes
-        target: 100%
+    project: yes
+    patch: yes
+    changes: no
+
   ignore:
     - "tests/*.py"
