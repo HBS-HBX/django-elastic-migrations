@@ -87,6 +87,11 @@ LOGGING = {
             "level": "DEBUG",
             "propagate": False
         },
+        "elasticsearch": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False
+        }
     },
 }
 logging_config.dictConfig(LOGGING)
