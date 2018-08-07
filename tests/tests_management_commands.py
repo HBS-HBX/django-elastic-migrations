@@ -21,14 +21,14 @@ class CommonDEMTestUtilsMixin(object):
         version_model = dem_index.get_version_model()
         self.assertIsNotNone(version_model)
 
-        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+        available_version_ids = index_model.get_available_versions().values_list('id', flat=True)
         expected_msg = "At test setup, the '{}' index should have one available version".format(index_name)
         self.assertEqual(len(available_version_ids), 1, expected_msg)
 
         expected_msg = "the {} index should already exist in elasticsearch.".format(version_model.name)
         self.assertTrue(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
 
-        return index_model, version_model
+        return index_model, version_model, dem_index
 
 
 class TestEsUpdateManagementCommand(DEMTestCase):
@@ -69,11 +69,13 @@ class TestEsDangerousResetManagementCommand(DEMTestCase):
         old_version_id = version_model.id
 
         available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
-        self.assertGreaterEqual(len(available_version_ids), 1, "At test setup, the movies index should have one available version")
+        expected_msg = "At test setup, the movies index should have one available version, was {}".format(len(available_version_ids))
+        self.assertGreaterEqual(len(available_version_ids), 1, expected_msg)
 
         pre_available_indexaction_ids = index_model.indexaction_set.all().values_list('id', flat=True)
         num_pre_indexactions = len(pre_available_indexaction_ids)
-        self.assertEqual(num_pre_indexactions, 3, "At test setup, movies index should have 3 IndexActions applied")
+        expected_msg = "At test setup, movies index should have 2 IndexActions applied, was {}".format(num_pre_indexactions)
+        self.assertEqual(num_pre_indexactions, 2, expected_msg)
 
         # create a new version so we have more than one
         call_command('es_create', 'movies', force=True)
@@ -116,7 +118,7 @@ class TestEsDangerousResetManagementCommand(DEMTestCase):
         self.assertEqual(num_docs, 0, "After es_dangerous_reset, no documents should be in elasticsearch")
 
 
-class TestEsCreateManagementCommand(DEMTestCase, CommonDEMTestUtilsMixin):
+class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     """
     Tests ./manage.py es_create
     """
@@ -124,27 +126,27 @@ class TestEsCreateManagementCommand(DEMTestCase, CommonDEMTestUtilsMixin):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation_and_force_param(self):
-        index_model, version_model = self._check_basic_setup_and_get_models()
+        index_model, version_model, _ = self._check_basic_setup_and_get_models()
 
         call_command('es_create', index_model.name)
 
         # by default, calling create shouldn't add a new version, since it hasn't changed
-        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+        available_version_ids = index_model.get_available_versions().values_list('id', flat=True)
         expected_msg = "After initial es_create, the movies index should still only have one version since it hasn't changed"
         self.assertEqual(len(available_version_ids), 1, expected_msg)
 
         call_command('es_create', index_model.name, force=True)
 
-        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+        available_version_ids = index_model.get_available_versions().values_list('id', flat=True)
         expected_msg = "After es_create --force, the movies index should have two versions"
         self.assertEqual(len(available_version_ids), 2, expected_msg)
 
     def test_all_and_force_params(self):
-        movies_index_model, _ = self._check_basic_setup_and_get_models("movies")
+        movies_index_model, _, __ = self._check_basic_setup_and_get_models("movies")
 
         new_index_name = "moviez"
         get_new_search_index(new_index_name)
-        moviez_index_model, _ = self._check_basic_setup_and_get_models(new_index_name)
+        moviez_index_model, _, __ = self._check_basic_setup_and_get_models(new_index_name)
 
         call_command('es_create', all=True)
 
@@ -160,8 +162,32 @@ class TestEsCreateManagementCommand(DEMTestCase, CommonDEMTestUtilsMixin):
             expected_msg = "After es_create --all --force, the {} index should now have two versions".format(index_model_instance.name)
             self.assertEqual(len(available_version_ids), 2, expected_msg)
 
+    def test_es_only(self):
+        """
+        Test that ./manage.py es_create my_index --es-only checks
+        if it does not exist in es, and if it does not exist it creates it
+        with the schema in the database.
+        """
+        movies_index_model, movies_index_version, movies_dem_index = self._check_basic_setup_and_get_models("movies")
 
-class TestEsDropManagementCommand(DEMTestCase, CommonDEMTestUtilsMixin):
+        # remove it from elasticsearch only. we need force=True because it's an active index version.
+        call_command('es_drop', movies_index_version.name, exact=True, force=True, es_only=True)
+
+        expected_msg = "the {} index should NOT exist in elasticsearch after es_drop.".format(movies_index_model.name)
+        self.assertFalse(movies_dem_index.exists(), expected_msg)
+
+        call_command('es_create', movies_index_model.name, es_only=True)
+
+        expected_msg = "the {} index SHOULD exist in elasticsearch after es_create --es-only.".format(movies_index_model.name)
+        self.assertTrue(movies_dem_index.exists(), expected_msg)
+
+        available_version_ids = movies_index_model.get_available_versions().values_list('id', flat=True)
+        expected_msg = "After `es_create {ver_name} --exact --es_only`, the {ver_name} index should still only have one version available".format(
+            ver_name=movies_index_model.name)
+        self.assertEqual(len(available_version_ids), 1, expected_msg)
+
+
+class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     """
     Tests ./manage.py es_drop
     """
@@ -169,7 +195,7 @@ class TestEsDropManagementCommand(DEMTestCase, CommonDEMTestUtilsMixin):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation(self):
-        index_model, version_model = self._check_basic_setup_and_get_models()
+        index_model, version_model, _ = self._check_basic_setup_and_get_models()
 
         # since the version is active, we should expect to have to use the force flag
         call_command('es_drop', version_model.name, exact=True, force=True)
@@ -189,7 +215,7 @@ class TestEsDropManagementCommand(DEMTestCase, CommonDEMTestUtilsMixin):
         test that ./manage.py es_drop --es-only really only drops the elasticsearch index,
         and does not have an impact on the database's record of what the indexes should be
         """
-        index_model, version_model = self._check_basic_setup_and_get_models()
+        index_model, version_model, dem_index = self._check_basic_setup_and_get_models()
 
         # since the version is active, we should expect to have to use the force flag
         call_command('es_drop', version_model.name, exact=True, force=True, es_only=True)
@@ -205,11 +231,11 @@ class TestEsDropManagementCommand(DEMTestCase, CommonDEMTestUtilsMixin):
         self.assertFalse(deleted_model.is_deleted, expected_msg)
 
     def test_es_only_all_flags(self):
-        movies_index_model, _ = self._check_basic_setup_and_get_models("movies")
+        movies_index_model, _, __ = self._check_basic_setup_and_get_models("movies")
 
         new_index_name = "moviez"
         moviez_index, moviez_doctype = get_new_search_index(new_index_name)
-        moviez_index_model, _ = self._check_basic_setup_and_get_models(new_index_name)
+        moviez_index_model, _, __ = self._check_basic_setup_and_get_models(new_index_name)
 
         call_command('es_update', new_index_name)
 

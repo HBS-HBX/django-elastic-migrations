@@ -83,6 +83,7 @@ so that the history of each *Index* is recorded.
 - `./manage.py es_update` - update the documents in the index. 
 - `./manage.py es_clear` - remove the documents from an index.
 - `./manage.py es_drop` - drop an index.
+- `./manage.py es_dangerous_reset` - erase elasticsearch and reset DEM.
 
 For each of these, use `--help` to see the details.
 

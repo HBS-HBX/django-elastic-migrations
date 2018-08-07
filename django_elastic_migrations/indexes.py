@@ -244,7 +244,7 @@ class DEMIndexManager(object):
     @classmethod
     def test_post_teardown(cls):
         DEMIndexManager.drop_index(
-            'all', force=True, just_prefix=es_test_prefix)
+            'all', force=True, just_prefix=es_test_prefix, hard_delete=True)
 
     @classmethod
     def update_index_models(cls):
@@ -263,7 +263,7 @@ class DEMIndexManager(object):
     """
 
     @classmethod
-    def create_index(cls, index_name, force=False):
+    def create_index(cls, index_name, force=False, es_only=False):
         """
         If the index name is in the initialized indexes dict,
         and the Index does not exist, create the specified Index
@@ -281,7 +281,7 @@ class DEMIndexManager(object):
         """
         # avoid circular import
         from django_elastic_migrations.models import CreateIndexAction
-        action = CreateIndexAction(force=force)
+        action = CreateIndexAction(force=force, es_only=es_only)
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
@@ -341,7 +341,7 @@ class DEMIndexManager(object):
 
     @classmethod
     def drop_index(
-        cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False, es_only=False):
+        cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False, es_only=False, hard_delete=False):
         """
         Given the named index, drop it from es
         :param index_name: the name of the index to drop
@@ -354,7 +354,7 @@ class DEMIndexManager(object):
         """
         # avoid circular import
         from django_elastic_migrations.models import DropIndexAction
-        action = DropIndexAction(force=force, just_prefix=just_prefix, older_mode=older_mode, es_only=es_only)
+        action = DropIndexAction(force=force, just_prefix=just_prefix, older_mode=older_mode, es_only=es_only, hard_delete=hard_delete)
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
@@ -790,9 +790,8 @@ class DEMIndex(ESIndex):
         :param kwargs:
         :return: True if created
         """
-        index_version = self.get_version_model()
         try:
-            index = index_version.name
+            index = self.get_es_index_name()
             body = self.to_dict()
             self.connection.indices.create(index=index, body=body, **kwargs)
         except Exception as ex:
@@ -851,8 +850,20 @@ class DEMIndex(ESIndex):
                     raise DEMIndexVersionCodebaseMismatchError(msg)
             return self.__doc_type
 
+    def exists(self):
+        name = self.get_es_index_name()
+        if name:
+            return es_client.indices.exists(index=name)
+        return False
+
     def get_active_version_index_name(self):
         return DEMIndexManager.get_active_index_version_name(self.__base_name)
+
+    def get_es_index_name(self):
+        index_version = self.get_version_model()
+        if index_version:
+            return index_version.name
+        return None
 
     def get_base_name(self):
         return self.__base_name

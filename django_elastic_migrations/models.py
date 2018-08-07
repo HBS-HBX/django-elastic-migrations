@@ -3,13 +3,13 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import datetime
 import json
+import os
+import random
 import sys
 import time
 import traceback
 from multiprocessing import cpu_count
 
-import os
-import random
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
@@ -80,7 +80,7 @@ class Index(models.Model):
         return self.get_available_versions().filter(prefix=prefix)
 
     def _get_other_versions(
-        self, given_version=None, prefix=environment_prefix, older=True):
+            self, given_version=None, prefix=environment_prefix, older=True):
         """
         Find all non-deleted versions that are older / newer
         than the given version. If older is False, return newer
@@ -183,6 +183,10 @@ class IndexVersion(models.Model):
         self.deleted_time = timezone.now()
         self.save()
 
+    def hard_delete(self):
+        self.delete()
+        super(IndexVersion, self).delete()
+
 
 @python_2_unicode_compatible
 class IndexAction(models.Model):
@@ -253,7 +257,10 @@ class IndexAction(models.Model):
         """
         Get a string representation of this model instance.
         """
-        return '<IndexAction, ID: {}>'.format(self.id)
+        index_name = self.index.name
+        if self.index_version:
+            index_name = self.index_version.name
+        return '<{} for {}, ID: {}>'.format(self.action, index_name, self.id)
 
     @property
     def dem_index(self):
@@ -573,7 +580,23 @@ class CreateIndexAction(IndexAction):
 
     def __init__(self, *args, **kwargs):
         self.force = kwargs.pop('force', False)
+        self.es_only = kwargs.pop('es_only', False)
         super(CreateIndexAction, self).__init__(*args, **kwargs)
+
+        # these task kwargs aren't used anywhere else,
+        # they are recorded in the database to make the history of actions
+        # taken on the indexes easier to understand
+        task_kwargs = {}
+        if self.force:
+            task_kwargs['force'] = self.force
+        if self.es_only:
+            task_kwargs['es_only'] = self.es_only
+
+        if task_kwargs:
+            self.task_kwargs = json.dumps(task_kwargs, sort_keys=True)
+            self.kwargs = task_kwargs
+        else:
+            self.kwargs = {}
 
     class Meta:
         # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
@@ -585,7 +608,19 @@ class CreateIndexAction(IndexAction):
         self._index_name = self.index.name
 
         msg = ""
-        if latest_version and dem_index.hash_matches(latest_version.json_md5):
+        if self.es_only:
+            versions = self.index.get_available_versions_with_prefix()
+            for version in versions:
+                self._index_version_name = version.name
+                version_dem_index = DEMIndexManager.get_dem_index(self._index_version_name, exact_mode=True)
+                created = version_dem_index.create_if_not_in_es()
+                if created:
+                    self.add_log("{_index_version_name} wasn't found in Elasticsearch! We recreated it there.", use_self_dict_format=True)
+                else:
+                    # TODO: check if schema matches and raise an exception if it does not
+                    self.add_log("{_index_version_name} was already created in Elasticsearch; did not create a new index.", use_self_dict_format=True)
+
+        elif latest_version and dem_index.hash_matches(latest_version.json_md5):
             self.index_version = latest_version
             self._index_version_name = self.index_version.name
             if self.force:
@@ -609,7 +644,9 @@ class CreateIndexAction(IndexAction):
                     self.add_log("   ... but it wasn't found in Elasticsearch! We recreated it there.")
                 else:
                     self.add_log("  ... did not create a new index.")
+
         else:
+            # either there is not an existing version, or it has changed, so just create a new one
             self.index_version = dem_index.create()
             self._index_version_name = self.index_version.name
             self.add_log(
@@ -690,6 +727,7 @@ class DropIndexAction(OlderModeMixin, IndexAction):
         self.force = kwargs.pop('force', False)
         self.just_prefix = kwargs.pop('just_prefix', None)
         self.es_only = kwargs.pop('es_only', False)
+        self.hard_delete = kwargs.pop('hard_delete', False)
         super(DropIndexAction, self).__init__(*args, **kwargs)
 
         # these task kwargs aren't used anywhere else, they are recorded in the database
@@ -701,6 +739,8 @@ class DropIndexAction(OlderModeMixin, IndexAction):
             task_kwargs['just_prefix'] = self.just_prefix
         if self.es_only:
             task_kwargs['es_only'] = self.es_only
+        if self.hard_delete:
+            task_kwargs['hard_delete'] = self.hard_delete
 
         if task_kwargs:
             self.task_kwargs = json.dumps(task_kwargs, sort_keys=True)
@@ -718,7 +758,7 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                 versions = self.index.get_older_versions(
                     given_version=version_model, prefix=self.just_prefix)
                 action = DropIndexAction(
-                    force=self.force, just_prefix=self.just_prefix, es_recreate=self.es_only)
+                    force=self.force, just_prefix=self.just_prefix, es_only=self.es_only, hard_delete=self.hard_delete)
                 self.apply_to_older(versions, action=action)
             else:
                 self.index_version = version_model
@@ -735,6 +775,9 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                     msg = "Dropping index version '{index_version_name}' because you said to do so.".format(**msg_params)
                     self.add_log(msg)
                     dem_index.delete()
+                    if self.hard_delete:
+                        self.index_version.hard_delete()
+                        self.index_version = None
         else:
             # first, check if *any* version exists.
             latest_version = self.index.get_latest_version()
@@ -768,7 +811,7 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                 versions = self.index.get_older_versions(
                     given_version=self.index.active_version, prefix=self.just_prefix)
                 action = DropIndexAction(
-                    force=self.force, just_prefix=self.just_prefix)
+                    force=self.force, just_prefix=self.just_prefix, hard_delete=self.hard_delete)
                 return self.apply_to_older(versions, action=action)
 
             elif self.just_prefix:
@@ -795,7 +838,11 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                 try:
                     DEMIndexManager.delete_es_created_index(version.name)
                     if not self.es_only:
-                        version.delete()
+                        if self.hard_delete:
+                            version.hard_delete()
+                            self.index_version = None
+                        else:
+                            version.delete()
                 except TransportError as ex:
                     if ex.status_code == 404:
                         self.add_log(
@@ -804,7 +851,10 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                             )
                         )
                         if not self.es_only:
-                            if version.is_deleted:
+                            if self.hard_delete:
+                                version.hard_delete()
+                                self.index_version = None
+                            elif version.is_deleted:
                                 self.add_log(
                                     "Version {} was already deleted in IndexVersion model; "
                                     "not doing anything further".format(
@@ -1087,7 +1137,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
             # if we're less than 10% done, put a little randomness
             # in between the workers to dither query load
             if (self.parent.docs_affected / self._total_docs_expected) < 0.1:
-                time.sleep(random.random()*2)
+                time.sleep(random.random() * 2)
 
         qs = doc_type.get_queryset()
         current_qs = qs[start:end]
@@ -1141,7 +1191,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         self._parent_docs_affected_pct = 100 - self._total_docs_remaining_pct
         if self._parent_docs_per_sec:
             self._expected_parent_runtime = str(datetime.timedelta(
-                seconds= self._total_docs_remaining / self._parent_docs_per_sec))
+                seconds=self._total_docs_remaining / self._parent_docs_per_sec))
         else:
             self._expected_parent_runtime = 'unknown'
 
