@@ -2,7 +2,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 from django.conf import settings
 from elasticsearch_dsl import Text, Q
 
-from django_elastic_migrations.indexes import DEMIndex, DEMDocType
+from django_elastic_migrations.indexes import DEMIndex, DEMDocType, DEMIndexManager
 from tests.models import Movie
 
 
@@ -95,3 +95,40 @@ class MovieSearchDoc(GenericDocType):
     @classmethod
     def get_model_full_text_boosted(cls, model):
         return model.title
+
+
+class DefaultNewSearchDocTypeMixin(object):
+    """
+    Used by get_new_search_index() in the case that doc_type_mixin is not supplied
+    """
+
+    @classmethod
+    def get_queryset(cls, last_updated_datetime=None):
+        qs = Movie.objects.all()
+        if last_updated_datetime:
+            qs = qs.filter(last_modified__gte=last_updated_datetime)
+        return qs
+
+
+def get_new_search_index(name, doc_type_mixin=None):
+    """
+    Given an index name and a class definition, create a new index and associate it
+    with a new doctype
+
+    :param name: base name of the index
+    :param cls: parameters of GenericDocType to override
+    :return: DEMIndex, DEMDocType
+    """
+    if doc_type_mixin is None:
+        doc_type_mixin = DefaultNewSearchDocTypeMixin
+
+    my_new_index = DEMIndex(name)
+    my_new_index.settings(**settings.ELASTICSEARCH_INDEX_SETTINGS)
+
+    @my_new_index.doc_type
+    class MyNewSearchDocType(doc_type_mixin, GenericDocType):
+        pass
+
+    DEMIndexManager.initialize(create_versions=True, activate_versions=True)
+
+    return my_new_index, MyNewSearchDocType

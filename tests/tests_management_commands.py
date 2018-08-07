@@ -2,11 +2,12 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 from django.core.management import call_command
 
+from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.models import Index, IndexVersion
 from django_elastic_migrations.utils.test_utils import DEMTestCase
 from tests.es_config import ES_CLIENT
 from tests.models import Movie
-from tests.search import MovieSearchIndex, MovieSearchDoc
+from tests.search import MovieSearchIndex, MovieSearchDoc, get_new_search_index
 
 
 class TestEsUpdateManagementCommand(DEMTestCase):
@@ -137,14 +138,48 @@ class TestEsDropManagementCommand(DEMTestCase):
         expected_msg = "After es_drop, the soft delete flag on the IndexVersion model id {} should be False".format(deleted_model.id)
         self.assertFalse(deleted_model.is_deleted, expected_msg)
 
-    def _check_basic_setup_and_get_models(self):
-        index_model = Index.objects.get(name='movies')
+    def test_es_only_all_flags(self):
+        movies_index_model, _ = self._check_basic_setup_and_get_models("movies")
 
-        version_model = MovieSearchIndex.get_version_model()
+        new_index_name = "moviez"
+        movies_2_index, movies_2_doctype = get_new_search_index(new_index_name)
+        moviez_index_model, _ = self._check_basic_setup_and_get_models(new_index_name)
+
+        call_command('es_update', new_index_name)
+
+        num_docs = movies_2_index.get_num_docs()
+        expected_msg = "After updating the index, '{}' index should have had two documents in elasticsearch".format(new_index_name)
+        self.assertEqual(num_docs, 2, expected_msg)
+
+        # at this point we have two indexes, and the one called moviez has two docs in it
+
+        call_command('es_drop', all=True, force=True, es_only=True)
+
+        # test that none of our indexes are available
+        es_indexes = DEMIndexManager.list_es_created_indexes()
+        expected_msg = "After calling ./manage.py es_drop --all --force --es-only, es shouldn't have any indexes in it"
+        self.assertEqual(len(es_indexes), 0, expected_msg)
+
+        for index_model_instance in [movies_index_model, moviez_index_model]:
+            available_version_ids = moviez_index_model.indexversion_set.all().values_list('id', flat=True)
+            expected_msg = "After es_drop, the {} index should still have one version".format(index_model_instance.name)
+            self.assertEqual(len(available_version_ids), 1, expected_msg)
+
+            deleted_model = IndexVersion.objects.get(id=available_version_ids[0])
+            expected_msg = "After es_drop, the soft delete flag on the IndexVersion model id {} should be False".format(deleted_model.id)
+            self.assertFalse(deleted_model.is_deleted, expected_msg)
+
+    def _check_basic_setup_and_get_models(self, index_name='movies'):
+        dem_index = DEMIndexManager.get_dem_index(index_name)
+
+        index_model = Index.objects.get(name=index_name)
+
+        version_model = dem_index.get_version_model()
         self.assertIsNotNone(version_model)
 
         available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
-        self.assertEqual(len(available_version_ids), 1, "At test setup, the movies index should have one available version")
+        expected_msg = "At test setup, the '{}' index should have one available version".format(index_name)
+        self.assertEqual(len(available_version_ids), 1, expected_msg)
 
         expected_msg = "the {} index should already exist in elasticsearch.".format(version_model.name)
         self.assertTrue(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
