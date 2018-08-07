@@ -17,7 +17,7 @@ from elasticsearch import TransportError
 
 from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexManager
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
-    CannotDropActiveVersion, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
+    CannotDropActiveVersionWithoutForceArg, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
 
@@ -689,7 +689,21 @@ class DropIndexAction(OlderModeMixin, IndexAction):
     def __init__(self, *args, **kwargs):
         self.force = kwargs.pop('force', False)
         self.just_prefix = kwargs.pop('just_prefix', None)
+        self.es_only = kwargs.pop('es_only', False)
         super(DropIndexAction, self).__init__(*args, **kwargs)
+
+        # these task kwargs aren't used anywhere else, they are recorded in the database
+        # to make the history of actions taken on the indexes easier to understand
+        task_kwargs = {}
+        if self.force:
+            task_kwargs['force'] = self.force
+        if self.just_prefix:
+            task_kwargs['just_prefix'] = self.just_prefix
+        if self.es_only:
+            task_kwargs['es_only'] = self.es_only
+
+        if task_kwargs:
+            self.task_kwargs = json.dumps(task_kwargs, sort_keys=True)
 
     class Meta:
         # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
@@ -704,18 +718,23 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                 versions = self.index.get_older_versions(
                     given_version=version_model, prefix=self.just_prefix)
                 action = DropIndexAction(
-                    force=self.force, just_prefix=self.just_prefix)
+                    force=self.force, just_prefix=self.just_prefix, es_recreate=self.es_only)
                 self.apply_to_older(versions, action=action)
             else:
                 self.index_version = version_model
-                if version_model.is_active:
-                    raise CannotDropActiveVersion()
+                if self.index_version.is_active and not self.force:
+                    raise CannotDropActiveVersionWithoutForceArg()
 
                 msg_params.update({"index_version_name": version_model.name})
-                dem_index.delete()
-                msg = ("Dropping index version '{index_version_name}' "
-                       "because you said to do so.".format(**msg_params))
-                self.add_log(msg)
+
+                if self.es_only:
+                    msg = "Dropping index version '{index_version_name}' ONLY in es because you said to do so.".format(**msg_params)
+                    self.add_log(msg)
+                    DEMIndexManager.delete_es_created_index(self.index_version.name, ignore=[404])
+                else:
+                    msg = "Dropping index version '{index_version_name}' because you said to do so.".format(**msg_params)
+                    self.add_log(msg)
+                    dem_index.delete()
         else:
             # first, check if *any* version exists.
             latest_version = self.index.get_latest_version()
@@ -751,32 +770,32 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                 action = DropIndexAction(
                     force=self.force, just_prefix=self.just_prefix)
                 return self.apply_to_older(versions, action=action)
+
             elif self.just_prefix:
                 available_versions = self.index.get_available_versions_with_prefix(self.just_prefix)
+
             else:
                 available_versions = self.index.get_available_versions()
-            self.add_log(
-                "About to drop {} versions because you said to do so "
-                "with the argument --force!".format(
-                    len(available_versions),
-                )
-            )
+
+            es_only_phrase = ""
+            if self.es_only:
+                es_only_phrase = "only in elasticsearch "
 
             # avoid circular import
-            from django_elastic_migrations import DEMIndexManager
             count = 0
 
             for version in available_versions:
                 count += 1
                 self.add_log(
-                    "Dropping version {} because you said to do so "
+                    "Dropping version {name} {es_only_phrase}because you said to do so "
                     "with the argument --force!".format(
-                        version.name
+                        name=version.name, es_only_phrase=es_only_phrase
                     )
                 )
                 try:
                     DEMIndexManager.delete_es_created_index(version.name)
-                    version.delete()
+                    if not self.es_only:
+                        version.delete()
                 except TransportError as ex:
                     if ex.status_code == 404:
                         self.add_log(
@@ -784,20 +803,21 @@ class DropIndexAction(OlderModeMixin, IndexAction):
                                 version.name
                             )
                         )
-                        if version.is_deleted:
-                            self.add_log(
-                                "Version {} was already deleted in IndexVersion model; "
-                                "not doing anything further".format(
-                                    version.name
+                        if not self.es_only:
+                            if version.is_deleted:
+                                self.add_log(
+                                    "Version {} was already deleted in IndexVersion model; "
+                                    "not doing anything further".format(
+                                        version.name
+                                    )
                                 )
-                            )
-                            count -= 1
-                        else:
-                            version.delete()
+                                count -= 1
+                            else:
+                                version.delete()
                     else:
                         raise ex
 
-            self.add_log("Done dropping {} versions.".format(count))
+            self.add_log("Done dropping {count} versions {es_only_phrase}".format(count=count, es_only_phrase=es_only_phrase))
 
 
 class UpdateIndexAction(NewerModeMixin, IndexAction):

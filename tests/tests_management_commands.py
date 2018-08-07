@@ -102,16 +102,7 @@ class TestEsDropManagementCommand(DEMTestCase):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation(self):
-        index_model = Index.objects.get(name='movies')
-
-        version_model = MovieSearchIndex.get_version_model()
-        self.assertIsNotNone(version_model)
-
-        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
-        self.assertEqual(len(available_version_ids), 1, "At test setup, the movies index should have one available version")
-
-        expected_msg = "the {} index should already exist in elasticsearch.".format(version_model.name)
-        self.assertTrue(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
+        index_model, version_model = self._check_basic_setup_and_get_models()
 
         # since the version is active, we should expect to have to use the force flag
         call_command('es_drop', version_model.name, exact=True, force=True)
@@ -125,3 +116,37 @@ class TestEsDropManagementCommand(DEMTestCase):
         deleted_model = IndexVersion.objects.get(id=available_version_ids[0])
         expected_msg = "After es_drop, the soft delete flag on the IndexVersion model id {} should be True".format(deleted_model.id)
         self.assertTrue(deleted_model.is_deleted, expected_msg)
+
+    def test_es_only_flag(self):
+        """
+        test that ./manage.py es_drop --es-only really only drops the elasticsearch index,
+        and does not have an impact on the database's record of what the indexes should be
+        """
+        index_model, version_model = self._check_basic_setup_and_get_models()
+
+        # since the version is active, we should expect to have to use the force flag
+        call_command('es_drop', version_model.name, exact=True, force=True, es_only=True)
+
+        expected_msg = "the {} index should NOT exist in elasticsearch after es_drop.".format(version_model.name)
+        self.assertFalse(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
+
+        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+        self.assertEqual(len(available_version_ids), 1, "After es_drop, the movies index should still have one version")
+
+        deleted_model = IndexVersion.objects.get(id=available_version_ids[0])
+        expected_msg = "After es_drop, the soft delete flag on the IndexVersion model id {} should be False".format(deleted_model.id)
+        self.assertFalse(deleted_model.is_deleted, expected_msg)
+
+    def _check_basic_setup_and_get_models(self):
+        index_model = Index.objects.get(name='movies')
+
+        version_model = MovieSearchIndex.get_version_model()
+        self.assertIsNotNone(version_model)
+
+        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+        self.assertEqual(len(available_version_ids), 1, "At test setup, the movies index should have one available version")
+
+        expected_msg = "the {} index should already exist in elasticsearch.".format(version_model.name)
+        self.assertTrue(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
+
+        return index_model, version_model
