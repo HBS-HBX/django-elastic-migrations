@@ -1,8 +1,10 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 from django.core.management import call_command
 
-from django_elastic_migrations.models import Index, IndexAction
+from django_elastic_migrations.models import Index, IndexVersion
 from django_elastic_migrations.utils.test_utils import DEMTestCase
+from tests.es_config import ES_CLIENT
 from tests.models import Movie
 from tests.search import MovieSearchIndex, MovieSearchDoc
 
@@ -90,3 +92,36 @@ class TestEsDangerousResetManagementCommand(DEMTestCase):
 
         num_docs = MovieSearchIndex.get_num_docs()
         self.assertEqual(num_docs, 0, "After es_dangerous_reset, no documents should be in elasticsearch")
+
+
+class TestEsDropManagementCommand(DEMTestCase):
+    """
+    Tests ./manage.py es_drop
+    """
+
+    fixtures = ['tests/tests_initial.json']
+
+    def test_basic_invocation(self):
+        index_model = Index.objects.get(name='movies')
+
+        version_model = MovieSearchIndex.get_version_model()
+        self.assertIsNotNone(version_model)
+
+        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+        self.assertEqual(len(available_version_ids), 1, "At test setup, the movies index should have one available version")
+
+        expected_msg = "the {} index should already exist in elasticsearch.".format(version_model.name)
+        self.assertTrue(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
+
+        # since the version is active, we should expect to have to use the force flag
+        call_command('es_drop', version_model.name, exact=True, force=True)
+
+        expected_msg = "the {} index should NOT exist in elasticsearch after es_drop.".format(version_model.name)
+        self.assertFalse(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
+
+        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+        self.assertEqual(len(available_version_ids), 1, "After es_drop, the movies index should still have one version")
+
+        deleted_model = IndexVersion.objects.get(id=available_version_ids[0])
+        expected_msg = "After es_drop, the soft delete flag on the IndexVersion model id {} should be True".format(deleted_model.id)
+        self.assertTrue(deleted_model.is_deleted, expected_msg)

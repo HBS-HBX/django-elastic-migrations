@@ -154,7 +154,7 @@ class IndexVersion(models.Model):
 
     @property
     def is_deleted(self):
-        return not self.deleted_time
+        return bool(self.deleted_time)
 
     @property
     def name(self):
