@@ -110,13 +110,15 @@ class DefaultNewSearchDocTypeMixin(object):
         return qs
 
 
-def get_new_search_index(name, doc_type_mixin=None):
+def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True):
     """
     Given an index name and a class definition, create a new index and associate it
     with a new doctype
 
     :param name: base name of the index
     :param cls: parameters of GenericDocType to override
+    :param doc_type_mixin: a class to mix in to the generated doctype
+    :param create_and_activate: if True, call DEMIndexManager.initialize(True, True) before returning
     :return: DEMIndex, DEMDocType
     """
     if doc_type_mixin is None:
@@ -129,6 +131,7 @@ def get_new_search_index(name, doc_type_mixin=None):
     class MyNewSearchDocType(doc_type_mixin, GenericDocType):
         pass
 
-    DEMIndexManager.initialize(create_versions=True, activate_versions=True)
+    if create_and_activate:
+        DEMIndexManager.initialize(create_versions=True, activate_versions=True)
 
     return my_new_index, MyNewSearchDocType
