@@ -90,6 +90,8 @@ LOGGING = {
         "elasticsearch": {
             "handlers": ["console"],
             "level": "WARNING",
+            # locally when debugging tests, this may help:
+            # "level": "DEBUG",
             "propagate": False
         },
         "elasticsearch_dsl": {

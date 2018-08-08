@@ -122,11 +122,13 @@ class DefaultNewSearchDocTypeMixin(GenericDocType):
 @contextmanager
 def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True, dem_index=None):
     """
-    Given an index name and a class definition, create a new index and associate it
+    Given an index name and a class definition, create a new temporary index and associate it
     with a new doctype. This is a temporary index, so it's implemented as a context
     manager, so we can remove the index when done.
 
-    :param name: base name of the index
+    Do not use the name "movies" or any other non-transient index name; it will interfere with it if so.
+
+    :param name: base name of the index - not "movies" - something preferably unique
     :param cls: parameters of GenericDocType to override
     :param doc_type_mixin: a class to mix in to the generated doctype
     :param create_and_activate: if True, call DEMIndexManager.initialize(True, True) before returning
@@ -137,8 +139,6 @@ def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True, de
 
     if doc_type_mixin is None:
         doc_type_mixin = DefaultNewSearchDocTypeMixin
-
-    existing_instance_names_before = DEMIndexManager.instances.keys()
 
     my_new_index = dem_index
     if my_new_index is None:
@@ -161,10 +161,4 @@ def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True, de
     yield (my_new_index, MyNewSearchDocType)
 
     # clean up after the index when we're done
-    my_new_index.delete()
-    # ensure we leave the DEMIndexManager in the state it was in before, incase we created new indexes
-    for index_name in DEMIndexManager.instances.keys():
-        if index_name not in existing_instance_names_before:
-            DEMIndexManager.instances.pop(index_name, None)
-    # if we're in a nested call, activate the latest available version of the this temporary index
-    DEMIndexManager.initialize(activate_versions=True)
+    DEMIndexManager.destroy_dem_index(my_new_index)

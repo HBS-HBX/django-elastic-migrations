@@ -57,6 +57,29 @@ class DEMIndexManager(object):
             return cls.get_index_model(base_name, create_on_not_found)
 
     @classmethod
+    def destroy_dem_index(cls, dem_index_instance):
+        """
+        Given a DEMIndex instance, permanently delete it from elasticsearch and the database
+        Only used during testing when setting up and destroying temporary, mutable indexes
+        Used by tests.search.get_new_search_index
+        """
+        base_name = dem_index_instance.get_base_name()
+        index_model = cls.index_models.pop(base_name, None)
+        if index_model:
+            try:
+                dem_index_instance.delete()
+            except AttributeError as ae:
+                if "'NoneType' object has no attribute 'name'" in str(ae):
+                    pass
+                elif "'NoneType' object has no attribute 'active_version'" in str(ae):
+                    pass
+                else:
+                    raise ae
+            index_model.delete()
+            cls.instances.pop(base_name, None)
+            logger.info("index {} has been deleted in DEMIndexManager.destroy_dem_index")
+
+    @classmethod
     def create_and_activate_version_for_each_index_if_none_is_active(
         cls, create_versions, activate_versions):
         for index_base_name, dem_index in cls.get_indexes_dict().items():
