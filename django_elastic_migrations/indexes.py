@@ -235,15 +235,18 @@ class DEMIndexManager(object):
 
     @classmethod
     def test_pre_setup(cls):
-        DEMIndexManager.initialize()
         cls.test_post_teardown()
-        DEMIndexManager.create_index('all', force=True)
-        DEMIndexManager.activate_index('all')
+        DEMIndexManager.initialize(create_versions=True, activate_versions=True)
 
     @classmethod
     def test_post_teardown(cls):
-        DEMIndexManager.drop_index(
-            'all', force=True, just_prefix=es_test_prefix, hard_delete=True)
+        try:
+            DEMIndexManager.drop_index(
+                'all', force=True, just_prefix=es_test_prefix, hard_delete=True)
+        except DEMIndexNotFound:
+            # it's okay if the test cleaned up after itself. This is the case with
+            # tests that use a context manager to remove a temporary index.
+            pass
 
     @classmethod
     def update_index_models(cls):
@@ -379,7 +382,7 @@ class DEMIndexManager(object):
                 if dem_index:
                     dem_indexes.append(dem_index)
                 else:
-                    DEMIndexNotFound(index_name)
+                    raise DEMIndexNotFound(index_name)
             if dem_indexes:
                 actions = []
                 for dem_index in dem_indexes:
@@ -783,15 +786,17 @@ class DEMIndex(ESIndex):
             raise ex
         return index_version
 
-    def create_if_not_in_es(self, **kwargs):
+    def create_if_not_in_es(self, body=None, **kwargs):
         """
         Create the index if it doesn't already exist in elasticsearch.
-        :param kwargs:
+        :param body: the body to pass to elasticsearch create action
+        :param kwargs: kwargs to pass to elasticsearch create action
         :return: True if created
         """
         try:
             index = self.get_es_index_name()
-            body = self.to_dict()
+            if body is None:
+                body = self.to_dict()
             self.connection.indices.create(index=index, body=body, **kwargs)
         except Exception as ex:
             if isinstance(ex, TransportError):

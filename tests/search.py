@@ -3,14 +3,20 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 from contextlib import contextmanager
 
 from django.conf import settings
-from elasticsearch_dsl import Text, Q
+from elasticsearch_dsl import Text, Q, analyzer, token_filter, tokenizer
 
 from django_elastic_migrations.indexes import DEMIndex, DEMDocType, DEMIndexManager
 from tests.models import Movie
 
+basic_analyzer = analyzer(
+    "basic", filter=[token_filter("standard"), token_filter("lowercase"), token_filter("asciifolding")],
+    tokenizer=tokenizer("standard"),
+    type="custom")
+
+alternate_textfield = Text(analyzer=basic_analyzer, search_analyzer=basic_analyzer)
+
 
 class GenericDocType(DEMDocType):
-
     full_text = Text(required=True)
     full_text_boosted = Text(required=True)
 
@@ -100,7 +106,7 @@ class MovieSearchDoc(GenericDocType):
         return model.title
 
 
-class DefaultNewSearchDocTypeMixin(object):
+class DefaultNewSearchDocTypeMixin(GenericDocType):
     """
     Used by get_new_search_index() in the case that doc_type_mixin is not supplied
     """
@@ -114,7 +120,7 @@ class DefaultNewSearchDocTypeMixin(object):
 
 
 @contextmanager
-def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True):
+def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True, dem_index=None):
     """
     Given an index name and a class definition, create a new index and associate it
     with a new doctype. This is a temporary index, so it's implemented as a context
@@ -126,23 +132,39 @@ def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True):
     :param create_and_activate: if True, call DEMIndexManager.initialize(True, True) before returning
     :return: DEMIndex, DEMDocType
     """
+    if name == "movies":
+        raise ValueError("Don't use the movies index for testing; it will interfere with the fixture")
+
     if doc_type_mixin is None:
         doc_type_mixin = DefaultNewSearchDocTypeMixin
 
-    my_new_index = DEMIndex(name)
-    my_new_index.settings(**settings.ELASTICSEARCH_INDEX_SETTINGS)
+    existing_instance_names_before = DEMIndexManager.instances.keys()
 
-    @my_new_index.doc_type
+    my_new_index = dem_index
+    if my_new_index is None:
+        my_new_index = DEMIndex(name)
+        my_new_index.settings(**settings.ELASTICSEARCH_INDEX_SETTINGS)
+
     class MyNewSearchDocType(doc_type_mixin, GenericDocType):
         pass
 
+    my_new_index.doc_type(MyNewSearchDocType)
+
     if create_and_activate:
         DEMIndexManager.initialize(create_versions=True, activate_versions=True)
+        # DEMIndexManager doesn't normally care about indexes that aren't declared in settings, so we have to add this manually
+        DEMIndexManager.add_index(my_new_index)
+        DEMIndexManager.reinitialize_esindex_instances()
+        DEMIndexManager.create_index(name)
+        DEMIndexManager.activate_index(name)
 
     yield (my_new_index, MyNewSearchDocType)
 
     # clean up after the index when we're done
-    index_model = my_new_index.get_version_model()
     my_new_index.delete()
-    index_model.delete()
-    DEMIndexManager.instances.pop(name, None)
+    # ensure we leave the DEMIndexManager in the state it was in before, incase we created new indexes
+    for index_name in DEMIndexManager.instances.keys():
+        if index_name not in existing_instance_names_before:
+            DEMIndexManager.instances.pop(index_name, None)
+    # if we're in a nested call, activate the latest available version of the this temporary index
+    DEMIndexManager.initialize(activate_versions=True)

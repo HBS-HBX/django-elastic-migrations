@@ -4,13 +4,12 @@ import logging
 
 from django.core.management import call_command
 
-from django_elastic_migrations import DEMIndexManager
+from django_elastic_migrations import DEMIndexManager, es_client
 from django_elastic_migrations.models import Index, IndexVersion
 from django_elastic_migrations.utils.test_utils import DEMTestCase
 from tests.es_config import ES_CLIENT
 from tests.models import Movie
-from tests.search import MovieSearchIndex, MovieSearchDoc, get_new_search_index
-
+from tests.search import MovieSearchIndex, MovieSearchDoc, get_new_search_index, alternate_textfield, DefaultNewSearchDocTypeMixin
 
 log = logging.getLogger(__file__)
 
@@ -18,25 +17,25 @@ log = logging.getLogger(__file__)
 # noinspection PyUnresolvedReferences
 class CommonDEMTestUtilsMixin(object):
 
-    def _check_basic_setup_and_get_models(self, index_name='movies'):
+    def _check_basic_setup_and_get_models(self, index_name='movies', expected_num_versions=1):
         dem_index = DEMIndexManager.get_dem_index(index_name)
 
-        index_model = Index.objects.get(name=index_name)
+        index_model = dem_index.get_index_model()
 
         version_model = dem_index.get_version_model()
         self.assertIsNotNone(version_model)
 
         available_version_ids = index_model.get_available_versions().values_list('id', flat=True)
-        expected_msg = "At test setup, the '{}' index should have one available version".format(index_name)
-        self.assertEqual(len(available_version_ids), 1, expected_msg)
+        expected_msg = "At test setup, the '{}' index should have {} available version(s)".format(index_name, expected_num_versions)
+        self.assertEqual(len(available_version_ids), expected_num_versions, expected_msg)
 
         expected_msg = "the {} index should already exist in elasticsearch.".format(version_model.name)
-        self.assertTrue(ES_CLIENT.indices.exists(index=version_model.name), expected_msg)
+        self.assertTrue(version_model.exists_in_es(), expected_msg)
 
         return index_model, version_model, dem_index
 
 
-class TestEsUpdateManagementCommand(DEMTestCase):
+class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     """
     Tests ./manage.py es_update
     """
@@ -44,6 +43,8 @@ class TestEsUpdateManagementCommand(DEMTestCase):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation(self):
+        self._check_basic_setup_and_get_models()
+
         num_docs = MovieSearchIndex.get_num_docs()
         self.assertEqual(num_docs, 0)
 
@@ -175,23 +176,44 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         if it does not exist in es, and if it does not exist it creates it
         with the schema in the database.
         """
-        movies_index_model, movies_index_version, movies_dem_index = self._check_basic_setup_and_get_models("movies")
+        new_index_name = "moviez"
+        # create a new temporary index we can change inside this test
+        with get_new_search_index(new_index_name):
+            moviez_index_model, moviez_index_version, moviez_dem_index = self._check_basic_setup_and_get_models(new_index_name)
 
-        # remove it from elasticsearch only. we need force=True because it's an active index version.
-        call_command('es_drop', movies_index_version.name, exact=True, force=True, es_only=True)
+            movies1_schema = moviez_index_version.get_indented_schema_body()
+            log.info("movies index json: {}".format(movies1_schema))
 
-        expected_msg = "the {} index should NOT exist in elasticsearch after es_drop.".format(movies_index_model.name)
-        self.assertFalse(movies_dem_index.exists(), expected_msg)
+            call_command('es_drop', moviez_index_version.name, exact=True, force=True, es_only=True)
 
-        call_command('es_create', movies_index_model.name, es_only=True)
+            expected_msg = "the {} index should NOT exist in elasticsearch after es_drop.".format(moviez_index_model.name)
+            self.assertFalse(es_client.indices.exists(index=moviez_index_version.name), expected_msg)
 
-        expected_msg = "the {} index SHOULD exist in elasticsearch after es_create --es-only.".format(movies_index_model.name)
-        self.assertTrue(movies_dem_index.exists(), expected_msg)
+            class MovieSearchDocSchemaModified(DefaultNewSearchDocTypeMixin):
+                complete_new_field = alternate_textfield
 
-        available_version_ids = movies_index_model.get_available_versions().values_list('id', flat=True)
-        expected_msg = "After `es_create {ver_name} --exact --es_only`, the {ver_name} index should still only have one version available".format(
-            ver_name=movies_index_model.name)
-        self.assertEqual(len(available_version_ids), 1, expected_msg)
+            # change the index again:
+            with get_new_search_index(new_index_name, MovieSearchDocSchemaModified, dem_index=moviez_dem_index):
+                _, movies_index_version2, movies_dem_index2 = self._check_basic_setup_and_get_models(new_index_name, expected_num_versions=2)
+
+                movies2_schema = movies_index_version2.get_indented_schema_body()
+                log.info("movies2 index json: {}".format(movies1_schema))
+
+                self.assertNotEqual(movies1_schema, movies2_schema)
+
+                call_command('es_create', moviez_index_model.name, es_only=True)
+
+                expected_msg = "the {} index SHOULD exist in elasticsearch after es_create --es-only.".format(moviez_index_version.name)
+                self.assertTrue(es_client.indices.exists(index=moviez_index_version.name), expected_msg)
+
+                expected_msg = "the {} index SHOULD exist in elasticsearch after es_create --es-only.".format(movies_index_version2.name)
+                self.assertTrue(es_client.indices.exists(index=movies_index_version2.name), expected_msg)
+
+                available_versions = moviez_index_model.get_available_versions()
+                available_versions_num = available_versions.count()
+                expected_msg = "After `es_create {ver_name} --es_only`, the {ver_name} index should have two index versions available, but it had {num}".format(
+                    ver_name=moviez_index_model.name, num=available_versions_num)
+                self.assertEqual(available_versions_num, 2, expected_msg)
 
 
 class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):

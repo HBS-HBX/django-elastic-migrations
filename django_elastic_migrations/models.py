@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch import TransportError
 
-from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexManager
+from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexManager, es_client
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersionWithoutForceArg, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
@@ -186,6 +186,17 @@ class IndexVersion(models.Model):
     def hard_delete(self):
         self.delete()
         super(IndexVersion, self).delete()
+
+    def get_schema_body(self):
+        body = json.loads(self.json)
+        return body
+
+    def get_indented_schema_body(self):
+        body = self.get_schema_body()
+        return json.dumps(body, sort_keys=True, indent=2)
+
+    def exists_in_es(self):
+        return es_client.indices.exists(index=self.name)
 
 
 @python_2_unicode_compatible
@@ -613,9 +624,10 @@ class CreateIndexAction(IndexAction):
             for version in versions:
                 self._index_version_name = version.name
                 version_dem_index = DEMIndexManager.get_dem_index(self._index_version_name, exact_mode=True)
-                created = version_dem_index.create_if_not_in_es()
+                schema_body = version.get_schema_body()
+                created = version_dem_index.create_if_not_in_es(body=schema_body)
                 if created:
-                    self.add_log("{_index_version_name} wasn't found in Elasticsearch! We recreated it there.", use_self_dict_format=True)
+                    self.add_log("{_index_version_name} wasn't found in Elasticsearch! We recreated it there with its original schema.", use_self_dict_format=True)
                 else:
                     # TODO: check if schema matches and raise an exception if it does not
                     self.add_log("{_index_version_name} was already created in Elasticsearch; did not create a new index.", use_self_dict_format=True)
