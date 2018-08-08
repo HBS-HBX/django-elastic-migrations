@@ -9,9 +9,9 @@ from elasticsearch import TransportError
 from elasticsearch.helpers import expand_action, bulk
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
-from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger
+from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger, codebase_id
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
-    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
+    IllegalDEMIndexState, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 from django_elastic_migrations.utils.loading import import_module_element
 from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiProcess, USE_ALL_WORKERS
@@ -861,20 +861,31 @@ class DEMIndex(ESIndex):
                 self.__doc_type = super(DEMIndex, self).doc_type(doc_type)
                 if not self.hash_matches(version_model.json_md5):
                     doc_type._doc_type.index = doc_type_index_backup
-                    self.__doc_type = None
+                    our_hash, our_json = self.get_index_hash_and_json()
+                    our_tag = codebase_id
                     msg = (
-                        "Someone requested DEMIndex {index_name}, "
-                        "which was created in codebase version {tag}. "
-                        "The current version of that index does not have the same "
-                        "spec. Please run operations for {index_name} on an app "
-                        "server running a version such as {tag}.  "
-                        " - needed doc type hash: {needed_hash}".format(
-                            index_name=version_model.name,
-                            needed_hash=version_model.json_md5,
-                            tag=version_model.tag
+                        "DEMIndex.doc_type received a request to use an elasticsearch index whose exact "
+                        "schema / DEMDocType was not accessible in this codebase. "
+                        "This may lead to undefined behavior (for example if this codebase searches or indexes "
+                        "a field that has changed in the requested index, it may not return correctly). "
+                        "\n - requested index: {version_name} "
+                        "\n - requested spec: {version_spec} "
+                        "\n - our spec:       {our_spec} "
+                        "\n - requested hash: {version_hash} "
+                        "\n - our hash:       {our_hash} "
+                        "\n - requested tag: {version_tag} "
+                        "\n - our tag:       {our_tag} "
+                        "".format(
+                            version_name=version_model.name,
+                            version_tag=version_model.tag,
+                            our_tag=our_tag,
+                            version_hash=version_model.json_md5,
+                            our_hash=our_hash,
+                            version_spec=version_model.json,
+                            our_spec=our_json,
                         )
                     )
-                    raise DEMIndexVersionCodebaseMismatchError(msg)
+                    logger.warning(msg)
             return self.__doc_type
 
     def exists(self):
