@@ -240,14 +240,6 @@ class DEMIndexManager(object):
         DEMIndexManager.create_index('all', force=True)
         DEMIndexManager.activate_index('all')
 
-        # importing here to avoid circular imports
-        from django_elastic_migrations.models import IndexVersion
-        all_test_indexversions = IndexVersion.objects.filter(prefix=es_test_prefix).prefetch_related('indexaction_set')
-        for indexversion in all_test_indexversions:
-            indexversion.indexaction_set.all().delete()
-
-        DEMIndexManager.initialize()
-
     @classmethod
     def test_post_teardown(cls):
         DEMIndexManager.drop_index(

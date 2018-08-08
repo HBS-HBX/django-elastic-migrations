@@ -4,12 +4,11 @@ Changelog
 0.7.1 (2018-08-07)
 ~~~~~~~~~~~~~~~~~~
 * fixed gh #8 es_dangerous_reset --es-only to sync database to ES
-  breaking change:
 * fixed gh #17 make es_dangerous_reset remove dem models
 * improved test coverage
-* added tests ``for es_create --es-only``
-* added new ``IndexVersion.hard_delete`` but it's not called by default
-* added new ``hard_delete`` flag to ``DropIndexAction``
+* added tests for ``es_create --es-only``
+* added ``IndexVersion.hard_delete()`` (not called by default)
+* added ``hard_delete`` flag to ``DropIndexAction``
 * added ``hard_delete`` flag to ``DEMIndexManager.test_post_teardown()``
 * updated ``__str__()`` of ``IndexAction`` to be more descriptive
 

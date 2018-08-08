@@ -79,7 +79,7 @@ LOGGING = {
             "handlers": [
                 "console"
             ],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True
         },
         "django_elastic_migrations": {
@@ -88,6 +88,11 @@ LOGGING = {
             "propagate": False
         },
         "elasticsearch": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False
+        },
+        "elasticsearch_dsl": {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False

@@ -1,4 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
+
+from contextlib import contextmanager
+
 from django.conf import settings
 from elasticsearch_dsl import Text, Q
 
@@ -110,10 +113,12 @@ class DefaultNewSearchDocTypeMixin(object):
         return qs
 
 
+@contextmanager
 def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True):
     """
     Given an index name and a class definition, create a new index and associate it
-    with a new doctype
+    with a new doctype. This is a temporary index, so it's implemented as a context
+    manager, so we can remove the index when done.
 
     :param name: base name of the index
     :param cls: parameters of GenericDocType to override
@@ -134,4 +139,10 @@ def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True):
     if create_and_activate:
         DEMIndexManager.initialize(create_versions=True, activate_versions=True)
 
-    return my_new_index, MyNewSearchDocType
+    yield (my_new_index, MyNewSearchDocType)
+
+    # clean up after the index when we're done
+    index_model = my_new_index.get_version_model()
+    my_new_index.delete()
+    index_model.delete()
+    DEMIndexManager.instances.pop(name, None)
