@@ -21,7 +21,7 @@ elasticsearch-dsl==6.1.0
 elasticsearch==6.3.0      # via elasticsearch-dsl
 enum34==1.1.6             # via astroid
 first==2.0.1              # via pip-tools
-futures==3.2.0            # via caniusepython3, isort
+futures==3.1.0            # via caniusepython3, isort
 idna==2.7                 # via requests
 inflect==1.0.0            # via jinja2-pluralize
 ipaddress==1.0.22         # via elasticsearch-dsl
