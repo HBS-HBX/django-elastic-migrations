@@ -35,30 +35,30 @@ class Command(ESCommand):
         force = options.get('force', False)
         just_prefix = options.get('just-prefix', None)
 
-        if es_only:
-            if not indexes and apply_all:
-                if not force:
-                    raise CannotDropAllIndexesWithoutForceArg(
-                        "When using --es-only, cannot use --all without --force"
-                    )
-                indexes = DEMIndexManager.list_es_created_indexes()
-
-            count = 0
-            for index_name in indexes:
-                if just_prefix and not index_name.startswith(just_prefix):
-                    continue
-                logger.warning("Dropping index {} from Elasticsearch only".format(index_name))
-                DEMIndexManager.delete_es_created_index(index_name, ignore=[404])
-                count += 1
-            logger.info("Completed dropping {} indexes from Elasticsearch only".format(count))
-        elif apply_all:
+        if apply_all:
+            if not force:
+                raise CannotDropAllIndexesWithoutForceArg(
+                    "When using --es-only, cannot use --all without --force"
+                )
             DEMIndexManager.drop_index(
                 'all',
                 exact_mode=exact_mode,
                 force=force,
                 just_prefix=just_prefix,
-                older_mode=older_mode
+                older_mode=older_mode,
+                es_only=es_only
             )
+            if es_only:
+                indexes = DEMIndexManager.list_es_created_indexes()
+
+                count = 0
+                for index_name in indexes:
+                    if just_prefix and not index_name.startswith(just_prefix):
+                        continue
+                    logger.warning("Dropping index {} from Elasticsearch only".format(index_name))
+                    DEMIndexManager.delete_es_created_index(index_name, ignore=[404])
+                    count += 1
+                logger.info("Completed dropping {} indexes from Elasticsearch only".format(count))
         elif indexes:
             for index_name in indexes:
                 DEMIndexManager.drop_index(
@@ -66,5 +66,6 @@ class Command(ESCommand):
                     exact_mode=exact_mode,
                     force=force,
                     just_prefix=just_prefix,
-                    older_mode=older_mode
+                    older_mode=older_mode,
+                    es_only=es_only
                 )

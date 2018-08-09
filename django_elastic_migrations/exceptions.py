@@ -90,13 +90,13 @@ class DEMIndexVersionCodebaseMismatchError(DjangoElasticMigrationsException):
     """
 
 
-class CannotDropActiveVersion(DjangoElasticMigrationsException):
+class CannotDropActiveVersionWithoutForceArg(DjangoElasticMigrationsException):
     """
-    Raised when a user requests to drop an index that is activated.
+    Raised when a user requests to drop an index that is activated without force arg
     """
     message = (
         "Please run ./manage.py es_activate to activate another index "
-        "before dropping this one."
+        "before dropping this one, or use the `--force` flag."
     )
 
 

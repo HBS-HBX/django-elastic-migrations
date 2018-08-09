@@ -79,7 +79,7 @@ LOGGING = {
             "handlers": [
                 "console"
             ],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True
         },
         "django_elastic_migrations": {
@@ -87,6 +87,18 @@ LOGGING = {
             "level": "DEBUG",
             "propagate": False
         },
+        "elasticsearch": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            # locally when debugging tests, this may help:
+            # "level": "DEBUG",
+            "propagate": False
+        },
+        "elasticsearch_dsl": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False
+        }
     },
 }
 logging_config.dictConfig(LOGGING)

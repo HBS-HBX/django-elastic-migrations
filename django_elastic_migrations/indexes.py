@@ -9,9 +9,9 @@ from elasticsearch import TransportError
 from elasticsearch.helpers import expand_action, bulk
 from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
 
-from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger
+from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger, codebase_id
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
-    IllegalDEMIndexState, DEMIndexVersionCodebaseMismatchError, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
+    IllegalDEMIndexState, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 from django_elastic_migrations.utils.loading import import_module_element
 from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiProcess, USE_ALL_WORKERS
@@ -55,6 +55,29 @@ class DEMIndexManager(object):
         cls.instances[base_name] = dem_index_instance
         if cls.db_ready:
             return cls.get_index_model(base_name, create_on_not_found)
+
+    @classmethod
+    def destroy_dem_index(cls, dem_index_instance):
+        """
+        Given a DEMIndex instance, permanently delete it from elasticsearch and the database
+        Only used during testing when setting up and destroying temporary, mutable indexes
+        Used by tests.search.get_new_search_index
+        """
+        base_name = dem_index_instance.get_base_name()
+        index_model = cls.index_models.pop(base_name, None)
+        if index_model:
+            try:
+                dem_index_instance.delete()
+            except AttributeError as ae:
+                if "'NoneType' object has no attribute 'name'" in str(ae):
+                    pass
+                elif "'NoneType' object has no attribute 'active_version'" in str(ae):
+                    pass
+                else:
+                    raise ae
+            index_model.delete()
+            cls.instances.pop(base_name, None)
+            logger.info("index {} has been deleted in DEMIndexManager.destroy_dem_index")
 
     @classmethod
     def create_and_activate_version_for_each_index_if_none_is_active(
@@ -235,16 +258,18 @@ class DEMIndexManager(object):
 
     @classmethod
     def test_pre_setup(cls):
-        DEMIndexManager.initialize()
         cls.test_post_teardown()
-        DEMIndexManager.create_index('all', force=True)
-        DEMIndexManager.activate_index('all')
-        DEMIndexManager.initialize()
+        DEMIndexManager.initialize(create_versions=True, activate_versions=True)
 
     @classmethod
     def test_post_teardown(cls):
-        DEMIndexManager.drop_index(
-            'all', force=True, just_prefix=es_test_prefix)
+        try:
+            DEMIndexManager.drop_index(
+                'all', force=True, just_prefix=es_test_prefix, hard_delete=True)
+        except DEMIndexNotFound:
+            # it's okay if the test cleaned up after itself. This is the case with
+            # tests that use a context manager to remove a temporary index.
+            pass
 
     @classmethod
     def update_index_models(cls):
@@ -263,7 +288,7 @@ class DEMIndexManager(object):
     """
 
     @classmethod
-    def create_index(cls, index_name, force=False):
+    def create_index(cls, index_name, force=False, es_only=False):
         """
         If the index name is in the initialized indexes dict,
         and the Index does not exist, create the specified Index
@@ -281,7 +306,7 @@ class DEMIndexManager(object):
         """
         # avoid circular import
         from django_elastic_migrations.models import CreateIndexAction
-        action = CreateIndexAction(force=force)
+        action = CreateIndexAction(force=force, es_only=es_only)
         return cls._start_action_for_indexes(action, index_name, exact_mode=False)
 
     @classmethod
@@ -341,16 +366,20 @@ class DEMIndexManager(object):
 
     @classmethod
     def drop_index(
-        cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False):
+        cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False, es_only=False, hard_delete=False):
         """
         Given the named index, drop it from es
+        :param index_name: the name of the index to drop
+        :param exact_mode: if True, index_name should contain the version number, for example, my_index-3
         :param force - if True, drop an index even if the version is not supplied
         :param just_prefix - if a string is supplied, only those index versions with the
                prefix will be dropped
+        :param older_mode: if true, drop only those older than the active version
+        :param es_only: if true, don't drop the index in the db, just drop the index in es
         """
         # avoid circular import
         from django_elastic_migrations.models import DropIndexAction
-        action = DropIndexAction(force=force, just_prefix=just_prefix, older_mode=older_mode)
+        action = DropIndexAction(force=force, just_prefix=just_prefix, older_mode=older_mode, es_only=es_only, hard_delete=hard_delete)
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
@@ -376,7 +405,7 @@ class DEMIndexManager(object):
                 if dem_index:
                     dem_indexes.append(dem_index)
                 else:
-                    DEMIndexNotFound(index_name)
+                    raise DEMIndexNotFound(index_name)
             if dem_indexes:
                 actions = []
                 for dem_index in dem_indexes:
@@ -780,16 +809,17 @@ class DEMIndex(ESIndex):
             raise ex
         return index_version
 
-    def create_if_not_in_es(self, **kwargs):
+    def create_if_not_in_es(self, body=None, **kwargs):
         """
         Create the index if it doesn't already exist in elasticsearch.
-        :param kwargs:
+        :param body: the body to pass to elasticsearch create action
+        :param kwargs: kwargs to pass to elasticsearch create action
         :return: True if created
         """
-        index_version = self.get_version_model()
         try:
-            index = index_version.name
-            body = self.to_dict()
+            index = self.get_es_index_name()
+            if body is None:
+                body = self.to_dict()
             self.connection.indices.create(index=index, body=body, **kwargs)
         except Exception as ex:
             if isinstance(ex, TransportError):
@@ -831,24 +861,47 @@ class DEMIndex(ESIndex):
                 self.__doc_type = super(DEMIndex, self).doc_type(doc_type)
                 if not self.hash_matches(version_model.json_md5):
                     doc_type._doc_type.index = doc_type_index_backup
-                    self.__doc_type = None
+                    our_hash, our_json = self.get_index_hash_and_json()
+                    our_tag = codebase_id
                     msg = (
-                        "Someone requested DEMIndex {index_name}, "
-                        "which was created in codebase version {tag}. "
-                        "The current version of that index does not have the same "
-                        "spec. Please run operations for {index_name} on an app "
-                        "server running a version such as {tag}.  "
-                        " - needed doc type hash: {needed_hash}".format(
-                            index_name=version_model.name,
-                            needed_hash=version_model.json_md5,
-                            tag=version_model.tag
+                        "DEMIndex.doc_type received a request to use an elasticsearch index whose exact "
+                        "schema / DEMDocType was not accessible in this codebase. "
+                        "This may lead to undefined behavior (for example if this codebase searches or indexes "
+                        "a field that has changed in the requested index, it may not return correctly). "
+                        "\n - requested index: {version_name} "
+                        "\n - requested spec: {version_spec} "
+                        "\n - our spec:       {our_spec} "
+                        "\n - requested hash: {version_hash} "
+                        "\n - our hash:       {our_hash} "
+                        "\n - requested tag: {version_tag} "
+                        "\n - our tag:       {our_tag} "
+                        "".format(
+                            version_name=version_model.name,
+                            version_tag=version_model.tag,
+                            our_tag=our_tag,
+                            version_hash=version_model.json_md5,
+                            our_hash=our_hash,
+                            version_spec=version_model.json,
+                            our_spec=our_json,
                         )
                     )
-                    raise DEMIndexVersionCodebaseMismatchError(msg)
+                    logger.warning(msg)
             return self.__doc_type
+
+    def exists(self):
+        name = self.get_es_index_name()
+        if name:
+            return es_client.indices.exists(index=name)
+        return False
 
     def get_active_version_index_name(self):
         return DEMIndexManager.get_active_index_version_name(self.__base_name)
+
+    def get_es_index_name(self):
+        index_version = self.get_version_model()
+        if index_version:
+            return index_version.name
+        return None
 
     def get_base_name(self):
         return self.__base_name
