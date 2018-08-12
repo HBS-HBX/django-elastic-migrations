@@ -912,6 +912,9 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
         doc_type = dem_index.doc_type()
 
+        if self.index_version:
+            self._index_version_name = self.index_version.name
+
         self._last_update = None
 
         if self.start_date:
@@ -924,7 +927,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             if not self._last_update:
                 self._last_update = 'never'
             self.add_log(
-                "--resume detected; Checking the last time update was called: "
+                "--resume: checking the last time update was called succesfully and completed: "
                 u"\n - index version: {_index_version_name} "
                 u"\n - update date: {_last_update} ", use_self_dict_format=True
             )
