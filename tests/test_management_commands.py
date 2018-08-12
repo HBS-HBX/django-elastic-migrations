@@ -23,13 +23,14 @@ class CommonDEMTestUtilsMixin(object):
         index_model = dem_index.get_index_model()
 
         version_model = dem_index.get_version_model()
-        self.assertIsNotNone(version_model)
+        expected_msg = "The {} index should have an active version.".format(index_name)
+        self.assertIsNotNone(version_model, expected_msg)
 
         available_version_ids = index_model.get_available_versions().values_list('id', flat=True)
-        expected_msg = "At test setup, the '{}' index should have {} available version(s)".format(index_name, expected_num_versions)
+        expected_msg = "The '{}' index should have {} available version(s)".format(index_name, expected_num_versions)
         self.assertEqual(len(available_version_ids), expected_num_versions, expected_msg)
 
-        expected_msg = "the {} index should already exist in elasticsearch.".format(version_model.name)
+        expected_msg = "The {} index should already exist in elasticsearch.".format(version_model.name)
         self.assertTrue(version_model.exists_in_es(), expected_msg)
 
         return index_model, version_model, dem_index
@@ -133,7 +134,7 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
 
     fixtures = ['tests/tests_initial.json']
 
-    def test_basic_invocation_and_force_param(self):
+    def test_basic_invocation_and_force_flags(self):
         index_model, version_model, _ = self._check_basic_setup_and_get_models()
 
         call_command('es_create', index_model.name)
@@ -149,7 +150,7 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         expected_msg = "After es_create --force, the movies index should have two versions"
         self.assertEqual(len(available_version_ids), 2, expected_msg)
 
-    def test_all_and_force_params(self):
+    def test_all_and_force_flags(self):
         movies_index_model, _, __ = self._check_basic_setup_and_get_models("movies")
 
         new_index_name = "moviez"
@@ -170,7 +171,7 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                 expected_msg = "After es_create --all --force, the {} index should now have two versions".format(index_model_instance.name)
                 self.assertEqual(len(available_version_ids), 2, expected_msg)
 
-    def test_es_only(self):
+    def test_es_only_flag(self):
         """
         Test that ./manage.py es_create my_index --es-only checks
         if it does not exist in es, and if it does not exist it creates it
