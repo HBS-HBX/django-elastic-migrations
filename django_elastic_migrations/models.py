@@ -341,6 +341,7 @@ class IndexAction(models.Model):
             )
             self.add_log(msg, level=logger.ERROR)
             self.to_aborted()
+            raise
 
     @classmethod
     def get_new_action(cls, index_name, include_active_version=False, action=None):
