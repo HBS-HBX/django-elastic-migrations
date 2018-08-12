@@ -5,8 +5,10 @@ import logging
 from django.core.management import call_command
 
 from django_elastic_migrations import DEMIndexManager, es_client
-from django_elastic_migrations.models import Index, IndexVersion
+from django_elastic_migrations.models import Index, IndexVersion, IndexAction
 from django_elastic_migrations.utils.test_utils import DEMTestCase
+from django.template.defaultfilters import pluralize
+from django.contrib.humanize.templatetags.humanize import ordinal
 from tests.es_config import ES_CLIENT
 from tests.models import Movie
 from tests.search import MovieSearchIndex, MovieSearchDoc, get_new_search_index, alternate_textfield, DefaultNewSearchDocTypeMixin
@@ -17,7 +19,7 @@ log = logging.getLogger(__file__)
 # noinspection PyUnresolvedReferences
 class CommonDEMTestUtilsMixin(object):
 
-    def _check_basic_setup_and_get_models(self, index_name='movies', expected_num_versions=1):
+    def check_basic_setup_and_get_models(self, index_name='movies', expected_num_versions=1, pre_message="At test setup"):
         dem_index = DEMIndexManager.get_dem_index(index_name)
 
         index_model = dem_index.get_index_model()
@@ -26,14 +28,114 @@ class CommonDEMTestUtilsMixin(object):
         expected_msg = "The {} index should have an active version.".format(index_name)
         self.assertIsNotNone(version_model, expected_msg)
 
-        available_version_ids = index_model.get_available_versions().values_list('id', flat=True)
-        expected_msg = "The '{}' index should have {} available version(s)".format(index_name, expected_num_versions)
-        self.assertEqual(len(available_version_ids), expected_num_versions, expected_msg)
+        self.check_num_available_versions(index_model, pre_message, expected_num_versions)
 
         expected_msg = "The {} index should already exist in elasticsearch.".format(version_model.name)
         self.assertTrue(version_model.exists_in_es(), expected_msg)
 
         return index_model, version_model, dem_index
+
+    def check_num_available_versions(self, index_model, pre_message, expected_num_available):
+        """
+        :param index_model: Index model to check for number of available messages
+        :type index_model: django_elastic_migrations.models.Index
+        :param pre_message: Message to insert at beginning of expected message if assertion fails
+        :type pre_message: basestring
+        :param expected_num_available: The number of available IndexVersions expected of the Index model
+        :type expected_num_available: int
+        """
+        available_versions = index_model.get_available_versions()
+        num_available = available_versions.count()
+        expected_msg = (
+            "{pre_message} "
+            "the {index_name} index should have {expected_num} index versions available, "
+            "but instead, there {was_were} {actual_num}".format(
+                pre_message=pre_message,
+                index_name=index_model.name,
+                was_were="were" if num_available > 1 else "was",
+                expected_num=expected_num_available,
+                actual_num=num_available
+            )
+        )
+        self.assertEqual(available_versions.count(), expected_num_available, expected_msg)
+        return available_versions
+
+    def check_last_index_actions(
+            self, index_model, pre_message, num_to_get=1,
+            expected_status=IndexAction.STATUS_COMPLETE, expected_actions=None):
+        """
+        Retrieve the last n IndexActions for the given Index
+        optionally assert the status and action for the retrieved IndexActions
+        :param index_model: the Index model to retrieve actions for
+        :type index_model: django_elastic_migrations.models.Index
+        :param pre_message: description of the action that just was executed
+        :type pre_message: str
+        :param num_to_get: the number of most recent actions to retrieve
+        :type num_to_get: str
+        :param expected_status: the expected status of the IndexAction to assert; by default STATUS_COMPLETE
+        :type expected_status: django_elastic_migrations.models.IndexAction.STATUSES_ALL
+        :param expected_actions: list of action types to assert, in order from oldest to newest
+        :type expected_actions:  [django_elastic_migrations.models.IndexAction.ACTIONS_ALL]
+        :return: IndexActions for the Index
+        :rtype: [django_elastic_migrations.models.IndexAction]
+        """
+        index_actions = index_model.indexaction_set.all().order_by('-pk')[:num_to_get]
+        num_available = index_actions.count()
+        expected_msg = (
+            "{pre_message} "
+            "the {index_name} index should have had {expected_num} {index_action_plural} available, "
+            "but instead, there {was_were} {actual_num}".format(
+                pre_message=pre_message,
+                index_name=index_model.name,
+                expected_num=num_to_get,
+                index_action_plural="IndexAction{}".format(pluralize(num_to_get)),
+                was_were= pluralize(num_available, "was,were"),
+                actual_num=num_available
+            )
+        )
+        self.assertEqual(index_actions.count(), num_to_get, expected_msg)
+
+        # we ordered them in reverse cron to get most recent actions; put them back in cron order
+        index_actions = list(index_actions)
+        index_actions.reverse()
+
+        if expected_status or expected_actions:
+            for num, index_action in enumerate(index_actions, 1):
+                logs = index_action.log[-300:]
+                expected_msg = (
+                    "{pre_message} "
+                    "the {index_name}'s {ordinal} IndexAction was expected "
+                    "to have status {expected_status}, "
+                    "but instead, it was {actual_status}. \n"
+                    "The IndexAction logs ended with: \n{logs}".format(
+                        pre_message=pre_message,
+                        index_name=index_model.name,
+                        ordinal=ordinal(num),
+                        expected_status=expected_status,
+                        actual_status=index_action.status,
+                        logs=logs
+                    )
+                )
+                self.assertEqual(index_action.status, expected_status, expected_msg)
+
+                if expected_actions:
+                    expected_action = expected_actions[num-1]
+                    expected_msg = (
+                        "{pre_message} "
+                        "the {index_name}'s {ordinal} IndexAction was expected "
+                        "to be {expected_action}, \n"
+                        "but instead, it was {actual_action}. \n"
+                        "The IndexAction logs ended with: \n{logs}.".format(
+                            pre_message=pre_message,
+                            index_name=index_model.name,
+                            ordinal=ordinal(num),
+                            expected_action=expected_action,
+                            actual_action=index_action.action,
+                            logs=logs
+                        )
+                    )
+                    self.assertEqual(index_action.action, expected_action, expected_msg)
+        return index_actions
 
 
 class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
@@ -44,7 +146,7 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation(self):
-        self._check_basic_setup_and_get_models()
+        self.check_basic_setup_and_get_models()
 
         num_docs = MovieSearchIndex.get_num_docs()
         self.assertEqual(num_docs, 0)
@@ -59,6 +161,75 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         results = MovieSearchDoc.get_search(movie_title).execute()
         first_result = results[0]
         self.assertEqual(str(movie.id), first_result.meta.id)
+
+    def test_newer_flag(self):
+        """
+        Test that when two versions of the "movies" index are available,
+        and the older one is activated, `./manage.py es_update movies --newer`
+        indexes into the newer, unactivated version
+        """
+        index_model, version_model, dem_index = self.check_basic_setup_and_get_models()
+
+        # create two newer versions of the movies index
+        call_command(*"es_create movies --force".split())
+        call_command(*"es_create movies --force".split())
+        avail_versions = self.check_num_available_versions(
+            index_model, "After 2x './manage.py es_create movies --force',", 3)
+
+        command = "es_update movies --newer"
+        call_command(*command.split())
+        after_phrase = "After `{}`,".format(command)
+        last_actions = self.check_last_index_actions(
+            index_model, after_phrase, 5,
+            expected_actions=[
+                # the parent update index action
+                IndexAction.ACTION_UPDATE_INDEX,
+
+                # 1st newer index update index action
+                IndexAction.ACTION_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+
+                # 1st newer index update index actions
+                IndexAction.ACTION_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+            ]
+        )
+
+        first_action = last_actions[0]
+        first_action_version = first_action.index_version
+        self.assertIsNone(first_action_version,
+                          "{} expected parent UpdateIndexAction to be None, "
+                          "but was {}".format(after_phrase, str(first_action_version)))
+        self.assertEqual(first_action.docs_affected, 4,
+                         "{} expected the parent UpdateIndexAction to have "
+                         "4 docs affected, but was {}".format(after_phrase, first_action.docs_affected))
+
+        actual_num_docs = dem_index.get_num_docs()
+        self.assertEqual(actual_num_docs, 0,
+                         "{after_phrase} "
+                         "The original IndexVersion {index_name} was expected "
+                         "to have 0 docs, instead, it had {actual_num}".format(
+                             after_phrase=after_phrase,
+                             index_name=version_model.name,
+                             actual_num=actual_num_docs
+                         ))
+
+        for i in [1, 3]:
+            action = last_actions[i]
+            self.assertEqual(action.docs_affected, 2)
+
+            new_version_model = last_actions[i].index_version
+            new_dem_index = DEMIndexManager.get_dem_index(
+                new_version_model.name, exact_mode=True)
+            actual_num_docs = new_dem_index.get_num_docs()
+            self.assertEqual(actual_num_docs, 2,
+                             "{after_phrase} "
+                             "{index_name} was expected to have "
+                             "2 docs, instead, it had {actual_num}".format(
+                                 after_phrase=after_phrase,
+                                 index_name=new_version_model,
+                                 actual_num=actual_num_docs
+                             ))
 
 
 class TestEsDangerousResetManagementCommand(DEMTestCase):
@@ -135,7 +306,7 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation_and_force_flags(self):
-        index_model, version_model, _ = self._check_basic_setup_and_get_models()
+        index_model, version_model, _ = self.check_basic_setup_and_get_models()
 
         call_command('es_create', index_model.name)
 
@@ -151,11 +322,11 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         self.assertEqual(len(available_version_ids), 2, expected_msg)
 
     def test_all_and_force_flags(self):
-        movies_index_model, _, __ = self._check_basic_setup_and_get_models("movies")
+        movies_index_model, _, __ = self.check_basic_setup_and_get_models("movies")
 
         new_index_name = "moviez"
         with get_new_search_index(new_index_name):
-            moviez_index_model, _, __ = self._check_basic_setup_and_get_models(new_index_name)
+            moviez_index_model, _, __ = self.check_basic_setup_and_get_models(new_index_name)
 
             call_command('es_create', all=True)
 
@@ -180,7 +351,7 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         new_index_name = "moviez"
         # create a new temporary index we can change inside this test
         with get_new_search_index(new_index_name):
-            moviez_index_model, moviez_index_version, moviez_dem_index = self._check_basic_setup_and_get_models(new_index_name)
+            moviez_index_model, moviez_index_version, moviez_dem_index = self.check_basic_setup_and_get_models(new_index_name)
 
             movies1_schema = moviez_index_version.get_indented_schema_body()
             log.info("movies index json: {}".format(movies1_schema))
@@ -195,7 +366,7 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
 
             # change the index again:
             with get_new_search_index(new_index_name, MovieSearchDocSchemaModified, dem_index=moviez_dem_index):
-                _, movies_index_version2, movies_dem_index2 = self._check_basic_setup_and_get_models(new_index_name, expected_num_versions=2)
+                _, movies_index_version2, movies_dem_index2 = self.check_basic_setup_and_get_models(new_index_name, expected_num_versions=2)
 
                 movies2_schema = movies_index_version2.get_indented_schema_body()
                 log.info("movies2 index json: {}".format(movies1_schema))
@@ -225,7 +396,7 @@ class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation(self):
-        index_model, version_model, _ = self._check_basic_setup_and_get_models()
+        index_model, version_model, _ = self.check_basic_setup_and_get_models()
 
         # since the version is active, we should expect to have to use the force flag
         call_command('es_drop', version_model.name, exact=True, force=True)
@@ -245,7 +416,7 @@ class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         test that ./manage.py es_drop --es-only really only drops the elasticsearch index,
         and does not have an impact on the database's record of what the indexes should be
         """
-        index_model, version_model, dem_index = self._check_basic_setup_and_get_models()
+        index_model, version_model, dem_index = self.check_basic_setup_and_get_models()
 
         # since the version is active, we should expect to have to use the force flag
         call_command('es_drop', version_model.name, exact=True, force=True, es_only=True)
@@ -261,12 +432,12 @@ class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         self.assertFalse(deleted_model.is_deleted, expected_msg)
 
     def test_es_only_all_flags(self):
-        movies_index_model, _, __ = self._check_basic_setup_and_get_models("movies")
+        movies_index_model, _, __ = self.check_basic_setup_and_get_models("movies")
 
         new_index_name = "moviez"
         with get_new_search_index(new_index_name) as index_info:
             moviez_index, moviez_doctype = index_info
-            moviez_index_model, _, __ = self._check_basic_setup_and_get_models(new_index_name)
+            moviez_index_model, _, __ = self.check_basic_setup_and_get_models(new_index_name)
 
             call_command('es_update', new_index_name)
 
