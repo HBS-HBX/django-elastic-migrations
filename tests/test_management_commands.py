@@ -189,7 +189,7 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                 IndexAction.ACTION_UPDATE_INDEX,
                 IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
 
-                # 1st newer index update index actions
+                # 2nd newer index update index actions
                 IndexAction.ACTION_UPDATE_INDEX,
                 IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
             ]
