@@ -265,6 +265,9 @@ params = {
 call_command('dumpdata', **params)
 ```
 
+An example of this is included with the
+[moviegen management command](./management/commands/moviegen.py).
+
 ### Tuning
 By default, `/.manage.py es_update` will divide the result of 
 `DEMDocType.get_queryset()` into batches of size `DocType.BATCH_SIZE`. 
@@ -288,16 +291,91 @@ to see the available `make` targets.
 
 
 ### Requirements
+* run `make requirements`* to run the pip install.
+
 *`make upgrade`* upgrades the dependencies of the requirements to latest
 version. This process also excludes `django` and `elasticsearch-dsl`
 from the `requirements/test.txt` so they can be injected with different
 versions by tox during matrix testing.
 
-*`make requirements`* runs the pip install.
-
 This project also uses [`pip-tools`](https://github.com/jazzband/pip-tools).
 The `requirements.txt` files are generated and pinned to latest versions 
 with `make upgrade`.
+
+### Populating Local `tests_movies` Database Table With Data
+
+It may be helpful for you to populate a local database with Movies test
+data to experiment with using `django-elastic-migrations`. First,
+migrate the database:
+
+`./manage.py migrate --run-syncdb --settings=test_settings`
+
+Next, load the basic fixtures:
+
+`./manage.py loaddata tests/tests_initial.json`
+
+You may wish to add more movies to the database. A management command
+has been created for this purpose. Get a [Free OMDB API key here](https://www.omdbapi.com/apikey.aspx),
+then run a query like this (replace `MYAPIKEY` with yours):
+
+```
+$> ./manage.py moviegen --title="Inception" --api-key="MYAPIKEY"
+{'actors': 'Leonardo DiCaprio, Joseph Gordon-Levitt, Ellen Page, Tom Hardy',
+ 'awards': 'Won 4 Oscars. Another 152 wins & 204 nominations.',
+ 'boxoffice': '$292,568,851',
+ 'country': 'USA, UK',
+ 'director': 'Christopher Nolan',
+ 'dvd': '07 Dec 2010',
+ 'genre': 'Action, Adventure, Sci-Fi',
+ 'imdbid': 'tt1375666',
+ 'imdbrating': '8.8',
+ 'imdbvotes': '1,721,888',
+ 'language': 'English, Japanese, French',
+ 'metascore': '74',
+ 'plot': 'A thief, who steals corporate secrets through the use of '
+         'dream-sharing technology, is given the inverse task of planting an '
+         'idea into the mind of a CEO.',
+ 'poster': 'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
+ 'production': 'Warner Bros. Pictures',
+ 'rated': 'PG-13',
+ 'ratings': [{'Source': 'Internet Movie Database', 'Value': '8.8/10'},
+             {'Source': 'Rotten Tomatoes', 'Value': '86%'},
+             {'Source': 'Metacritic', 'Value': '74/100'}],
+ 'released': '16 Jul 2010',
+ 'response': 'True',
+ 'runtime': 148,
+ 'title': 'Inception',
+ 'type': 'movie',
+ 'website': 'http://inceptionmovie.warnerbros.com/',
+ 'writer': 'Christopher Nolan',
+ 'year': '2010'}
+```
+
+To save the movie to the database, use the `--save` flag. Also useful is
+the `--noprint` option, to suppress json. Also, if you add
+`OMDB_API_KEY=MYAPIKEY` to your environment variables, you don't have
+to specify it each time:
+
+```
+$ ./manage.py moviegen --title "Closer" --noprint --save
+Saved 1 new movie(s) to the database: Closer
+```
+
+Now that it's been saved to the database, you may want to create a fixture,
+so you can get back to this state in the future.
+
+```
+$ ./manage.py moviegen --makefixture=tests/myfixture.json
+dumping fixture data to tests/myfixture.json ...
+[...........................................................................]
+```
+
+Later, you can restore this database with the regular `loaddata` command:
+
+```
+$ ./manage.py loaddata tests/myfixture.json
+Installed 4 object(s) from 1 fixture(s)
+```
 
 ### Running Tests Locally
 
