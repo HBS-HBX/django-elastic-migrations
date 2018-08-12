@@ -44,7 +44,7 @@ class Index(models.Model):
         """
         Get a string representation of this model instance.
         """
-        return '<Index, ID: {}>'.format(self.id)
+        return '<Index {}>'.format(self.name)
 
     def get_latest_version(self):
         """
@@ -145,7 +145,7 @@ class IndexVersion(models.Model):
         """
         Get a string representation of this model instance.
         """
-        return '<IndexVersion for {}, ID: {}>'.format(str(self.index), self.id)
+        return '<IndexVersion {}>'.format(self.name)
 
     @property
     def is_active(self):
