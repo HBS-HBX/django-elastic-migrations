@@ -30,7 +30,10 @@ class Movie(models.Model):
         if not data:
             raise ValueError("There was no data returned from OMDB query {}".format(str(query)))
 
-        title = data['title'][:500]
+        title = data.get('title', '')[:500]
+        if not title:
+            raise ValueError("The title field is required; did not receive any title. Data returned was ")
+
         year = data['year']
         runtime = data['runtime']
         movie, created = Movie.objects.get_or_create(title=title, year=year, runtime=runtime)

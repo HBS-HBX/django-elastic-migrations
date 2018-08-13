@@ -15,6 +15,18 @@ except ImportError:
     from urllib import urlencode as encoder
 
 
+class OmdbAPIError(Exception):
+    """
+    Generic exception for any Omdb API error
+    """
+
+
+class OmdbAPIMovieNotFoundError(OmdbAPIError):
+    """
+    Generic exception for when the film was not found
+    """
+
+
 @python_2_unicode_compatible
 class OmdbAPIQuery(object):
     BASE_URL = "http://www.omdbapi.com"
@@ -23,6 +35,8 @@ class OmdbAPIQuery(object):
     STATUS_UNREQUESTED = "Unrequested"
     STATUS_SUCCESS = "Successful"
     STATUS_FAILURE = "Failed"
+
+    ERR_MOVIE_NOT_FOUND = 'Movie not found!'
 
     def __init__(self, title="", api_key=DEFAULT_API_KEY):
         self._qdict = {}
@@ -52,9 +66,18 @@ class OmdbAPIQuery(object):
         return self.status == self.STATUS_SUCCESS
 
     def execute(self):
-        self._req = requests.get(self.get_query_url())
+        url = self.get_query_url()
+        self._req = requests.get(url)
         if self.status:
             data = self._req.json()
+            data['url'] = url
+            err = data.get('Error', None)
+            if err:
+                data['requested_title'] = self.title
+                if err == self.ERR_MOVIE_NOT_FOUND:
+                    raise OmdbAPIMovieNotFoundError(data)
+                else:
+                    raise OmdbAPIError(data)
             self._data = self.transform_api_response(data)
             return self._data
         raise ValueError("There was a problem requesting {}: got status code {} and text {}".format(

@@ -312,7 +312,7 @@ migrate the database:
 
 Next, load the basic fixtures:
 
-`./manage.py loaddata tests/tests_initial.json`
+`./manage.py loaddata tests/100films.json`
 
 You may wish to add more movies to the database. A management command
 has been created for this purpose. Get a [Free OMDB API key here](https://www.omdbapi.com/apikey.aspx),
@@ -374,7 +374,7 @@ Later, you can restore this database with the regular `loaddata` command:
 
 ```
 $ ./manage.py loaddata tests/myfixture.json
-Installed 4 object(s) from 1 fixture(s)
+Installed 101 object(s) from 1 fixture(s)
 ```
 
 ### Running Tests Locally
