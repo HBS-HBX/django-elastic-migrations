@@ -25,7 +25,6 @@ if not hasattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT'):
         'This should be the python path to the elasticsearch client '
         'to use for indexing.')
 
-# logger.debug("using DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = {}".format(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
 
 try:
     es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)
