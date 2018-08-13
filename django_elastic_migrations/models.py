@@ -381,7 +381,7 @@ class IndexAction(models.Model):
             self.add_log("All child tasks are completed successfully")
         else:
             self.add_log("NOT All child tasks are completed successfully:")
-            bad_children = list(self.children.exclude(status__in=IndexAction.STATUS_COMPLETE))
+            bad_children = self.children.exclude(status__in=IndexAction.STATUS_COMPLETE)
             if bad_children:
                 err_logs = []
                 for bad_child in bad_children:
