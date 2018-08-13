@@ -281,6 +281,7 @@ class IndexAction(models.Model):
     def add_log(self, msg, commit=True, use_self_dict_format=False, level=logger.INFO):
         if use_self_dict_format:
             msg = msg.format(**self.__dict__)
+        msg = "[{}]: {}".format(str(datetime.datetime.utcnow()), msg)
         logger.log(level, msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
         if commit and 'test' not in sys.argv:
@@ -1218,6 +1219,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         start = kwargs["start_index"]
         end = kwargs["end_index"]
+        pks = kwargs["pks"]
         self._workers = kwargs["workers"]
         self._total_docs_expected = kwargs["total_docs_expected"]
         verbosity = kwargs["verbosity"]
@@ -1238,15 +1240,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
             use_self_dict_format=True
         )
 
-        if self._workers and self._total_docs_expected:
-            # ensure workers don't overload dbs by being sync'd up
-            # if we're less than 10% done, put a little randomness
-            # in between the workers to dither query load
-            if (self.parent.docs_affected / self._total_docs_expected) < 0.1:
-                time.sleep(random.random() * 2)
-
-        qs = doc_type.get_queryset()
-        current_qs = qs[start:end]
+        current_qs = doc_type.get_queryset().filter(id__in=pks)
 
         retries = 0
         success, failed = (0, 0)
