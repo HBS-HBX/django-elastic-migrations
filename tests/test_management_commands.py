@@ -2,13 +2,13 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import logging
 
+from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
+from django.template.defaultfilters import pluralize
 
 from django_elastic_migrations import DEMIndexManager, es_client
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
 from django_elastic_migrations.utils.test_utils import DEMTestCase
-from django.template.defaultfilters import pluralize
-from django.contrib.humanize.templatetags.humanize import ordinal
 from tests.es_config import ES_CLIENT
 from tests.models import Movie
 from tests.search import MovieSearchIndex, MovieSearchDoc, get_new_search_index, alternate_textfield, DefaultNewSearchDocTypeMixin
@@ -89,7 +89,7 @@ class CommonDEMTestUtilsMixin(object):
                 index_name=index_model.name,
                 expected_num=num_to_get,
                 index_action_plural="IndexAction{}".format(pluralize(num_to_get)),
-                was_were= pluralize(num_available, "was,were"),
+                was_were=pluralize(num_available, "was,were"),
                 actual_num=num_available
             )
         )
@@ -101,37 +101,32 @@ class CommonDEMTestUtilsMixin(object):
 
         if expected_status or expected_actions:
             for num, index_action in enumerate(index_actions, 1):
-                logs = index_action.log[-300:]
                 expected_msg = (
                     "{pre_message} "
                     "the {index_name}'s {ordinal} IndexAction was expected "
                     "to have status {expected_status}, "
-                    "but instead, it was {actual_status}. \n"
-                    "The IndexAction logs ended with: \n{logs}".format(
+                    "but instead, it was {actual_status}. ".format(
                         pre_message=pre_message,
                         index_name=index_model.name,
                         ordinal=ordinal(num),
                         expected_status=expected_status,
                         actual_status=index_action.status,
-                        logs=logs
                     )
                 )
                 self.assertEqual(index_action.status, expected_status, expected_msg)
 
                 if expected_actions:
-                    expected_action = expected_actions[num-1]
+                    expected_action = expected_actions[num - 1]
                     expected_msg = (
                         "{pre_message} "
                         "the {index_name}'s {ordinal} IndexAction was expected "
                         "to be {expected_action}, \n"
-                        "but instead, it was {actual_action}. \n"
-                        "The IndexAction logs ended with: \n{logs}.".format(
+                        "but instead, it was {actual_action}. ".format(
                             pre_message=pre_message,
                             index_name=index_model.name,
                             ordinal=ordinal(num),
                             expected_action=expected_action,
                             actual_action=index_action.action,
-                            logs=logs
                         )
                     )
                     self.assertEqual(index_action.action, expected_action, expected_msg)
