@@ -1,0 +1,1602 @@
+[
+{
+   "model": "tests.movie",
+   "pk": 1,
+   "fields": {
+      "title": "Gone Girl",
+      "year": 2014,
+      "runtime": 149,
+      "genre": "Crime, Drama, Mystery",
+      "director": "David Fincher",
+      "writer": "Gillian Flynn (screenplay), Gillian Flynn (novel)",
+      "actors": "Ben Affleck, Rosamund Pike, Neil Patrick Harris, Tyler Perry",
+      "plot": "With his wife's disappearance having become the focus of an intense media circus, a man sees the spotlight turned on him when it's suspected that he may not be innocent.",
+      "production": "20th Century Fox",
+      "last_modified": "2018-08-13T05:53:25.651"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 2,
+   "fields": {
+      "title": "American Splendor",
+      "year": 2003,
+      "runtime": 101,
+      "genre": "Biography, Comedy, Drama",
+      "director": "Shari Springer Berman, Robert Pulcini",
+      "writer": "Harvey Pekar (comic book series American Splendor), Joyce Brabner (comic book series Our Cancer Year), Shari Springer Berman, Robert Pulcini",
+      "actors": "Chris Ambrose, Joey Krajcar, Josh Hutcherson, Cameron Carter",
+      "plot": "An original mix of fiction and reality illuminates the life of comic book hero everyman Harvey Pekar.",
+      "production": "Fine Line Features",
+      "last_modified": "2018-08-13T05:53:25.727"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 3,
+   "fields": {
+      "title": "Gomorrah",
+      "year": 2008,
+      "runtime": 137,
+      "genre": "Crime, Drama",
+      "director": "Matteo Garrone",
+      "writer": "Roberto Saviano (book), Maurizio Braucci (screenplay), Ugo Chiti (screenplay), Gianni Di Gregorio (screenplay), Matteo Garrone (screenplay), Massimo Gaudioso (screenplay), Roberto Saviano (screenplay)",
+      "actors": "Salvatore Abbruzzese, Simone Sacchettino, Salvatore Ruocco, Vincenzo Fabricino",
+      "plot": "An inside look at Italy's modern crime families.",
+      "production": "IFC Films",
+      "last_modified": "2018-08-13T05:53:25.800"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 4,
+   "fields": {
+      "title": "4 Months, 3 Weeks and 2 Days",
+      "year": 2007,
+      "runtime": 113,
+      "genre": "Drama",
+      "director": "Cristian Mungiu",
+      "writer": "Cristian Mungiu",
+      "actors": "Anamaria Marinca, Laura Vasiliu, Vlad Ivanov, Alexandru Potocean",
+      "plot": "A woman assists her friend in arranging an illegal abortion in 1980s Romania.",
+      "production": "IFC First Take",
+      "last_modified": "2018-08-13T05:53:25.871"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 5,
+   "fields": {
+      "title": "The Diving Bell and the Butterfly",
+      "year": 2007,
+      "runtime": 112,
+      "genre": "Biography, Drama",
+      "director": "Julian Schnabel",
+      "writer": "Ronald Harwood (screenplay), Jean-Dominique Bauby (book)",
+      "actors": "Mathieu Amalric, Emmanuelle Seigner, Marie-Jos\u00e9e Croze, Anne Consigny",
+      "plot": "The true story of Elle editor Jean-Dominique Bauby who suffers a stroke and has to live with an almost totally paralyzed body; only his left eye isn't paralyzed.",
+      "production": "Miramax Films",
+      "last_modified": "2018-08-13T05:53:25.948"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 6,
+   "fields": {
+      "title": "The Incredibles",
+      "year": 2004,
+      "runtime": 115,
+      "genre": "Animation, Action, Adventure",
+      "director": "Brad Bird",
+      "writer": "Brad Bird",
+      "actors": "Craig T. Nelson, Holly Hunter, Samuel L. Jackson, Jason Lee",
+      "plot": "A family of undercover superheroes, while trying to live the quiet suburban life, are forced into action to save the world.",
+      "production": "N/A",
+      "last_modified": "2018-08-13T05:53:26.022"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 7,
+   "fields": {
+      "title": "Zootopia",
+      "year": 2016,
+      "runtime": 108,
+      "genre": "Animation, Adventure, Comedy",
+      "director": "Byron Howard, Rich Moore, Jared Bush(co-director)",
+      "writer": "Byron Howard (story by), Rich Moore (story by), Jared Bush (story by), Jim Reardon (story by), Josie Trinidad (story by), Phil Johnston (story by), Jennifer Lee (story by), Jared Bush (screenplay by), Phil Johnston (screenplay by)",
+      "actors": "Ginnifer Goodwin, Jason Bateman, Idris Elba, Jenny Slate",
+      "plot": "In a city of anthropomorphic animals, a rookie bunny cop and a cynical con artist fox must work together to uncover a conspiracy.",
+      "production": "Walt Disney Animation Studios",
+      "last_modified": "2018-08-13T05:53:26.095"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 8,
+   "fields": {
+      "title": "Sideways",
+      "year": 2004,
+      "runtime": 127,
+      "genre": "Comedy, Drama, Romance",
+      "director": "Alexander Payne",
+      "writer": "Rex Pickett (novel), Alexander Payne (screenplay), Jim Taylor (screenplay)",
+      "actors": "Paul Giamatti, Thomas Haden Church, Virginia Madsen, Sandra Oh",
+      "plot": "Two men reaching middle age with not much to show but disappointment embark on a week-long road trip through California's wine country, just as one is about to take a trip down the aisle.",
+      "production": "Fox Searchlight Pictures",
+      "last_modified": "2018-08-13T05:53:26.165"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 9,
+   "fields": {
+      "title": "In the Bedroom",
+      "year": 2001,
+      "runtime": 130,
+      "genre": "Crime, Drama",
+      "director": "Todd Field",
+      "writer": "Andre Dubus (story \"Killings\"), Robert Festinger (screenplay), Todd Field (screenplay)",
+      "actors": "Tom Wilkinson, Sissy Spacek, Nick Stahl, Marisa Tomei",
+      "plot": "A New England couple's college-aged son dates an older woman who has two small children and an unwelcome ex-husband.",
+      "production": "Miramax Films",
+      "last_modified": "2018-08-13T05:53:26.235"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 10,
+   "fields": {
+      "title": "Maria Full of Grace",
+      "year": 2004,
+      "runtime": 101,
+      "genre": "Crime, Drama",
+      "director": "Joshua Marston",
+      "writer": "Joshua Marston",
+      "actors": "Catalina Sandino Moreno, Virgina Ariza, Yenny Paola Vega, Rodrigo S\u00e1nchez Borhorquez",
+      "plot": "A pregnant Colombian teenager becomes a drug mule to make some desperately needed money for her family.",
+      "production": "New Line Cinema",
+      "last_modified": "2018-08-13T05:53:26.310"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 11,
+   "fields": {
+      "title": "Traffic",
+      "year": 2000,
+      "runtime": 147,
+      "genre": "Crime, Drama, Thriller",
+      "director": "Steven Soderbergh",
+      "writer": "Simon Moore (miniseries Traffik), Stephen Gaghan (screenplay)",
+      "actors": "Benicio Del Toro, Jacob Vargas, Andrew Chavez, Michael Saucedo",
+      "plot": "A conservative judge is appointed by the President to spearhead America's escalating war against drugs, only to discover that his teenage daughter is a crack addict. Two DEA agents protect an informant. A jailed drug baron's wife attempts to carry on the family business.",
+      "production": "USA Films",
+      "last_modified": "2018-08-13T05:53:26.383"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 12,
+   "fields": {
+      "title": "Argo",
+      "year": 2012,
+      "runtime": 120,
+      "genre": "Biography, Drama, Thriller",
+      "director": "Ben Affleck",
+      "writer": "Chris Terrio (screenplay by), Tony Mendez (based on a selection from \"The Master of Disguise\" by), Joshuah Bearman (based on the Wired Magazine article \"The Great Escape\" by)",
+      "actors": "Ben Affleck, Bryan Cranston, Alan Arkin, John Goodman",
+      "plot": "Acting under the cover of a Hollywood producer scouting a location for a science fiction film, a CIA agent launches a dangerous operation to rescue six Americans in Tehran during the U.S. hostage crisis in Iran in 1979.",
+      "production": "Warner Bros. Pictures",
+      "last_modified": "2018-08-13T05:53:26.458"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 13,
+   "fields": {
+      "title": "Star Wars: The Force Awakens",
+      "year": 2015,
+      "runtime": 136,
+      "genre": "Action, Adventure, Fantasy",
+      "director": "J.J. Abrams",
+      "writer": "Lawrence Kasdan, J.J. Abrams, Michael Arndt, George Lucas (based on characters created by)",
+      "actors": "Harrison Ford, Mark Hamill, Carrie Fisher, Adam Driver",
+      "plot": "Three decades after the Empire's defeat, a new threat arises in the militant First Order. Stormtrooper defector Finn and the scavenger Rey are caught up in the Resistance's search for the missing Luke Skywalker.",
+      "production": "Walt Disney Pictures",
+      "last_modified": "2018-08-13T05:53:26.589"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 14,
+   "fields": {
+      "title": "Million Dollar Baby",
+      "year": 2004,
+      "runtime": 132,
+      "genre": "Drama, Sport",
+      "director": "Clint Eastwood",
+      "writer": "Paul Haggis (screenplay), F.X. Toole (stories)",
+      "actors": "Clint Eastwood, Hilary Swank, Morgan Freeman, Jay Baruchel",
+      "plot": "A determined woman works with a hardened boxing trainer to become a professional.",
+      "production": "Warner Bros. Pictures",
+      "last_modified": "2018-08-13T05:53:26.662"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 15,
+   "fields": {
+      "title": "Murderball",
+      "year": 2005,
+      "runtime": 88,
+      "genre": "Documentary, Sport",
+      "director": "Henry Alex Rubin, Dana Adam Shapiro",
+      "writer": "N/A",
+      "actors": "Joe Bishop, Keith Cavill, Andy Cohn, Scott Hogsett",
+      "plot": "Quadriplegics, who play full-contact rugby in wheelchairs, overcome unimaginable obstacles to compete in the Paralympic Games in Athens, Greece.",
+      "production": "ThinkFilm",
+      "last_modified": "2018-08-13T05:53:26.741"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 16,
+   "fields": {
+      "title": "Grizzly Man",
+      "year": 2005,
+      "runtime": 103,
+      "genre": "Documentary, Biography",
+      "director": "Werner Herzog",
+      "writer": "Werner Herzog",
+      "actors": "Werner Herzog, Carol Dexter, Val Dexter, Sam Egli",
+      "plot": "A devastating and heartrending take on grizzly bear activists Timothy Treadwell and Amie Huguenard, who were killed in October of 2003 while living among grizzlies in Alaska.",
+      "production": "Lions Gate Releasing",
+      "last_modified": "2018-08-13T05:53:26.812"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 17,
+   "fields": {
+      "title": "Once",
+      "year": 2007,
+      "runtime": 86,
+      "genre": "Drama, Music, Romance",
+      "director": "John Carney",
+      "writer": "John Carney",
+      "actors": "Glen Hansard, Mark\u00e9ta Irglov\u00e1, Hugh Walsh, Gerard Hendrick",
+      "plot": "A modern-day musical about a busker and an immigrant and their eventful week in Dublin, as they write, rehearse and record songs that tell their love story.",
+      "production": "Fox Searchlight",
+      "last_modified": "2018-08-13T05:53:26.881"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 18,
+   "fields": {
+      "title": "Pan's Labyrinth",
+      "year": 2006,
+      "runtime": 118,
+      "genre": "Drama, Fantasy, War",
+      "director": "Guillermo del Toro",
+      "writer": "Guillermo del Toro",
+      "actors": "Ivana Baquero, Sergi L\u00f3pez, Maribel Verd\u00fa, Doug Jones",
+      "plot": "In the falangist Spain of 1944, the bookish young stepdaughter of a sadistic army officer escapes into an eerie but captivating fantasy world.",
+      "production": "Picturehouse",
+      "last_modified": "2018-08-13T05:53:26.956"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 19,
+   "fields": {
+      "title": "Creed",
+      "year": 2015,
+      "runtime": 133,
+      "genre": "Drama, Sport",
+      "director": "Ryan Coogler",
+      "writer": "Ryan Coogler (screenplay by), Aaron Covington (screenplay by), Ryan Coogler (story by), Sylvester Stallone (based on characters created by)",
+      "actors": "Michael B. Jordan, Sylvester Stallone, Tessa Thompson, Phylicia Rashad",
+      "plot": "The former World Heavyweight Champion Rocky Balboa serves as a trainer and mentor to Adonis Johnson, the son of his late friend and former rival Apollo Creed.",
+      "production": "Warner Bros.",
+      "last_modified": "2018-08-13T05:53:27.028"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 20,
+   "fields": {
+      "title": "Get Out",
+      "year": 2017,
+      "runtime": 104,
+      "genre": "Horror, Mystery, Thriller",
+      "director": "Jordan Peele",
+      "writer": "Jordan Peele",
+      "actors": "Daniel Kaluuya, Allison Williams, Catherine Keener, Bradley Whitford",
+      "plot": "A young African-American visits his white girlfriend's parents for the weekend, where his simmering uneasiness about their reception of him eventually reaches a boiling point.",
+      "production": "Universal Pictures",
+      "last_modified": "2018-08-13T05:53:27.100"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 21,
+   "fields": {
+      "title": "The Lord of the Rings: The Return of the King",
+      "year": 2003,
+      "runtime": 201,
+      "genre": "Adventure, Drama, Fantasy",
+      "director": "Peter Jackson",
+      "writer": "J.R.R. Tolkien (novel), Fran Walsh (screenplay), Philippa Boyens (screenplay), Peter Jackson (screenplay)",
+      "actors": "Noel Appleby, Ali Astin, Sean Astin, David Aston",
+      "plot": "Gandalf and Aragorn lead the World of Men against Sauron's army to draw his gaze from Frodo and Sam as they approach Mount Doom with the One Ring.",
+      "production": "New Line Cinema",
+      "last_modified": "2018-08-13T05:53:27.290"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 22,
+   "fields": {
+      "title": "Slumdog Millionaire",
+      "year": 2008,
+      "runtime": 120,
+      "genre": "Drama, Romance",
+      "director": "Danny Boyle, Loveleen Tandan(co-director)",
+      "writer": "Simon Beaufoy (screenplay), Vikas Swarup (novel)",
+      "actors": "Dev Patel, Saurabh Shukla, Anil Kapoor, Raj Zutshi",
+      "plot": "A Mumbai teen reflects on his upbringing in the slums when he is accused of cheating on the Indian Version of \"Who Wants to be a Millionaire?\"",
+      "production": "Fox Searchlight Pictures",
+      "last_modified": "2018-08-13T05:53:27.361"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 23,
+   "fields": {
+      "title": "Capote",
+      "year": 2005,
+      "runtime": 114,
+      "genre": "Biography, Crime, Drama",
+      "director": "Bennett Miller",
+      "writer": "Dan Futterman (screenplay), Gerald Clarke (book)",
+      "actors": "Allie Mickelson, Kelci Stephenson, Philip Seymour Hoffman, Craig Archibald",
+      "plot": "In 1959, Truman Capote learns of the murder of a Kansas family and decides to write a book about the case. While researching for his novel In Cold Blood, Capote forms a relationship with one of the killers, Perry Smith, who is on death row.",
+      "production": "Sony Pictures Classics",
+      "last_modified": "2018-08-13T05:53:27.432"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 24,
+   "fields": {
+      "title": "Nocturnal Animals",
+      "year": 2016,
+      "runtime": 116,
+      "genre": "Crime, Drama, Romance",
+      "director": "Tom Ford",
+      "writer": "Tom Ford (screenplay by), Austin Wright (novel)",
+      "actors": "Amy Adams, Jake Gyllenhaal, Michael Shannon, Aaron Taylor-Johnson",
+      "plot": "A wealthy art gallery owner receives a draft of her ex-husband's new novel, a violent thriller she interprets as a veiled threat and a symbolic revenge tale.",
+      "production": "Focus Features",
+      "last_modified": "2018-08-13T05:53:27.505"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 25,
+   "fields": {
+      "title": "No End in Sight",
+      "year": 2007,
+      "runtime": 102,
+      "genre": "Documentary, War",
+      "director": "Charles Ferguson",
+      "writer": "Charles Ferguson",
+      "actors": "Campbell Scott, Gerald Burke, Ali Fadhil, Omar Fekeiki",
+      "plot": "A comprehensive look at the Bush Administration's conduct of the Iraq war and its occupation of the country.",
+      "production": "Magnolia Pictures",
+      "last_modified": "2018-08-13T05:53:27.584"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 26,
+   "fields": {
+      "title": "Phantom Thread",
+      "year": 2017,
+      "runtime": 130,
+      "genre": "Drama, Romance",
+      "director": "Paul Thomas Anderson",
+      "writer": "Paul Thomas Anderson",
+      "actors": "Vicky Krieps, Daniel Day-Lewis, Lesley Manville, Julie Vollono",
+      "plot": "Set in 1950's London, Reynolds Woodcock is a renowned dressmaker whose fastidious life is disrupted by a young, strong-willed woman, Alma, who becomes his muse and lover.",
+      "production": "Focus Features",
+      "last_modified": "2018-08-13T05:53:27.660"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 27,
+   "fields": {
+      "title": "Wonder Woman",
+      "year": 2017,
+      "runtime": 141,
+      "genre": "Action, Adventure, Fantasy",
+      "director": "Patty Jenkins",
+      "writer": "Allan Heinberg (screenplay by), Zack Snyder (story by), Allan Heinberg (story by), Jason Fuchs (story by), William Moulton Marston (Wonder Woman created by)",
+      "actors": "Gal Gadot, Chris Pine, Connie Nielsen, Robin Wright",
+      "plot": "When a pilot crashes and tells of conflict in the outside world, Diana, an Amazonian warrior in training, leaves home to fight a war, discovering her full powers and true destiny.",
+      "production": "Warner Bros. Pictures",
+      "last_modified": "2018-08-13T05:53:27.733"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 28,
+   "fields": {
+      "title": "Brokeback Mountain",
+      "year": 2005,
+      "runtime": 134,
+      "genre": "Drama, Romance",
+      "director": "Ang Lee",
+      "writer": "Annie Proulx (short story), Larry McMurtry (screenplay), Diana Ossana (screenplay)",
+      "actors": "Heath Ledger, Jake Gyllenhaal, Randy Quaid, Valerie Planche",
+      "plot": "The story of a forbidden and secretive relationship between two cowboys, and their lives over the years.",
+      "production": "Focus Features",
+      "last_modified": "2018-08-13T05:53:27.806"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 29,
+   "fields": {
+      "title": "The Wind Will Carry Us",
+      "year": 1999,
+      "runtime": 118,
+      "genre": "Drama",
+      "director": "Abbas Kiarostami",
+      "writer": "Abbas Kiarostami",
+      "actors": "Behzad Dorani, Noghre Asadi, Roushan Karam Elmi, Bahman Ghobadi",
+      "plot": "Irreverent city engineer Behzad comes to a rural village in Iran to keep vigil for a dying relative. In the meanwhile the film follows his efforts to fit in with the local community and how he changes his own attitudes as a result.",
+      "production": "New Yorker Films",
+      "last_modified": "2018-08-13T05:53:27.877"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 30,
+   "fields": {
+      "title": "Spirited Away",
+      "year": 2001,
+      "runtime": 125,
+      "genre": "Animation, Adventure, Family",
+      "director": "Hayao Miyazaki, Kirk Wise",
+      "writer": "Hayao Miyazaki",
+      "actors": "Rumi Hiiragi, Miyu Irino, Mari Natsuki, Takashi Nait\u00f4",
+      "plot": "During her family's move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits, and where humans are changed into beasts.",
+      "production": "Walt Disney Pictures",
+      "last_modified": "2018-08-13T05:53:27.952"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 31,
+   "fields": {
+      "title": "The Theory of Everything",
+      "year": 2014,
+      "runtime": 123,
+      "genre": "Biography, Drama, Romance",
+      "director": "James Marsh",
+      "writer": "Anthony McCarten (screenplay), Jane Hawking (book)",
+      "actors": "Eddie Redmayne, Felicity Jones, Tom Prior, Sophie Perry",
+      "plot": "A look at the relationship between the famous physicist Stephen Hawking and his wife.",
+      "production": "Focus Features",
+      "last_modified": "2018-08-13T05:53:28.023"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 32,
+   "fields": {
+      "title": "Gosford Park",
+      "year": 2001,
+      "runtime": 131,
+      "genre": "Comedy, Drama, Mystery",
+      "director": "Robert Altman",
+      "writer": "Julian Fellowes, Robert Altman (based upon an idea by), Bob Balaban (based upon an idea by)",
+      "actors": "Maggie Smith, Michael Gambon, Kristin Scott Thomas, Camilla Rutherford",
+      "plot": "The lives of upstairs guests and downstairs servants at a party in 1932 in a country house in England as they investigate a murder involving one of them.",
+      "production": "USA Films",
+      "last_modified": "2018-08-13T05:53:28.095"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 33,
+   "fields": {
+      "title": "Away from Her",
+      "year": 2006,
+      "runtime": 110,
+      "genre": "Drama",
+      "director": "Sarah Polley",
+      "writer": "Sarah Polley, Alice Munro (short story \"The Bear Came Over the Mountain\")",
+      "actors": "Gordon Pinsent, Stacey LaBerge, Julie Christie, Olympia Dukakis",
+      "plot": "A man coping with the institutionalization of his wife because of Alzheimer's disease faces an epiphany when she transfers her affections to another man, Aubrey, a wheelchair-bound mute who also is a patient at the nursing home.",
+      "production": "Lionsgate",
+      "last_modified": "2018-08-13T05:53:28.162"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 34,
+   "fields": {
+      "title": "Star Wars: Episode IV - A New Hope",
+      "year": 1977,
+      "runtime": 121,
+      "genre": "Action, Adventure, Fantasy",
+      "director": "George Lucas",
+      "writer": "George Lucas",
+      "actors": "Mark Hamill, Harrison Ford, Carrie Fisher, Peter Cushing",
+      "plot": "Luke Skywalker joins forces with a Jedi Knight, a cocky pilot, a Wookiee and two droids to save the galaxy from the Empire's world-destroying battle-station, while also attempting to rescue Princess Leia from the evil Darth Vader.",
+      "production": "20th Century Fox",
+      "last_modified": "2018-08-13T05:53:28.329"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 35,
+   "fields": {
+      "title": "Fateless",
+      "year": 2005,
+      "runtime": 140,
+      "genre": "Drama, Romance, War",
+      "director": "Lajos Koltai",
+      "writer": "Imre Kert\u00e9sz (novel), Imre Kert\u00e9sz (screenplay)",
+      "actors": "Marcell Nagy, B\u00e9la D\u00f3ra, B\u00e1lint P\u00e9ntek, \u00c1ron Dim\u00e9ny",
+      "plot": "Fourteen-year-old Gy\u00f6rgy's life is torn apart in World War II Hungary, as he is sent to a concentration camp, where he is forced to become a man, and learns to find happiness in the midst of hatred, and what it really means to be Jewish.",
+      "production": "ThinkFilm",
+      "last_modified": "2018-08-13T05:53:28.405"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 36,
+   "fields": {
+      "title": "The Hurt Locker",
+      "year": 2008,
+      "runtime": 131,
+      "genre": "Drama, History, Thriller",
+      "director": "Kathryn Bigelow",
+      "writer": "Mark Boal",
+      "actors": "Jeremy Renner, Anthony Mackie, Brian Geraghty, Guy Pearce",
+      "plot": "During the Iraq War, a Sergeant recently assigned to an army bomb squad is put at odds with his squad mates due to his maverick way of handling his work.",
+      "production": "Summit Entertainment",
+      "last_modified": "2018-08-13T05:53:28.481"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 37,
+   "fields": {
+      "title": "The Lord of the Rings: The Two Towers",
+      "year": 2002,
+      "runtime": 179,
+      "genre": "Adventure, Drama, Fantasy",
+      "director": "Peter Jackson",
+      "writer": "J.R.R. Tolkien (novel), Fran Walsh (screenplay), Philippa Boyens (screenplay), Stephen Sinclair (screenplay), Peter Jackson (screenplay)",
+      "actors": "Bruce Allpress, Sean Astin, John Bach, Sala Baker",
+      "plot": "While Frodo and Sam edge closer to Mordor with the help of the shifty Gollum, the divided fellowship makes a stand against Sauron's new ally, Saruman, and his hordes of Isengard.",
+      "production": "New Line Cinema",
+      "last_modified": "2018-08-13T05:53:28.553"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 38,
+   "fields": {
+      "title": "There Will Be Blood",
+      "year": 2007,
+      "runtime": 158,
+      "genre": "Drama",
+      "director": "Paul Thomas Anderson",
+      "writer": "Paul Thomas Anderson (written for the screen by), Upton Sinclair (novel)",
+      "actors": "Daniel Day-Lewis, Martin Stringer, Matthew Braden Stringer, Jacob Stringer",
+      "plot": "A story of family, religion, hatred, oil and madness, focusing on a turn-of-the-century prospector in the early days of the business.",
+      "production": "Paramount Vantage",
+      "last_modified": "2018-08-13T05:53:28.624"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 39,
+   "fields": {
+      "title": "Ponyo",
+      "year": 2008,
+      "runtime": 101,
+      "genre": "Animation, Adventure, Comedy",
+      "director": "Hayao Miyazaki",
+      "writer": "Hayao Miyazaki",
+      "actors": "Tomoko Yamaguchi, Kazushige Nagashima, Y\u00fbki Amami, George Tokoro",
+      "plot": "A five-year-old boy develops a relationship with Ponyo, a young goldfish princess who longs to become a human after falling in love with him.",
+      "production": "Walt Disney Pictures",
+      "last_modified": "2018-08-13T05:53:28.697"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 40,
+   "fields": {
+      "title": "Up",
+      "year": 2009,
+      "runtime": 96,
+      "genre": "Animation, Adventure, Comedy",
+      "director": "Pete Docter, Bob Peterson(co-director)",
+      "writer": "Pete Docter (story by), Bob Peterson (story by), Tom McCarthy (story by), Bob Peterson (screenplay by), Pete Docter (screenplay by)",
+      "actors": "Edward Asner, Christopher Plummer, Jordan Nagai, Bob Peterson",
+      "plot": "Seventy-eight year old Carl Fredricksen travels to Paradise Falls in his home equipped with balloons, inadvertently taking a young stowaway.",
+      "production": "Walt Disney Pictures",
+      "last_modified": "2018-08-13T05:53:28.769"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 41,
+   "fields": {
+      "title": "Persepolis",
+      "year": 2007,
+      "runtime": 96,
+      "genre": "Animation, Biography, Drama",
+      "director": "Vincent Paronnaud, Marjane Satrapi",
+      "writer": "Marjane Satrapi (comic), Vincent Paronnaud (scenario)",
+      "actors": "Chiara Mastroianni, Danielle Darrieux, Catherine Deneuve, Simon Abkarian",
+      "plot": "A precocious and outspoken Iranian girl grows up during the Islamic Revolution.",
+      "production": "Sony Pictures Classics",
+      "last_modified": "2018-08-13T05:53:28.842"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 42,
+   "fields": {
+      "title": "Life Itself",
+      "year": 2014,
+      "runtime": 120,
+      "genre": "Documentary, Biography",
+      "director": "Steve James",
+      "writer": "N/A",
+      "actors": "Martin Scorsese, Ava DuVernay, Werner Herzog, Errol Morris",
+      "plot": "The life and career of the renowned film critic and social commentator, Roger Ebert.",
+      "production": "Magnolia Pictures",
+      "last_modified": "2018-08-13T05:53:28.918"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 43,
+   "fields": {
+      "title": "To Be and to Have",
+      "year": 2002,
+      "runtime": 104,
+      "genre": "Documentary, Family",
+      "director": "Nicolas Philibert",
+      "writer": "N/A",
+      "actors": "Georges Lopez, Aliz\u00e9, Axel Thouvenin, Guillaume",
+      "plot": "A documentary portrait of a one-room school in rural France, where the students (ranging in age from 4 to 11) are educated by a single dedicated teacher.",
+      "production": "New Yorker Films",
+      "last_modified": "2018-08-13T05:53:28.992"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 44,
+   "fields": {
+      "title": "Tarnation",
+      "year": 2003,
+      "runtime": 88,
+      "genre": "Documentary, Biography",
+      "director": "Jonathan Caouette",
+      "writer": "Jonathan Caouette",
+      "actors": "Renee Leblanc, Jonathan Caouette, Adolph Davis, Rosemary Davis",
+      "plot": "Filmmaker Jonathan Caouette's documentary on growing up with his schizophrenic mother -- a mixture of snapshots, Super-8, answering machine messages, video diaries, early short films, and more -- culled from 19 years of his life.",
+      "production": "Wellspring",
+      "last_modified": "2018-08-13T05:53:29.075"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 45,
+   "fields": {
+      "title": "Lion",
+      "year": 2016,
+      "runtime": 118,
+      "genre": "Biography, Drama",
+      "director": "Garth Davis",
+      "writer": "Saroo Brierley (adapted from the book \"A Long Way Home\" by), Luke Davies (screenplay by)",
+      "actors": "Sunny Pawar, Abhishek Bharate, Priyanka Bose, Khushi Solanki",
+      "plot": "A five-year-old Indian boy gets lost on the streets of Calcutta, thousands of kilometers from home. He survives many challenges before being adopted by a couple in Australia. 25 years later, he sets out to find his lost family.",
+      "production": "See-Saw Films",
+      "last_modified": "2018-08-13T05:53:29.144"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 46,
+   "fields": {
+      "title": "Before Night Falls",
+      "year": 2000,
+      "runtime": 133,
+      "genre": "Biography, Drama, Romance",
+      "director": "Julian Schnabel",
+      "writer": "Cunningham O'Keefe, L\u00e1zaro G\u00f3mez Carriles, Julian Schnabel, Reynaldo Arenas (memoir \"Before Night Falls\"), Jana Bokova (documentary \"Havana\")",
+      "actors": "Olatz L\u00f3pez Garmendia, Giovanni Florido, Lol\u00f3 Navarro, Batan Silva",
+      "plot": "The life of Cuban poet and novelist Reynaldo Arenas.",
+      "production": "Fine Line Features",
+      "last_modified": "2018-08-13T05:53:29.229"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 47,
+   "fields": {
+      "title": "Before Sunset",
+      "year": 2004,
+      "runtime": 80,
+      "genre": "Drama, Romance",
+      "director": "Richard Linklater",
+      "writer": "Richard Linklater (screenplay), Julie Delpy (screenplay), Ethan Hawke (screenplay), Richard Linklater (story), Kim Krizan (story), Richard Linklater (characters), Kim Krizan (characters)",
+      "actors": "Ethan Hawke, Julie Delpy, Vernon Dobtcheff, Louise Lemoine Torr\u00e8s",
+      "plot": "Nine years after Jesse and Celine first met, they encounter each other again on the French leg of Jesse's book tour.",
+      "production": "Warner Independent Pictures",
+      "last_modified": "2018-08-13T05:53:29.308"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 48,
+   "fields": {
+      "title": "Goodbye Solo",
+      "year": 2008,
+      "runtime": 91,
+      "genre": "Drama",
+      "director": "Ramin Bahrani",
+      "writer": "Bahareh Azimi (screenplay), Ramin Bahrani (screenplay)",
+      "actors": "Souleymane Sy Savane, Red West, Diana Franco Galindo, Lane 'Roc' Williams",
+      "plot": "Two men form an unlikely friendship that will change both of their lives forever.",
+      "production": "Roadside Attractions",
+      "last_modified": "2018-08-13T05:53:29.379"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 49,
+   "fields": {
+      "title": "Closer",
+      "year": 2004,
+      "runtime": 104,
+      "genre": "Drama, Romance",
+      "director": "Mike Nichols",
+      "writer": "Patrick Marber (play), Patrick Marber (screenplay)",
+      "actors": "Julia Roberts, Jude Law, Natalie Portman, Clive Owen",
+      "plot": "The relationships of two couples become complicated and deceitful when the man from one couple meets the woman of the other.",
+      "production": "Sony Pictures",
+      "last_modified": "2018-08-13T05:53:29.456"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 50,
+   "fields": {
+      "title": "I'm Going Home",
+      "year": 2001,
+      "runtime": 90,
+      "genre": "Comedy, Drama",
+      "director": "Manoel de Oliveira",
+      "writer": "Manoel de Oliveira (scenario and dialogue), Jacques Parsi (scenario consultant: literature), Eug\u00e8ne Ionesco (play), William Shakespeare (play), James Joyce (book)",
+      "actors": "Michel Piccoli, Catherine Deneuve, John Malkovich, Antoine Chappey",
+      "plot": "The comfortable daily routines of aging Parisian actor Gilbert Valence, 76, are suddenly shaken when he learns that his wife, daughter, and son-in-law have been killed in a car crash. ...",
+      "production": "G\u00e9mini Films",
+      "last_modified": "2018-08-13T05:53:29.526"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 51,
+   "fields": {
+      "title": "The Lego Movie",
+      "year": 2014,
+      "runtime": 100,
+      "genre": "Animation, Action, Adventure",
+      "director": "Phil Lord, Christopher Miller",
+      "writer": "Phil Lord (screenplay), Christopher Miller (screenplay), Dan Hageman (story), Kevin Hageman (story), Phil Lord (story), Christopher Miller (story), Ole Kirk Christiansen (based on LEGO Construction Toys created by), Godtfred Kirk Christiansen (based on LEGO Construction Toys created by), Jens Nygaard Knudsen (based on LEGO Construction Toys created by), Peter Laird (characters created by: Teenage Mutant Ninja Turtles), Kevin Eastman (characters created by: Teenage Mutant Ninja Turtles)",
+      "actors": "Will Arnett, Elizabeth Banks, Craig Berry, Alison Brie",
+      "plot": "An ordinary LEGO construction worker, thought to be the prophesied as \"special\", is recruited to join a quest to stop an evil tyrant from gluing the LEGO universe into eternal stasis.",
+      "production": "Warner Bros. Pictures",
+      "last_modified": "2018-08-13T05:53:29.596"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 52,
+   "fields": {
+      "title": "Time Out",
+      "year": 2001,
+      "runtime": 134,
+      "genre": "Drama",
+      "director": "Laurent Cantet",
+      "writer": "Robin Campillo (scenario), Laurent Cantet (scenario)",
+      "actors": "Aur\u00e9lien Recoing, Karin Viard, Serge Livrozet, Jean-Pierre Mangeot",
+      "plot": "An unemployed man finds his life sinking more and more into trouble as he hides his situation from his family and friends.",
+      "production": "ThinkFilm",
+      "last_modified": "2018-08-13T05:53:29.680"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 53,
+   "fields": {
+      "title": "Mad Max: Fury Road",
+      "year": 2015,
+      "runtime": 120,
+      "genre": "Action, Adventure, Sci-Fi",
+      "director": "George Miller",
+      "writer": "George Miller, Brendan McCarthy, Nick Lathouris",
+      "actors": "Tom Hardy, Charlize Theron, Nicholas Hoult, Hugh Keays-Byrne",
+      "plot": "In a post-apocalyptic wasteland, a woman rebels against a tyrannical ruler in search for her homeland with the aid of a group of female prisoners, a psychotic worshiper, and a drifter named Max.",
+      "production": "Warner Bros.",
+      "last_modified": "2018-08-13T05:53:29.750"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 54,
+   "fields": {
+      "title": "The Martian",
+      "year": 2015,
+      "runtime": 144,
+      "genre": "Adventure, Drama, Sci-Fi",
+      "director": "Ridley Scott",
+      "writer": "Drew Goddard (screenplay by), Andy Weir (based on the novel by)",
+      "actors": "Matt Damon, Jessica Chastain, Kristen Wiig, Jeff Daniels",
+      "plot": "An astronaut becomes stranded on Mars after his team assume him dead, and must rely on his ingenuity to find a way to signal to Earth that he is alive.",
+      "production": "20th Century Fox",
+      "last_modified": "2018-08-13T05:53:29.819"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 55,
+   "fields": {
+      "title": "Knocked Up",
+      "year": 2007,
+      "runtime": 129,
+      "genre": "Comedy, Romance",
+      "director": "Judd Apatow",
+      "writer": "Judd Apatow",
+      "actors": "Seth Rogen, Katherine Heigl, Paul Rudd, Leslie Mann",
+      "plot": "For fun-loving party animal Ben Stone, the last thing he ever expected was for his one-night stand to show up on his doorstep eight weeks later to tell him she's pregnant with his child.",
+      "production": "Universal",
+      "last_modified": "2018-08-13T05:53:29.888"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 56,
+   "fields": {
+      "title": "No Country for Old Men",
+      "year": 2007,
+      "runtime": 122,
+      "genre": "Crime, Drama, Thriller",
+      "director": "Ethan Coen, Joel Coen",
+      "writer": "Joel Coen (screenplay), Ethan Coen (screenplay), Cormac McCarthy (novel)",
+      "actors": "Tommy Lee Jones, Javier Bardem, Josh Brolin, Woody Harrelson",
+      "plot": "Violence and mayhem ensue after a hunter stumbles upon a drug deal gone wrong and more than two million dollars in cash near the Rio Grande.",
+      "production": "Miramax Films",
+      "last_modified": "2018-08-13T05:53:29.960"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 57,
+   "fields": {
+      "title": "Baby Driver",
+      "year": 2017,
+      "runtime": 112,
+      "genre": "Action, Crime, Music",
+      "director": "Edgar Wright",
+      "writer": "Edgar Wright",
+      "actors": "Ansel Elgort, Jon Bernthal, Jon Hamm, Eiza Gonz\u00e1lez",
+      "plot": "After being coerced into working for a crime boss, a young getaway driver finds himself taking part in a heist doomed to fail.",
+      "production": "Sony Pictures",
+      "last_modified": "2018-08-13T05:53:30.042"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 58,
+   "fields": {
+      "title": "The Bourne Ultimatum",
+      "year": 2007,
+      "runtime": 115,
+      "genre": "Action, Mystery, Thriller",
+      "director": "Paul Greengrass",
+      "writer": "Tony Gilroy (screenplay), Scott Z. Burns (screenplay), George Nolfi (screenplay), Tony Gilroy (screen story), Robert Ludlum (novel)",
+      "actors": "Matt Damon, Julia Stiles, David Strathairn, Scott Glenn",
+      "plot": "Jason Bourne dodges a ruthless CIA official and his agents from a new assassination program while searching for the origins of his life as a trained killer.",
+      "production": "Universal Pictures",
+      "last_modified": "2018-08-13T05:53:30.214"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 59,
+   "fields": {
+      "title": "Ratatouille",
+      "year": 2007,
+      "runtime": 111,
+      "genre": "Animation, Adventure, Comedy",
+      "director": "Brad Bird, Jan Pinkava(co-director)",
+      "writer": "Brad Bird (screenplay), Jan Pinkava (original story by), Jim Capobianco (original story by), Brad Bird (original story by), Emily Cook (additional story material), Kathy Greenberg (additional story material), Bob Peterson (additional story material)",
+      "actors": "Patton Oswalt, Ian Holm, Lou Romano, Brian Dennehy",
+      "plot": "A rat who can cook makes an unusual alliance with a young kitchen worker at a famous restaurant.",
+      "production": "Disney/Pixar",
+      "last_modified": "2018-08-13T05:53:30.283"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 60,
+   "fields": {
+      "title": "Marooned in Iraq",
+      "year": 2002,
+      "runtime": 108,
+      "genre": "Drama",
+      "director": "Bahman Ghobadi",
+      "writer": "Bahman Ghobadi",
+      "actors": "Shahab Ebrahimi, Faegh Mohamadi, Allah-Morad Rashtian, Rojan Hosseini",
+      "plot": "During the war between Iran and Iraq, a group of Iranian Kurd musicians set off on an almost impossible mission. They will try to find Hanareh, a singer with a magic voice who crossed the ...",
+      "production": "Wellspring",
+      "last_modified": "2018-08-13T05:53:30.357"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 61,
+   "fields": {
+      "title": "We Are the Best!",
+      "year": 2013,
+      "runtime": 102,
+      "genre": "Drama, Music",
+      "director": "Lukas Moodysson",
+      "writer": "Lukas Moodysson, Coco Moodysson (comic book)",
+      "actors": "Mira Barkhammar, Mira Grosin, Liv LeMoyne, Johan Liljemark",
+      "plot": "Three girls in 1980s Stockholm decide to form a punk band -- despite not having any instruments and being told by everyone that punk is dead.",
+      "production": "Magnolia Pictures",
+      "last_modified": "2018-08-13T05:53:30.485"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 62,
+   "fields": {
+      "title": "Spotlight",
+      "year": 2015,
+      "runtime": 128,
+      "genre": "Crime, Drama, History",
+      "director": "Tom McCarthy",
+      "writer": "Josh Singer, Tom McCarthy",
+      "actors": "Mark Ruffalo, Michael Keaton, Rachel McAdams, Liev Schreiber",
+      "plot": "The true story of how the Boston Globe uncovered the massive scandal of child molestation and cover-up within the local Catholic Archdiocese, shaking the entire Catholic Church to its core.",
+      "production": "Open Road Films",
+      "last_modified": "2018-08-13T05:53:30.555"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 63,
+   "fields": {
+      "title": "Borat: Cultural Learnings of America for Make Benefit Glorious Nation of Kazakhstan",
+      "year": 2006,
+      "runtime": 84,
+      "genre": "Comedy",
+      "director": "Larry Charles",
+      "writer": "Sacha Baron Cohen (screenplay), Anthony Hines (screenplay), Peter Baynham (screenplay), Dan Mazer (screenplay), Sacha Baron Cohen (story), Peter Baynham (story), Anthony Hines (story), Todd Phillips (story), Sacha Baron Cohen (based on a character created by)",
+      "actors": "Sacha Baron Cohen, Ken Davitian, Luenell, Chester",
+      "plot": "Kazakh TV talking head Borat is dispatched to the United States to report on the greatest country in the world. With a documentary crew in tow, Borat becomes more interested in locating and marrying Pamela Anderson.",
+      "production": "20th Century Fox",
+      "last_modified": "2018-08-13T05:53:30.633"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 64,
+   "fields": {
+      "title": "Bridge of Spies",
+      "year": 2015,
+      "runtime": 142,
+      "genre": "Drama, History, Thriller",
+      "director": "Steven Spielberg",
+      "writer": "Matt Charman, Ethan Coen, Joel Coen",
+      "actors": "Mark Rylance, Domenick Lombardozzi, Victor Verhaeghe, Mark Fichera",
+      "plot": "During the Cold War, an American lawyer is recruited to defend an arrested Soviet spy in court, and then help the CIA facilitate an exchange of the spy for the Soviet captured American U2 spy plane pilot, Francis Gary Powers.",
+      "production": "Dreamworks Pictures",
+      "last_modified": "2018-08-13T05:53:30.705"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 65,
+   "fields": {
+      "title": "Interstellar",
+      "year": 2014,
+      "runtime": 169,
+      "genre": "Adventure, Drama, Sci-Fi",
+      "director": "Christopher Nolan",
+      "writer": "Jonathan Nolan, Christopher Nolan",
+      "actors": "Ellen Burstyn, Matthew McConaughey, Mackenzie Foy, John Lithgow",
+      "plot": "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.",
+      "production": "Paramount Pictures",
+      "last_modified": "2018-08-13T05:53:30.878"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 66,
+   "fields": {
+      "title": "Chicken Run",
+      "year": 2000,
+      "runtime": 84,
+      "genre": "Animation, Adventure, Comedy",
+      "director": "Peter Lord, Nick Park",
+      "writer": "Peter Lord (original story), Nick Park (original story), Karey Kirkpatrick (screenplay), Mark Burton (additional dialogue), John O'Farrell (additional dialogue)",
+      "actors": "Phil Daniels, Lynn Ferguson, Mel Gibson, Tony Haygarth",
+      "plot": "When a cockerel apparently flies into a chicken farm, the chickens see him as an opportunity to escape their evil owners.",
+      "production": "Dreamworks Pictures",
+      "last_modified": "2018-08-13T05:53:30.955"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 67,
+   "fields": {
+      "title": "Mustang",
+      "year": 2015,
+      "runtime": 97,
+      "genre": "Drama",
+      "director": "Deniz Gamze Erg\u00fcven",
+      "writer": "Deniz Gamze Erg\u00fcven, Alice Winocour",
+      "actors": "G\u00fcnes Sensoy, Doga Zeynep Doguslu, Tugba Sunguroglu, Elit Iscan",
+      "plot": "When five orphan girls are seen innocently playing with boys on a beach, their scandalized conservative guardians confine them while forced marriages are arranged.",
+      "production": "CG Cin\u00e9ma",
+      "last_modified": "2018-08-13T05:53:31.118"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 68,
+   "fields": {
+      "title": "Man on Wire",
+      "year": 2008,
+      "runtime": 94,
+      "genre": "Documentary, Biography",
+      "director": "James Marsh",
+      "writer": "Philippe Petit (based on the book \"To Reach the Clouds\" by)",
+      "actors": "Philippe Petit, Jean Fran\u00e7ois Heckel, Jean-Louis Blondeau, Annie Allix",
+      "plot": "A look at tightrope walker Philippe Petit's daring, but illegal, high-wire routine performed between New York City's World Trade Center's twin towers in 1974, what some consider, \"the artistic crime of the century\".",
+      "production": "Magnolia Pictures",
+      "last_modified": "2018-08-13T05:53:31.186"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 69,
+   "fields": {
+      "title": "The Big Short",
+      "year": 2015,
+      "runtime": 130,
+      "genre": "Biography, Comedy, Drama",
+      "director": "Adam McKay",
+      "writer": "Charles Randolph (screenplay by), Adam McKay (screenplay by), Michael Lewis (based upon the book by)",
+      "actors": "Ryan Gosling, Rudy Eisenzopf, Casey Groves, Charlie Talbert",
+      "plot": "In 2006-7 a group of investors bet against the US mortgage market. In their research they discover how flawed and corrupt the market is.",
+      "production": "Paramount Pictures",
+      "last_modified": "2018-08-13T05:53:31.255"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 70,
+   "fields": {
+      "title": "The Imitation Game",
+      "year": 2014,
+      "runtime": 114,
+      "genre": "Biography, Drama, History",
+      "director": "Morten Tyldum",
+      "writer": "Graham Moore, Andrew Hodges (book)",
+      "actors": "Benedict Cumberbatch, Keira Knightley, Matthew Goode, Rory Kinnear",
+      "plot": "During World War II, the English mathematical genius Alan Turing tries to crack the German Enigma code with help from fellow mathematicians.",
+      "production": "The Weinstein Company",
+      "last_modified": "2018-08-13T05:53:31.327"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 71,
+   "fields": {
+      "title": "Almost Famous",
+      "year": 2000,
+      "runtime": 122,
+      "genre": "Adventure, Comedy, Drama",
+      "director": "Cameron Crowe",
+      "writer": "Cameron Crowe",
+      "actors": "Billy Crudup, Frances McDormand, Kate Hudson, Jason Lee",
+      "plot": "A high-school boy is given the chance to write a story for Rolling Stone Magazine about an up-and-coming rock band as he accompanies them on their concert tour.",
+      "production": "DreamWorks SKG",
+      "last_modified": "2018-08-13T05:53:31.532"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 72,
+   "fields": {
+      "title": "The Revenant",
+      "year": 2015,
+      "runtime": 156,
+      "genre": "Action, Adventure, Drama",
+      "director": "Alejandro G. I\u00f1\u00e1rritu",
+      "writer": "Mark L. Smith (screenplay), Alejandro G. I\u00f1\u00e1rritu (screenplay), Michael Punke (based in part on the novel by)",
+      "actors": "Leonardo DiCaprio, Tom Hardy, Domhnall Gleeson, Will Poulter",
+      "plot": "A frontiersman on a fur trading expedition in the 1820s fights for survival after being mauled by a bear and left for dead by members of his own hunting team.",
+      "production": "20th Century Fox",
+      "last_modified": "2018-08-13T05:53:31.606"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 73,
+   "fields": {
+      "title": "Dunkirk",
+      "year": 2017,
+      "runtime": 106,
+      "genre": "Action, Drama, History",
+      "director": "Christopher Nolan",
+      "writer": "Christopher Nolan",
+      "actors": "Fionn Whitehead, Damien Bonnard, Aneurin Barnard, Lee Armstrong",
+      "plot": "Allied soldiers from Belgium, the British Empire and France are surrounded by the German Army, and evacuated during a fierce battle in World War II.",
+      "production": "Warner Bros. Pictures",
+      "last_modified": "2018-08-13T05:53:31.682"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 74,
+   "fields": {
+      "title": "The Fog of War",
+      "year": 2011,
+      "runtime": 83,
+      "genre": "Horror, Thriller, War",
+      "director": "Les Norris",
+      "writer": "Les Norris (story), Les Norris",
+      "actors": "Benhur Sito Barrero, Adam Fortner, Katie Mackey",
+      "plot": "John Millhouse has just returned home after four years of service in The United States Army. He wants nothing more than to return to a 'normal' life, but the horrors of war and his never ...",
+      "production": "N/A",
+      "last_modified": "2018-08-13T05:53:31.761"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 75,
+   "fields": {
+      "title": "Arrival",
+      "year": 2016,
+      "runtime": 116,
+      "genre": "Drama, Mystery, Sci-Fi",
+      "director": "Denis Villeneuve",
+      "writer": "Eric Heisserer (screenplay by), Ted Chiang (based on the story \"Story of Your Life\" written by)",
+      "actors": "Amy Adams, Jeremy Renner, Forest Whitaker, Michael Stuhlbarg",
+      "plot": "A linguist is recruited by the military to communicate with alien lifeforms after twelve mysterious spacecrafts land around the world.",
+      "production": "21 Laps Entertainment",
+      "last_modified": "2018-08-13T05:53:31.864"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 76,
+   "fields": {
+      "title": "United 93",
+      "year": 2006,
+      "runtime": 111,
+      "genre": "Drama, History, Thriller",
+      "director": "Paul Greengrass",
+      "writer": "Paul Greengrass",
+      "actors": "J.J. Johnson, Gary Commock, Polly Adams, Opal Alladin",
+      "plot": "A real-time account of the events on United Flight 93, one of the planes hijacked on September 11th, 2001 that crashed near Shanksville, Pennsylvania when passengers foiled the terrorist plot.",
+      "production": "Universal Pictures",
+      "last_modified": "2018-08-13T05:53:31.940"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 77,
+   "fields": {
+      "title": "The Big Sick",
+      "year": 2017,
+      "runtime": 120,
+      "genre": "Comedy, Drama, Romance",
+      "director": "Michael Showalter",
+      "writer": "Emily V. Gordon, Kumail Nanjiani, Kurt Braunohler (consultant writer)",
+      "actors": "Kumail Nanjiani, Zoe Kazan, Holly Hunter, Ray Romano",
+      "plot": "Pakistan-born comedian Kumail Nanjiani and grad student Emily Gardner fall in love but struggle as their cultures clash. When Emily contracts a mysterious illness, Kumail finds himself forced to face her feisty parents, his family's expectations, and his true feelings.",
+      "production": "Amazon Studios",
+      "last_modified": "2018-08-13T05:53:32.076"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 78,
+   "fields": {
+      "title": "Whiplash",
+      "year": 2014,
+      "runtime": 107,
+      "genre": "Drama, Music",
+      "director": "Damien Chazelle",
+      "writer": "Damien Chazelle",
+      "actors": "Miles Teller, J.K. Simmons, Paul Reiser, Melissa Benoist",
+      "plot": "A promising young drummer enrolls at a cut-throat music conservatory where his dreams of greatness are mentored by an instructor who will stop at nothing to realize a student's potential.",
+      "production": "Sony Pictures Classics",
+      "last_modified": "2018-08-13T05:53:32.149"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 79,
+   "fields": {
+      "title": "La La Land",
+      "year": 2016,
+      "runtime": 128,
+      "genre": "Comedy, Drama, Music",
+      "director": "Damien Chazelle",
+      "writer": "Damien Chazelle",
+      "actors": "Ryan Gosling, Emma Stone, Ami\u00e9e Conn, Terry Walters",
+      "plot": "While navigating their careers in Los Angeles, a pianist and an actress fall in love while attempting to reconcile their aspirations for the future.",
+      "production": "Liongate Films",
+      "last_modified": "2018-08-13T05:53:32.220"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 80,
+   "fields": {
+      "title": "The Grand Budapest Hotel",
+      "year": 2014,
+      "runtime": 99,
+      "genre": "Adventure, Comedy, Drama",
+      "director": "Wes Anderson",
+      "writer": "Stefan Zweig (inspired by the writings of), Wes Anderson (screenplay), Wes Anderson (story), Hugo Guinness (story)",
+      "actors": "Ralph Fiennes, F. Murray Abraham, Mathieu Amalric, Adrien Brody",
+      "plot": "The adventures of Gustave H, a legendary concierge at a famous hotel from the fictional Republic of Zubrowka between the first and second World Wars, and Zero Moustafa, the lobby boy who becomes his most trusted friend.",
+      "production": "Fox Searchlight",
+      "last_modified": "2018-08-13T05:53:32.298"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 81,
+   "fields": {
+      "title": "Eternal Sunshine of the Spotless Mind",
+      "year": 2004,
+      "runtime": 108,
+      "genre": "Drama, Romance, Sci-Fi",
+      "director": "Michel Gondry",
+      "writer": "Charlie Kaufman (story), Michel Gondry (story), Pierre Bismuth (story), Charlie Kaufman (screenplay)",
+      "actors": "Jim Carrey, Kate Winslet, Gerry Robert Byrne, Elijah Wood",
+      "plot": "When their relationship turns sour, a young couple undergoes a medical procedure to have each other erased from their memories.",
+      "production": "Focus Features",
+      "last_modified": "2018-08-13T05:53:32.475"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 82,
+   "fields": {
+      "title": "Hidden Figures",
+      "year": 2016,
+      "runtime": 127,
+      "genre": "Biography, Drama, History",
+      "director": "Theodore Melfi",
+      "writer": "Allison Schroeder (screenplay by), Theodore Melfi (screenplay by), Margot Lee Shetterly (based on the book by)",
+      "actors": "Taraji P. Henson, Octavia Spencer, Janelle Mon\u00e1e, Kevin Costner",
+      "plot": "The story of a team of female African-American mathematicians who served a vital role in NASA during the early years of the U.S. space program.",
+      "production": "20th Century Fox",
+      "last_modified": "2018-08-13T05:53:32.547"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 83,
+   "fields": {
+      "title": "Melancholia",
+      "year": 2011,
+      "runtime": 135,
+      "genre": "Drama, Sci-Fi",
+      "director": "Lars von Trier",
+      "writer": "Lars von Trier",
+      "actors": "Kirsten Dunst, Charlotte Gainsbourg, Alexander Skarsg\u00e5rd, Brady Corbet",
+      "plot": "Two sisters find their already strained relationship challenged as a mysterious new planet threatens to collide with Earth.",
+      "production": "Magnolia Pictures",
+      "last_modified": "2018-08-13T05:53:32.711"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 84,
+   "fields": {
+      "title": "Room",
+      "year": 2015,
+      "runtime": 118,
+      "genre": "Drama",
+      "director": "Lenny Abrahamson",
+      "writer": "Emma Donoghue (screenplay by), Emma Donoghue (based on the novel by)",
+      "actors": "Brie Larson, Jacob Tremblay, Sean Bridgers, Wendy Crewson",
+      "plot": "A young boy is raised within the confines of a small shed.",
+      "production": "Element Pictures",
+      "last_modified": "2018-08-13T05:53:32.788"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 85,
+   "fields": {
+      "title": "Three Billboards Outside Ebbing, Missouri",
+      "year": 2017,
+      "runtime": 115,
+      "genre": "Comedy, Crime, Drama",
+      "director": "Martin McDonagh",
+      "writer": "Martin McDonagh",
+      "actors": "Frances McDormand, Caleb Landry Jones, Kerry Condon, Sam Rockwell",
+      "plot": "A mother personally challenges the local authorities to solve her daughter's murder when they fail to catch the culprit.",
+      "production": "Fox Searchlight Pictures",
+      "last_modified": "2018-08-13T05:53:32.865"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 86,
+   "fields": {
+      "title": "The Lord of the Rings: The Fellowship of the Ring",
+      "year": 2001,
+      "runtime": 178,
+      "genre": "Adventure, Drama, Fantasy",
+      "director": "Peter Jackson",
+      "writer": "J.R.R. Tolkien (novel), Fran Walsh (screenplay), Philippa Boyens (screenplay), Peter Jackson (screenplay)",
+      "actors": "Alan Howard, Noel Appleby, Sean Astin, Sala Baker",
+      "plot": "A meek Hobbit from the Shire and eight companions set out on a journey to destroy the powerful One Ring and save Middle-earth from the Dark Lord Sauron.",
+      "production": "New Line Cinema",
+      "last_modified": "2018-08-13T05:53:32.937"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 87,
+   "fields": {
+      "title": "Straight Outta Compton",
+      "year": 2015,
+      "runtime": 147,
+      "genre": "Biography, Drama, History",
+      "director": "F. Gary Gray",
+      "writer": "Jonathan Herman (screenplay), Andrea Berloff (screenplay), S. Leigh Savidge (story), Alan Wenkus (story), Andrea Berloff (story)",
+      "actors": "O'Shea Jackson Jr., Corey Hawkins, Jason Mitchell, Neil Brown Jr.",
+      "plot": "The group NWA emerges from the mean streets of Compton in Los Angeles, California, in the mid-1980s and revolutionizes Hip Hop culture with their music and tales about life in the hood.",
+      "production": "Universal Pictures",
+      "last_modified": "2018-08-13T05:53:33.009"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 88,
+   "fields": {
+      "title": "Moonlight",
+      "year": 2016,
+      "runtime": 111,
+      "genre": "Drama",
+      "director": "Barry Jenkins",
+      "writer": "Barry Jenkins (screenplay by), Tarell Alvin McCraney (story by)",
+      "actors": "Mahershala Ali, Shariff Earp, Duan Sanderson, Alex R. Hibbert",
+      "plot": "A chronicle of the childhood, adolescence and burgeoning adulthood of a young, African-American, gay man growing up in a rough neighborhood of Miami.",
+      "production": "A24 Films",
+      "last_modified": "2018-08-13T05:53:33.078"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 89,
+   "fields": {
+      "title": "Lost in Translation",
+      "year": 2003,
+      "runtime": 102,
+      "genre": "Drama",
+      "director": "Sofia Coppola",
+      "writer": "Sofia Coppola",
+      "actors": "Scarlett Johansson, Bill Murray, Akiko Takeshita, Kazuyoshi Minamimagoe",
+      "plot": "A faded movie star and a neglected young woman form an unlikely bond after crossing paths in Tokyo.",
+      "production": "Focus Features",
+      "last_modified": "2018-08-13T05:53:33.147"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 90,
+   "fields": {
+      "title": "The Lives of Others",
+      "year": 2006,
+      "runtime": 137,
+      "genre": "Drama, Thriller",
+      "director": "Florian Henckel von Donnersmarck",
+      "writer": "Florian Henckel von Donnersmarck",
+      "actors": "Martina Gedeck, Ulrich M\u00fche, Sebastian Koch, Ulrich Tukur",
+      "plot": "In 1984 East Berlin, an agent of the secret police, conducting surveillance on a writer and his lover, finds himself becoming increasingly absorbed by their lives.",
+      "production": "Sony Pictures Classics",
+      "last_modified": "2018-08-13T05:53:33.216"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 91,
+   "fields": {
+      "title": "Crouching Tiger, Hidden Dragon",
+      "year": 2000,
+      "runtime": 120,
+      "genre": "Action, Adventure, Fantasy",
+      "director": "Ang Lee",
+      "writer": "Du Lu Wang (book), Hui-Ling Wang (screenplay), James Schamus (screenplay), Kuo Jung Tsai (screenplay)",
+      "actors": "Yun-Fat Chow, Michelle Yeoh, Ziyi Zhang, Chen Chang",
+      "plot": "A young Chinese warrior steals a sword from a famed swordsman and then escapes into a world of romantic adventure with a mysterious man in the frontier of the nation.",
+      "production": "Sony Pictures Classics",
+      "last_modified": "2018-08-13T05:53:33.389"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 92,
+   "fields": {
+      "title": "Boyhood",
+      "year": 2014,
+      "runtime": 165,
+      "genre": "Drama",
+      "director": "Richard Linklater",
+      "writer": "Richard Linklater",
+      "actors": "Ellar Coltrane, Patricia Arquette, Elijah Smith, Lorelei Linklater",
+      "plot": "The life of Mason, from early childhood to his arrival at college.",
+      "production": "IFC Films",
+      "last_modified": "2018-08-13T05:53:33.471"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 93,
+   "fields": {
+      "title": "Manchester by the Sea",
+      "year": 2016,
+      "runtime": 137,
+      "genre": "Drama",
+      "director": "Kenneth Lonergan",
+      "writer": "Kenneth Lonergan",
+      "actors": "Casey Affleck, Ben O'Brien, Kyle Chandler, Richard Donelly",
+      "plot": "A depressed uncle is asked to take care of his teenage nephew after the boy's father dies.",
+      "production": "Amazon Studios",
+      "last_modified": "2018-08-13T05:53:33.539"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 94,
+   "fields": {
+      "title": "The Pianist",
+      "year": 2002,
+      "runtime": 150,
+      "genre": "Biography, Drama, Music",
+      "director": "Roman Polanski",
+      "writer": "Ronald Harwood (screenplay), Wladyslaw Szpilman (book)",
+      "actors": "Adrien Brody, Emilia Fox, Michal Zebrowski, Ed Stoppard",
+      "plot": "A Polish Jewish musician struggles to survive the destruction of the Warsaw ghetto of World War II.",
+      "production": "Focus Features",
+      "last_modified": "2018-08-13T05:53:33.706"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 95,
+   "fields": {
+      "title": "Ex Machina",
+      "year": 2014,
+      "runtime": 108,
+      "genre": "Drama, Mystery, Sci-Fi",
+      "director": "Alex Garland",
+      "writer": "Alex Garland",
+      "actors": "Domhnall Gleeson, Alicia Vikander, Oscar Isaac, Sonoya Mizuno",
+      "plot": "A young programmer is selected to participate in a ground-breaking experiment in synthetic intelligence by evaluating the human qualities of a breath-taking humanoid A.I.",
+      "production": "A24 Films",
+      "last_modified": "2018-08-13T05:53:33.776"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 96,
+   "fields": {
+      "title": "Guardians of the Galaxy",
+      "year": 2014,
+      "runtime": 121,
+      "genre": "Action, Adventure, Sci-Fi",
+      "director": "James Gunn",
+      "writer": "James Gunn, Nicole Perlman, Dan Abnett (based on the Marvel comics by), Andy Lanning (based on the Marvel comics by), Bill Mantlo (character created by: Rocket Raccoon), Keith Giffen (character created by: Rocket Raccoon), Jim Starlin (characters created by: Drax the Destroyer,  Gamora & Thanos), Steve Englehart (character created by: Star-Lord), Steve Gan (character created by: Star-Lord), Steve Gerber (character created by: Howard the Duck), Val Mayerik (character created by: Howard the Duck)",
+      "actors": "Chris Pratt, Zoe Saldana, Dave Bautista, Vin Diesel",
+      "plot": "A group of intergalactic criminals are forced to work together to stop a fanatical warrior from taking control of the universe.",
+      "production": "Walt Disney Pictures",
+      "last_modified": "2018-08-13T05:53:33.851"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 97,
+   "fields": {
+      "title": "The Departed",
+      "year": 2006,
+      "runtime": 151,
+      "genre": "Crime, Drama, Thriller",
+      "director": "Martin Scorsese",
+      "writer": "William Monahan (screenplay), Alan Mak, Felix Chong",
+      "actors": "Leonardo DiCaprio, Matt Damon, Jack Nicholson, Mark Wahlberg",
+      "plot": "An undercover cop and a mole in the police attempt to identify each other while infiltrating an Irish gang in South Boston.",
+      "production": "Warner Bros. Pictures",
+      "last_modified": "2018-08-13T05:53:33.923"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 98,
+   "fields": {
+      "title": "The Godfather",
+      "year": 1972,
+      "runtime": 175,
+      "genre": "Crime, Drama",
+      "director": "Francis Ford Coppola",
+      "writer": "Mario Puzo (screenplay by), Francis Ford Coppola (screenplay by), Mario Puzo (based on the novel by)",
+      "actors": "Marlon Brando, Al Pacino, James Caan, Richard S. Castellano",
+      "plot": "The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.",
+      "production": "Paramount Pictures",
+      "last_modified": "2018-08-13T05:53:33.992"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 99,
+   "fields": {
+      "title": "Finding Nemo",
+      "year": 2003,
+      "runtime": 100,
+      "genre": "Animation, Adventure, Comedy",
+      "director": "Andrew Stanton, Lee Unkrich(co-director)",
+      "writer": "Andrew Stanton (original story by), Andrew Stanton (screenplay by), Bob Peterson (screenplay by), David Reynolds (screenplay by)",
+      "actors": "Albert Brooks, Ellen DeGeneres, Alexander Gould, Willem Dafoe",
+      "plot": "After his son is captured in the Great Barrier Reef and taken to Sydney, a timid clownfish sets out on a journey to bring him home.",
+      "production": "Walt Disney Pictures",
+      "last_modified": "2018-08-13T05:53:34.064"
+   }
+},
+{
+   "model": "tests.movie",
+   "pk": 100,
+   "fields": {
+      "title": "Nightcrawler",
+      "year": 2014,
+      "runtime": 118,
+      "genre": "Crime, Drama, Thriller",
+      "director": "Dan Gilroy",
+      "writer": "Dan Gilroy",
+      "actors": "Jake Gyllenhaal, Michael Papajohn, Marco Rodr\u00edguez, Bill Paxton",
+      "plot": "When Louis Bloom, a con man desperate for work, muscles into the world of L.A. crime journalism, he blurs the line between observer and participant to become the star of his own story.",
+      "production": "Open Road Films",
+      "last_modified": "2018-08-13T05:53:34.146"
+   }
+}
+]

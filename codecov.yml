@@ -4,7 +4,9 @@ coverage:
 
   status:
     project: yes
-    patch: yes
+    patch:
+      default:
+        enabled: no
     changes: no
 
   ignore:

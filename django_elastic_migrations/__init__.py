@@ -10,7 +10,7 @@ import sys
 from django_elastic_migrations.utils import loading
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
-__version__ = '0.7.1'
+__version__ = '0.7.2'
 
 default_app_config = 'django_elastic_migrations.apps.DjangoElasticMigrationsConfig'  # pylint: disable=invalid-name
 
@@ -25,7 +25,6 @@ if not hasattr(settings, 'DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT'):
         'This should be the python path to the elasticsearch client '
         'to use for indexing.')
 
-logger.debug("using DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = {}".format(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT))
 
 try:
     es_client = loading.import_module_element(settings.DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT)

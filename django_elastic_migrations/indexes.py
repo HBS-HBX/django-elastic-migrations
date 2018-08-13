@@ -575,10 +575,20 @@ class DEMDocType(ESDocType):
         if qs is None:
             qs = cls.get_queryset()
 
-        if total_items is None:
-            total_items = cls.get_queryset_count(qs)
+        update_index_action.add_log("START getting all ids to update")
+        try:
+            qs_ids = list(qs.values_list(cls.PK_ATTRIBUTE, flat=True))
+        except TypeError as e:
+            if "values_list() got an unexpected keyword argument 'flat'" in e:
+                qs_ids = [str(id) for id in list(qs.values_list(cls.PK_ATTRIBUTE))]
+            else:
+                raise
+        update_index_action.add_log("END getting all ids to update")
 
-        total_docs = cls.get_total_docs(qs)
+        if total_items is None:
+            total_items = len(qs_ids)
+
+        total_docs = cls.get_total_docs(cls.get_queryset().filter(id__in=qs_ids))
 
         batches = []
 
@@ -588,15 +598,8 @@ class DEMDocType(ESDocType):
         for start_index in range(0, total_items, batch_size):
             # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
             # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
-            end_index = min(start_index + batch_size, total_items - start_index)
-            batch_qs = qs[start_index:end_index]
-            try:
-                ids_in_batch = list(batch_qs.values_list(cls.PK_ATTRIBUTE, flat=True))
-            except TypeError as e:
-                if "values_list() got an unexpected keyword argument 'flat'" in e:
-                    ids_in_batch = [str(id) for id in list(batch_qs.values_list(cls.PK_ATTRIBUTE))]
-                else:
-                    raise
+            end_index = min(start_index + batch_size, total_items)
+            ids_in_batch = qs_ids[start_index:end_index]
 
             batch_index_action = PartialUpdateIndexAction(
                 index=update_index_action.index,

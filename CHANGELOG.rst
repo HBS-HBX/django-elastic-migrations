@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+0.7.2 (2018-08-13)
+~~~~~~~~~~~~~~~~~~
+* fix #21 wrong batch update total using multiprocessing in 0.7.1
+* fix #23 KeyError _index_version_name in es_update --newer
+* address #25 use pks for queryset inside workers #29
+
 0.7.1 (2018-08-07)
 ~~~~~~~~~~~~~~~~~~
 * fixed gh #8 es_dangerous_reset --es-only to sync database to ES

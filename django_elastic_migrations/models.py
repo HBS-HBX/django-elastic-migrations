@@ -11,7 +11,7 @@ import traceback
 from copy import deepcopy
 from multiprocessing import cpu_count
 
-from django.db import models, transaction
+from django.db import models, transaction, OperationalError
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch import TransportError
@@ -281,6 +281,7 @@ class IndexAction(models.Model):
     def add_log(self, msg, commit=True, use_self_dict_format=False, level=logger.INFO):
         if use_self_dict_format:
             msg = msg.format(**self.__dict__)
+        msg = "[{}]: {}".format(str(datetime.datetime.utcnow()), msg)
         logger.log(level, msg)
         self.log = "{old_log}\n{msg}".format(old_log=self.log, msg=msg)
         if commit and 'test' not in sys.argv:
@@ -300,17 +301,15 @@ class IndexAction(models.Model):
         raise NotImplemented("override in subclasses")
 
     def to_in_progress(self):
-        if self.status == self.STATUS_QUEUED:
-            self.start = timezone.now()
-            self.status = self.STATUS_IN_PROGRESS
-            self.argv = " ".join(sys.argv)
-            self.save()
+        self.start = timezone.now()
+        self.status = self.STATUS_IN_PROGRESS
+        self.argv = " ".join(sys.argv)
+        self.save()
 
     def to_complete(self):
-        if self.status == self.STATUS_IN_PROGRESS:
-            self.status = self.STATUS_COMPLETE
-            self.end = timezone.now()
-            self.save()
+        self.status = self.STATUS_COMPLETE
+        self.end = timezone.now()
+        self.save()
 
     def to_aborted(self):
         self.status = self.STATUS_ABORTED
@@ -365,14 +364,32 @@ class IndexAction(models.Model):
         """
         parent_docs_affected = self.parent.docs_affected
         if self.parent and num_docs:
-            with transaction.atomic():
-                parent = (
-                    IndexAction.objects.select_for_update()
-                        .get(id=self.parent.id)
-                )
-                parent.docs_affected += num_docs
-                parent_docs_affected = parent.docs_affected
-                parent.save()
+            max_retries = 5
+            try_num = 1
+            successful = False
+            while not successful and try_num < max_retries:
+                try:
+                    with transaction.atomic():
+                        parent = (
+                            IndexAction.objects.select_for_update()
+                                .get(id=self.parent.id)
+                        )
+                        parent.docs_affected += num_docs
+                        parent_docs_affected = parent.docs_affected
+                        parent.save()
+                        successful = True
+                except OperationalError as oe:
+                    if "database is locked" in str(oe):
+                        # specific to sql-lite in testing
+                        # https://docs.djangoproject.com/en/2.1/ref/databases/#database-is-locked-errors
+                        try_num += 1
+                        time.sleep(random.random())
+                        if try_num >= max_retries:
+                            msg = "Exceeded number of retries while updating parent docs affected for {}"
+                            msg.format(str(self))
+                            logger.warning(msg)
+                    else:
+                        raise
         return parent_docs_affected
 
     def check_child_statuses(self):
@@ -390,6 +407,10 @@ class IndexAction(models.Model):
             else:
                 self.add_logs("No child tasks found! Please ensure there was work to be done.", level=logger.WARNING)
 
+    def get_task_kwargs(self):
+        if self.task_kwargs:
+            return json.loads(self.task_kwargs)
+        return {}
 
 """
 ↓ Action Mixins Below ↓
@@ -1052,8 +1073,9 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         runtimes = []
         docs_per_batch = []
         for child in self.children.all():
-            delta = child.end - child.start
-            runtimes.append(delta.total_seconds())
+            if child.end and child.start:
+                delta = child.end - child.start
+                runtimes.append(delta.total_seconds())
             docs_per_batch.append(child.docs_affected)
 
         self._avg_batch_runtime = 'unknown'
@@ -1197,6 +1219,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
 
         start = kwargs["start_index"]
         end = kwargs["end_index"]
+        pks = kwargs["pks"]
         self._workers = kwargs["workers"]
         self._total_docs_expected = kwargs["total_docs_expected"]
         verbosity = kwargs["verbosity"]
@@ -1217,15 +1240,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
             use_self_dict_format=True
         )
 
-        if self._workers and self._total_docs_expected:
-            # ensure workers don't overload dbs by being sync'd up
-            # if we're less than 10% done, put a little randomness
-            # in between the workers to dither query load
-            if (self.parent.docs_affected / self._total_docs_expected) < 0.1:
-                time.sleep(random.random() * 2)
-
-        qs = doc_type.get_queryset()
-        current_qs = qs[start:end]
+        current_qs = doc_type.get_queryset().filter(id__in=pks)
 
         retries = 0
         success, failed = (0, 0)
@@ -1293,6 +1308,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                 " # parent estimated runtime remaining: {_expected_parent_runtime}\n"
                 " # num workers {_workers}\n"
                 " # pid: {_pid}\n"
+                " # IndexAction id: {id}\n"
             ),
             use_self_dict_format=True
         )
