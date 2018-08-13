@@ -6,7 +6,6 @@ from unittest import skip
 from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
 from django.template.defaultfilters import pluralize
-from django.test import tag
 
 from django_elastic_migrations import DEMIndexManager, es_client
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
@@ -230,7 +229,7 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
 
 
 @skip("Skipped multiprocessing tests until SQLLite can be integrated into test setup")
-@tag('multiprocessing')
+# @tag('multiprocessing')
 class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     """
     Tests `./manage.py es_update --workers`, which uses multiprocessing.
