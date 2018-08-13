@@ -317,11 +317,11 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         self.assertEqual(len(available_version_ids), 2, expected_msg)
 
     def test_all_and_force_flags(self):
-        movies_index_model, _, __ = self.check_basic_setup_and_get_models("movies")
+        movies_index_model, _, _ = self.check_basic_setup_and_get_models("movies")
 
         new_index_name = "moviez"
         with get_new_search_index(new_index_name):
-            moviez_index_model, _, __ = self.check_basic_setup_and_get_models(new_index_name)
+            moviez_index_model, _, _ = self.check_basic_setup_and_get_models(new_index_name)
 
             call_command('es_create', all=True)
 
@@ -427,12 +427,12 @@ class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         self.assertFalse(deleted_model.is_deleted, expected_msg)
 
     def test_es_only_all_flags(self):
-        movies_index_model, _, __ = self.check_basic_setup_and_get_models("movies")
+        movies_index_model, _, _ = self.check_basic_setup_and_get_models("movies")
 
         new_index_name = "moviez"
         with get_new_search_index(new_index_name) as index_info:
             moviez_index, moviez_doctype = index_info
-            moviez_index_model, _, __ = self.check_basic_setup_and_get_models(new_index_name)
+            moviez_index_model, _, _ = self.check_basic_setup_and_get_models(new_index_name)
 
             call_command('es_update', new_index_name)
 
