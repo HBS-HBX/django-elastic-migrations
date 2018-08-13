@@ -11,7 +11,7 @@ import traceback
 from copy import deepcopy
 from multiprocessing import cpu_count
 
-from django.db import models, transaction
+from django.db import models, transaction, OperationalError
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch import TransportError
@@ -300,17 +300,15 @@ class IndexAction(models.Model):
         raise NotImplemented("override in subclasses")
 
     def to_in_progress(self):
-        if self.status == self.STATUS_QUEUED:
-            self.start = timezone.now()
-            self.status = self.STATUS_IN_PROGRESS
-            self.argv = " ".join(sys.argv)
-            self.save()
+        self.start = timezone.now()
+        self.status = self.STATUS_IN_PROGRESS
+        self.argv = " ".join(sys.argv)
+        self.save()
 
     def to_complete(self):
-        if self.status == self.STATUS_IN_PROGRESS:
-            self.status = self.STATUS_COMPLETE
-            self.end = timezone.now()
-            self.save()
+        self.status = self.STATUS_COMPLETE
+        self.end = timezone.now()
+        self.save()
 
     def to_aborted(self):
         self.status = self.STATUS_ABORTED
@@ -365,14 +363,32 @@ class IndexAction(models.Model):
         """
         parent_docs_affected = self.parent.docs_affected
         if self.parent and num_docs:
-            with transaction.atomic():
-                parent = (
-                    IndexAction.objects.select_for_update()
-                        .get(id=self.parent.id)
-                )
-                parent.docs_affected += num_docs
-                parent_docs_affected = parent.docs_affected
-                parent.save()
+            max_retries = 5
+            try_num = 1
+            successful = False
+            while not successful and try_num < max_retries:
+                try:
+                    with transaction.atomic():
+                        parent = (
+                            IndexAction.objects.select_for_update()
+                                .get(id=self.parent.id)
+                        )
+                        parent.docs_affected += num_docs
+                        parent_docs_affected = parent.docs_affected
+                        parent.save()
+                        successful = True
+                except OperationalError as oe:
+                    if "database is locked" in str(oe):
+                        # specific to sql-lite in testing
+                        # https://docs.djangoproject.com/en/2.1/ref/databases/#database-is-locked-errors
+                        try_num += 1
+                        time.sleep(random.random())
+                        if try_num >= max_retries:
+                            msg = "Exceeded number of retries while updating parent docs affected for {}"
+                            msg.format(str(self))
+                            logger.warning(msg)
+                    else:
+                        raise
         return parent_docs_affected
 
     def check_child_statuses(self):
@@ -390,6 +406,10 @@ class IndexAction(models.Model):
             else:
                 self.add_logs("No child tasks found! Please ensure there was work to be done.", level=logger.WARNING)
 
+    def get_task_kwargs(self):
+        if self.task_kwargs:
+            return json.loads(self.task_kwargs)
+        return {}
 
 """
 ↓ Action Mixins Below ↓
@@ -1052,8 +1072,9 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         runtimes = []
         docs_per_batch = []
         for child in self.children.all():
-            delta = child.end - child.start
-            runtimes.append(delta.total_seconds())
+            if child.end and child.start:
+                delta = child.end - child.start
+                runtimes.append(delta.total_seconds())
             docs_per_batch.append(child.docs_affected)
 
         self._avg_batch_runtime = 'unknown'
@@ -1293,6 +1314,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                 " # parent estimated runtime remaining: {_expected_parent_runtime}\n"
                 " # num workers {_workers}\n"
                 " # pid: {_pid}\n"
+                " # IndexAction id: {id}\n"
             ),
             use_self_dict_format=True
         )

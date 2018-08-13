@@ -1,10 +1,12 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import logging
+from unittest import skip
 
 from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
 from django.template.defaultfilters import pluralize
+from django.test import tag
 
 from django_elastic_migrations import DEMIndexManager, es_client
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
@@ -71,7 +73,7 @@ class CommonDEMTestUtilsMixin(object):
         :param pre_message: description of the action that just was executed
         :type pre_message: str
         :param num_to_get: the number of most recent actions to retrieve
-        :type num_to_get: str
+        :type num_to_get: int
         :param expected_status: the expected status of the IndexAction to assert; by default STATUS_COMPLETE
         :type expected_status: django_elastic_migrations.models.IndexAction.STATUSES_ALL
         :param expected_actions: list of action types to assert, in order from oldest to newest
@@ -104,8 +106,8 @@ class CommonDEMTestUtilsMixin(object):
                 expected_msg = (
                     "{pre_message} "
                     "the {index_name}'s {ordinal} IndexAction was expected "
-                    "to have status {expected_status}, "
-                    "but instead, it was {actual_status}. ".format(
+                    "to have status `{expected_status}`, "
+                    "but instead, it had status `{actual_status}`. ".format(
                         pre_message=pre_message,
                         index_name=index_model.name,
                         ordinal=ordinal(num),
@@ -225,6 +227,70 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                                  index_name=new_version_model,
                                  actual_num=actual_num_docs
                              ))
+
+
+@skip("Skipped multiprocessing tests until SQLLite can be integrated into test setup")
+@tag('multiprocessing')
+class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+    """
+    Tests `./manage.py es_update --workers`, which uses multiprocessing.
+    """
+
+    fixtures = ['tests/100films.json']
+
+    def test_workers_and_batch_size_flags(self):
+        index_model, _, _ = self.check_basic_setup_and_get_models()
+
+        num_docs_indexed = MovieSearchIndex.get_num_docs()
+        expected_docs = "Expected the movies index to have zero docs to start, instead, it had {}".format(num_docs_indexed)
+        self.assertEqual(num_docs_indexed, 0, expected_docs)
+
+        expected_num_movies = 100
+        num_movies = Movie.objects.all().count()
+        self.assertEqual(num_movies, expected_num_movies)
+
+        es_update_cmd = "es_update movies --workers --batch-size=10"
+        call_command(*es_update_cmd.split())
+
+        num_docs_indexed = MovieSearchIndex.get_num_docs()
+        self.assertEqual(num_docs_indexed, 100)
+
+        movie_title = "Melancholia"
+        movie = Movie.objects.get(title=movie_title)
+        results = MovieSearchDoc.get_search(movie_title).execute()
+        first_result = results[0]
+        self.assertEqual(str(movie.id), first_result.meta.id)
+
+        after_phrase = "After `{}`,".format(es_update_cmd)
+        last_actions = self.check_last_index_actions(
+            index_model, after_phrase, num_to_get=11,
+            expected_actions=[
+                # the parent update index action
+                IndexAction.ACTION_UPDATE_INDEX,
+                # 10 child update index actions
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+                IndexAction.ACTION_PARTIAL_UPDATE_INDEX,
+            ]
+        )
+
+        update_index_action = last_actions[0]
+        self.assertEqual(update_index_action.docs_affected, 100)
+
+        partial_index_update_actions = last_actions[1:]
+
+        for i, partial_action in enumerate(partial_index_update_actions):
+            self.assertEqual(partial_action.docs_affected, 10)
+            kwargs = partial_action.get_task_kwargs()
+            self.assertEqual(kwargs["start_index"], i * 10)
+            self.assertEqual(kwargs["end_index"], min((i+1)*10, 100))
 
 
 class TestEsDangerousResetManagementCommand(DEMTestCase):

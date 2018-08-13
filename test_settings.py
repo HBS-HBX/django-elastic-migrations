@@ -1,3 +1,4 @@
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 """
 These settings are here to use during tests, because django requires them.
 
@@ -5,14 +6,11 @@ In a real-world use case, apps in this project are installed into other
 Django applications, so these settings will not be used.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import, unicode_literals
-
 import logging
 import os
+import subprocess
 import sys
 from logging import config as logging_config
-import subprocess
 
 import django
 from os.path import abspath, dirname, join
@@ -30,13 +28,24 @@ def root(*args):
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'old.db',
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
+        'NAME': 'local.db',
+    },
+    'mp_testdb': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'test.db',
+        'TEST': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': 'test.db',
+        }
     }
 }
+
+if 'test' in sys.argv and '--tag=multiprocessing' in sys.argv:
+    print("detected multiprocessing in sys.argv: {}".format(sys.argv))
+    DATABASES['default'] = DATABASES['mp_testdb']
+    from pprint import pprint
+    pprint(DATABASES['default'])
+
 
 INSTALLED_APPS = (
     'django.contrib.auth',
