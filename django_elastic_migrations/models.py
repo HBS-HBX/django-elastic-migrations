@@ -8,6 +8,7 @@ import random
 import sys
 import time
 import traceback
+from copy import deepcopy
 from multiprocessing import cpu_count
 
 from django.db import models, transaction
@@ -44,7 +45,7 @@ class Index(models.Model):
         """
         Get a string representation of this model instance.
         """
-        return '<Index, ID: {}>'.format(self.id)
+        return '<Index {}>'.format(self.name)
 
     def get_latest_version(self):
         """
@@ -145,7 +146,7 @@ class IndexVersion(models.Model):
         """
         Get a string representation of this model instance.
         """
-        return '<IndexVersion for {}, ID: {}>'.format(str(self.index), self.id)
+        return '<IndexVersion {}>'.format(self.name)
 
     @property
     def is_active(self):
@@ -341,6 +342,7 @@ class IndexAction(models.Model):
             )
             self.add_log(msg, level=logger.ERROR)
             self.to_aborted()
+            raise
 
     @classmethod
     def get_new_action(cls, index_name, include_active_version=False, action=None):
@@ -372,6 +374,21 @@ class IndexAction(models.Model):
                 parent_docs_affected = parent.docs_affected
                 parent.save()
         return parent_docs_affected
+
+    def check_child_statuses(self):
+        child_statuses = self.children.values_list('status', flat=True)
+        if all([c == IndexAction.STATUS_COMPLETE for c in child_statuses]):
+            self.add_log("All child tasks are completed successfully")
+        else:
+            self.add_log("NOT All child tasks are completed successfully:")
+            bad_children = self.children.exclude(status__in=IndexAction.STATUS_COMPLETE)
+            if bad_children:
+                err_logs = []
+                for bad_child in bad_children:
+                    err_logs.append("task id {} has status {}".format(bad_child.id, bad_child.status))
+                self.add_logs(err_logs)
+            else:
+                self.add_logs("No child tasks found! Please ensure there was work to be done.", level=logger.WARNING)
 
 
 """
@@ -416,9 +433,19 @@ class GenericModeMixin(object):
                 mode_name=self.MODE_NAME
             ))
 
+        # make created child actions point back to the parent action
+        action.parent = self
+        action.index = self.index
+
         for version in versions:
             sub_dem_index = DEMIndexManager.get_dem_index(version.name, exact_mode=True)
+            action.index_version = version
+            action.pk = None
+            action.docs_affected = 0
+            action.save()
             action.start_action(dem_index=sub_dem_index)
+
+        self.check_child_statuses()
 
         self.add_log(
             " - Done applying action {action_name} to {num_index_versions} "
@@ -892,11 +919,31 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        self.resume_mode = kwargs.pop('resume_mode', False)
-        # :param workers: number of workers to parallelize indexing
-        self.workers = kwargs.pop('workers', 0)
-        self.batch_size = kwargs.pop('batch_size', 0)
-        self.start_date = kwargs.pop('start_date', None)
+        # initially, self_kwargs contains the UpdateIndexAction-specific defaults
+        kwarg_defaults = {
+            'resume_mode': False,
+            # :param workers: number of workers to parallelize indexing
+            'workers': 0,
+            'batch_size': 0,
+            'start_date': None,
+        }
+        self.self_kwargs = {}
+        # loop through each expected kwarg, and fill in self.resume_mode, etc
+        # also, update self.self_kwargs with values different from defaults
+        # so as to record history and to be able to spawn children
+        # with the same self_kwargs (see self.prepare_action)
+        for kwarg_name, default_val in kwarg_defaults.items():
+            actual_val = kwargs.pop(kwarg_name, default_val)
+            setattr(self, kwarg_name, actual_val)
+            if actual_val != default_val:
+                self.self_kwargs[kwarg_name] = actual_val
+
+        if NewerModeMixin.MODE_NAME in kwargs:
+            self.self_kwargs[NewerModeMixin.MODE_NAME] = True
+
+        # retain a history of how this command was called
+        self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
+
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
         self._batch_num = 0
         self._expected_remaining = 0
@@ -910,7 +957,31 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
     def perform_action(self, dem_index, *args, **kwargs):
         self.prepare_action(dem_index)
 
+        if self.newer_mode:
+            # child actions started in self.prepare_action() are now completed
+            self.refresh_from_db()
+
+            docs_affected = 0
+            indexes_affected = []
+            for child in self.children.all():
+                docs_affected += child.docs_affected
+                indexes_affected.append(child.index_version.name)
+            self.docs_affected = docs_affected
+            self._indexes_affected = ", ".join(indexes_affected)
+
+            self._index_name = self.index.name
+            self.add_log(
+                "Completed with es_update {_index_name} --newer. "
+                "\n - Total docs affected: {docs_affected}"
+                "\n - Indexes affected: {_indexes_affected}",
+                use_self_dict_format=True
+            )
+            return
+
         doc_type = dem_index.doc_type()
+
+        if self.index_version:
+            self._index_version_name = self.index_version.name
 
         self._last_update = None
 
@@ -924,7 +995,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             if not self._last_update:
                 self._last_update = 'never'
             self.add_log(
-                "--resume detected; Checking the last time update was called: "
+                "--resume: checking the last time update was called succesfully and completed: "
                 u"\n - index version: {_index_version_name} "
                 u"\n - update date: {_last_update} ", use_self_dict_format=True
             )
@@ -973,18 +1044,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         self._indexed_docs = self._num_success + self._num_failed
         self.docs_affected = self._num_success
 
-        child_statuses = self.children.values_list('status', flat=True)
-        if all([c == IndexAction.STATUS_COMPLETE for c in child_statuses]):
-            self.add_log("All child tasks are completed successfully")
-        else:
-            bad_children = list(self.children.exclude(status__in=IndexAction.STATUS_COMPLETE))
-            if bad_children:
-                err_logs = []
-                for bad_child in bad_children:
-                    err_logs.append("task id {} has status {}".format(bad_child.id, bad_child.status))
-                self.add_logs(err_logs)
-            else:
-                self.add_logs("No child tasks found! Please ensure there was work to be done.", level=logger.WARNING)
+        self.check_child_statuses()
 
         self._runtime = timezone.now() - self.start
         self._docs_per_sec = self._indexed_docs / self._runtime.total_seconds()
@@ -1038,7 +1098,11 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
             if self.newer_mode:
                 versions = self.index.get_newer_versions(given_version=index_version)
-                self.apply_to_newer(versions, action=UpdateIndexAction())
+                kwargs = deepcopy(self.self_kwargs)
+                # we don't want child update index actions to also do 'newer' tasks
+                kwargs.pop(NewerModeMixin.MODE_NAME)
+                update_index_action = UpdateIndexAction(**kwargs)
+                self.apply_to_newer(versions, update_index_action)
             else:
                 self.index_version = index_version
                 self._index_version_name = index_version.name
@@ -1072,7 +1136,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
 
             if self.newer_mode:
                 versions = self.index.get_newer_versions(given_version=active_version)
-                self.apply_to_newer(versions, action=UpdateIndexAction())
+                self.apply_to_newer(versions, UpdateIndexAction())
                 # we're done, because the newer versions will get their own actions
                 return
 
@@ -1115,7 +1179,16 @@ class PartialUpdateIndexAction(UpdateIndexAction):
         self.task_kwargs = json.dumps(new_kwargs, sort_keys=True)
 
     def perform_action(self, dem_index, *args, **kwargs):
-
+        """
+        :param dem_index:
+        :type dem_index: django_elastic_migrations.indexes.DEMIndex
+        :param args:
+        :type args:
+        :param kwargs:
+        :type kwargs:
+        :return: either (numSuccess, numFailed) or None
+        :rtype: Union[Tuple[int, int], None]
+        """
         kwargs = json.loads(self.task_kwargs)
 
         self.prepare_action(dem_index)

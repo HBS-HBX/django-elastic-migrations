@@ -588,7 +588,7 @@ class DEMDocType(ESDocType):
         for start_index in range(0, total_items, batch_size):
             # See https://docs.djangoproject.com/en/1.9/ref/models/querysets/#when-querysets-are-evaluated:
             # "slicing an unevaluated QuerySet returns another unevaluated QuerySet"
-            end_index = start_index + batch_size
+            end_index = min(start_index + batch_size, total_items - start_index)
             batch_qs = qs[start_index:end_index]
             try:
                 ids_in_batch = list(batch_qs.values_list(cls.PK_ATTRIBUTE, flat=True))
