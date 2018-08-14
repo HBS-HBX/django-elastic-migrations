@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+0.7.3 (2018-08-14)
+~~~~~~~~~~~~~~~~~~
+* fix #31 es_update movies --newer --workers does not store worker information
+
 0.7.2 (2018-08-13)
 ~~~~~~~~~~~~~~~~~~
 * fix #21 wrong batch update total using multiprocessing in 0.7.1
