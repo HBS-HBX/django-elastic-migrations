@@ -962,10 +962,11 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         if NewerModeMixin.MODE_NAME in kwargs:
             self.self_kwargs[NewerModeMixin.MODE_NAME] = True
 
-        # retain a history of how this command was called
-        self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
-
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
+        if self.task_kwargs == '{}' and self.self_kwargs:
+            # retain a history of how this command was called
+            self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
+
         self._batch_num = 0
         self._expected_remaining = 0
         self._indexed_docs = 0
@@ -1103,6 +1104,14 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             use_self_dict_format=True
         )
 
+    def apply_to_newer(self, given_version, action=None):
+        versions = self.index.get_newer_versions(given_version=given_version)
+        kwargs = deepcopy(self.self_kwargs)
+        # we don't want child update index actions to also do 'newer' tasks
+        kwargs.pop(NewerModeMixin.MODE_NAME)
+        update_index_action = UpdateIndexAction(**kwargs)
+        super(UpdateIndexAction, self).apply_to_newer(versions, update_index_action)
+
     def prepare_action(self, dem_index):
         self._index_name = self.index.name
         self._index_version_id = dem_index.get_version_id()
@@ -1119,12 +1128,8 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 raise IllegalDEMIndexState(msg)
 
             if self.newer_mode:
-                versions = self.index.get_newer_versions(given_version=index_version)
-                kwargs = deepcopy(self.self_kwargs)
-                # we don't want child update index actions to also do 'newer' tasks
-                kwargs.pop(NewerModeMixin.MODE_NAME)
-                update_index_action = UpdateIndexAction(**kwargs)
-                self.apply_to_newer(versions, update_index_action)
+                self.apply_to_newer(index_version)
+                return
             else:
                 self.index_version = index_version
                 self._index_version_name = index_version.name
@@ -1157,9 +1162,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
                 raise NoActiveIndexVersion(msg)
 
             if self.newer_mode:
-                versions = self.index.get_newer_versions(given_version=active_version)
-                self.apply_to_newer(versions, UpdateIndexAction())
-                # we're done, because the newer versions will get their own actions
+                self.apply_to_newer(active_version)
                 return
 
             # we have an active version for this index. now do the update.
