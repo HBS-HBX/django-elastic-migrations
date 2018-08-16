@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+0.7.4 (2018-08-15)
+~~~~~~~~~~~~~~~~~~
+* fix #33 error when nothing to resume using --resume
+
 0.7.3 (2018-08-14)
 ~~~~~~~~~~~~~~~~~~
 * fix #31 es_update movies --newer --workers does not store worker information
