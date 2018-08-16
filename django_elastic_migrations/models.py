@@ -1014,6 +1014,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             )
         elif self.resume_mode:
             self._last_update = self.index_version.get_last_time_update_called(before_action=self)
+            self._last_update_phrase = self._last_update
             if not self._last_update:
                 self._last_update_phrase = 'never'
             self.add_log(
