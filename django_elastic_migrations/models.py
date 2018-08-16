@@ -1014,12 +1014,13 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             )
         elif self.resume_mode:
             self._last_update = self.index_version.get_last_time_update_called(before_action=self)
+            self._last_update_phrase = self._last_update
             if not self._last_update:
-                self._last_update = 'never'
+                self._last_update_phrase = 'never'
             self.add_log(
                 "--resume: checking the last time update was called succesfully and completed: "
                 u"\n - index version: {_index_version_name} "
-                u"\n - update date: {_last_update} ", use_self_dict_format=True
+                u"\n - update date: {_last_update_phrase} ", use_self_dict_format=True
             )
 
         self.add_log("Starting batched bulk update ...")
