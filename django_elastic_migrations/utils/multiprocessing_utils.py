@@ -5,6 +5,8 @@ import time
 
 from django.db import reset_queries
 
+from django_elastic_migrations.utils.django_elastic_migrations_log import start_multiprocessing_logging
+
 try:
     # python 2
     # noinspection PyCompatibility
@@ -31,7 +33,6 @@ Django Multiprocessing Utility Functions ↓
 Adapted from Jeremy Robin's "Django Multiprocessing":
 https://engineering.talentpair.com/django-multiprocessing-153dbcf51dab
 """
-
 
 USE_ALL_WORKERS = 999
 
@@ -185,6 +186,7 @@ class DjangoMultiProcess(object):
         self.queue = None
 
     def __enter__(self):
+        start_multiprocessing_logging()
         close_service_connections()
         return self
 
