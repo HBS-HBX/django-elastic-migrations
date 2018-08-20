@@ -1,9 +1,15 @@
 Changelog
 ---------
 
+0.7.5 (2018-08-20)
+~~~~~~~~~~~~~~~~~~
+* fix `#35 open multiprocessing log in context handler
+<https://github.com/HBS-HBX/django-elastic-migrations/issues/35>`_
+
 0.7.4 (2018-08-15)
 ~~~~~~~~~~~~~~~~~~
-* fix #33 error when nothing to resume using --resume
+* fix `#33 error when nothing to resume using --resume
+<https://github.com/HBS-HBX/django-elastic-migrations/issues/33>`_
 
 0.7.3 (2018-08-14)
 ~~~~~~~~~~~~~~~~~~
