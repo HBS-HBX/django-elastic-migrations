@@ -27,5 +27,5 @@ def start_multiprocessing_logging():
     global mp_logging_enabled
 
     if not mp_logging_enabled:
-        install_mp_handler()
         mp_logging_enabled = True
+        install_mp_handler()
