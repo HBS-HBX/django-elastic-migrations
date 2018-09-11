@@ -957,7 +957,10 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             actual_val = kwargs.pop(kwarg_name, default_val)
             setattr(self, kwarg_name, actual_val)
             if actual_val != default_val:
-                self.self_kwargs[kwarg_name] = actual_val
+                if kwarg_name == 'start_date':
+                    self.self_kwargs['start_date'] = str(actual_val)
+                else:
+                    self.self_kwargs[kwarg_name] = actual_val
 
         if NewerModeMixin.MODE_NAME in kwargs:
             self.self_kwargs[NewerModeMixin.MODE_NAME] = True
@@ -965,14 +968,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
         if self.task_kwargs == '{}' and self.self_kwargs:
             # retain a history of how this command was called
-            try:
-                self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
-            except TypeError as e:
-                if 'Object of type datetime is not JSON serializable' in str(e):
-                    for key, val in self.self_kwargs.items():
-                        if isinstance(val, datetime.date):
-                            self.self_kwargs[key] = str(val)
-                    self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
+            self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
 
         self._batch_num = 0
         self._expected_remaining = 0
