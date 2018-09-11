@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import logging
+from datetime import datetime, timedelta
 from unittest import skip
 
 from django.contrib.humanize.templatetags.humanize import ordinal
@@ -15,6 +16,10 @@ from tests.models import Movie
 from tests.search import MovieSearchIndex, MovieSearchDoc, get_new_search_index, alternate_textfield, DefaultNewSearchDocTypeMixin
 
 log = logging.getLogger(__file__)
+
+
+def days_ago(d):
+    return datetime.now() - timedelta(days=d)
 
 
 # noinspection PyUnresolvedReferences
@@ -226,6 +231,26 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                                  index_name=new_version_model,
                                  actual_num=actual_num_docs
                              ))
+
+    def test_start_flag(self):
+        self.check_basic_setup_and_get_models()
+
+        num_docs = MovieSearchIndex.get_num_docs()
+        self.assertEqual(num_docs, 0)
+
+        Movie.objects.all().update(last_modified=days_ago(3))
+        call_command('es_update', 'movies', '--start={}'.format(days_ago(2).isoformat()))
+        num_docs = MovieSearchIndex.get_num_docs()
+        # we had last modified set to three days ago, and we only updated last two days,
+        # so we should not have any.
+        self.assertEqual(num_docs, 0)
+
+        Movie.objects.all().update(last_modified=days_ago(1))
+        call_command('es_update', 'movies', '--start={}'.format(days_ago(2).isoformat()))
+        num_docs = MovieSearchIndex.get_num_docs()
+        # we had last modified set to one days ago, and we only updated last two days,
+        # so we should have two
+        self.assertEqual(num_docs, 2)
 
 
 @skip("Skipped multiprocessing tests until SQLLite can be integrated into test setup")

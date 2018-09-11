@@ -965,7 +965,14 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
         super(UpdateIndexAction, self).__init__(*args, **kwargs)
         if self.task_kwargs == '{}' and self.self_kwargs:
             # retain a history of how this command was called
-            self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
+            try:
+                self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
+            except TypeError as e:
+                if 'Object of type datetime is not JSON serializable' in str(e):
+                    for key, val in self.self_kwargs.items():
+                        if isinstance(val, datetime.date):
+                            self.self_kwargs[key] = str(val)
+                    self.task_kwargs = json.dumps(self.self_kwargs, sort_keys=True)
 
         self._batch_num = 0
         self._expected_remaining = 0
