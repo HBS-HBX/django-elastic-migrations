@@ -47,7 +47,7 @@ class Command(ESCommand):
             "--start",
             dest="start_date",
             help="The start date for indexing. Can be any dateutil-parsable string;"
-                 " YYYY-MM-DDTHH:MM:SS is recommended to avoid confusion",
+                 "YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS is recommended to avoid confusion",
         )
 
     def handle(self, *args, **options):

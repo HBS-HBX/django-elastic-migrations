@@ -957,7 +957,10 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             actual_val = kwargs.pop(kwarg_name, default_val)
             setattr(self, kwarg_name, actual_val)
             if actual_val != default_val:
-                self.self_kwargs[kwarg_name] = actual_val
+                if kwarg_name == 'start_date':
+                    self.self_kwargs['start_date'] = str(actual_val)
+                else:
+                    self.self_kwargs[kwarg_name] = actual_val
 
         if NewerModeMixin.MODE_NAME in kwargs:
             self.self_kwargs[NewerModeMixin.MODE_NAME] = True
