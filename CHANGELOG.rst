@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+0.7.7 (2018-09-17)
+~~~~~~~~~~~~~~~~~~
+* fix `#41 stack trace when indexing in py3 <https://github.com/HBS-HBX/django-elastic-migrations/issues/41>`_
+
 0.7.6 (2018-09-11)
 ~~~~~~~~~~~~~~~~~~
 * fix `#36 es_update --start flag broken <https://github.com/HBS-HBX/django-elastic-migrations/issues/39>`_
