@@ -377,6 +377,12 @@ $ ./manage.py loaddata tests/myfixture.json
 Installed 101 object(s) from 1 fixture(s)
 ```
 
+There are already 100 films available using `loaddata` as follows:
+
+```
+$ ./manage.py loaddata tests/100films.json
+```
+
 ### Running Tests Locally
 
 Run `make test`. To run all tests and quality checks locally,

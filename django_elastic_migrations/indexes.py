@@ -579,7 +579,7 @@ class DEMDocType(ESDocType):
         try:
             qs_ids = list(qs.values_list(cls.PK_ATTRIBUTE, flat=True))
         except TypeError as e:
-            if "values_list() got an unexpected keyword argument 'flat'" in e:
+            if "values_list() got an unexpected keyword argument 'flat'" in str(e):
                 qs_ids = [str(id) for id in list(qs.values_list(cls.PK_ATTRIBUTE))]
             else:
                 raise
