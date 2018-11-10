@@ -1,11 +1,8 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
 from dateutil.parser import parse as dateutil_parse
 
 from django_elastic_migrations import DEMIndexManager, get_logger
 from django_elastic_migrations.management.commands.es import ESCommand
 from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
-
 
 log = get_logger()
 
