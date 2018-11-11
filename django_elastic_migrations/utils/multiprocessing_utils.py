@@ -1,10 +1,9 @@
 # coding=utf-8
-
+# noinspection PyCompatibility
+import queue
 import time
 import traceback
 from multiprocessing import Process, cpu_count, Manager
-# noinspection PyCompatibility
-from queue import Empty
 
 from django import db
 from django.conf import settings
@@ -236,7 +235,7 @@ class DjangoMultiProcess(object):
         try:
             while True:
                 rv.append(self.queue.get(block=False))
-        except Empty:
+        except queue.Empty:
             return rv
 
     def __exit__(self, type, value, traceback):

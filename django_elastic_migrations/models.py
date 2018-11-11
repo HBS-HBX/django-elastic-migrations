@@ -36,7 +36,7 @@ class Index(models.Model):
     # See https://docs.djangoproject.com/en/2.0/ref/models/fields/#django.db.models.ForeignKey.related_name
     active_version = models.ForeignKey(
         'django_elastic_migrations.IndexVersion',
-        related_name="+", null=True)
+        related_name="+", null=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         """
@@ -118,7 +118,7 @@ class IndexVersion(models.Model):
     a IndexVersion is added to the table, and a new Elasticsearch
     index is created with that schema.
     """
-    index = models.ForeignKey(Index)
+    index = models.ForeignKey(Index, models.CASCADE)
     prefix = models.CharField(verbose_name="Environment Prefix", max_length=32, blank=True)
     # store the JSON sent to Elasticsearch to configure the index
     # note: the index name field in this field does NOT include the IndexVersion id
@@ -229,11 +229,11 @@ class IndexAction(models.Model):
     DEFAULT_ACTION = ACTION_CREATE_INDEX
 
     # linked models
-    index = models.ForeignKey(Index)
-    index_version = models.ForeignKey(IndexVersion, null=True)
+    index = models.ForeignKey(Index, on_delete=models.CASCADE)
+    index_version = models.ForeignKey(IndexVersion, null=True, on_delete=models.CASCADE)
 
     # if this IndexAction has a parent IndexAction, its id is here
-    parent = models.ForeignKey("self", null=True, related_name="children")
+    parent = models.ForeignKey("self", null=True, related_name="children", on_delete=models.CASCADE)
 
     # which management command was run
     action = models.CharField(choices=ACTIONS_ALL_CHOICES, max_length=64)
