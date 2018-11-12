@@ -2,8 +2,7 @@
 Django Elastic Migrations
 =========================
 
-Django Elastic Migrations is a set of Django management commands for
-creating, indexing and changing schemas of Elasticsearch indexes.
+Django Elastic Migrations is a Django app for creating, indexing and changing schemas of Elasticsearch indexes.
 
 
 .. image:: https://travis-ci.com/HBS-HBX/django-elastic-migrations.svg?branch=master
@@ -102,14 +101,11 @@ Installation
 ~~~~~~~~~~~~
 
 
-#. Ensure that Elasticsearch 6.0 or later is accessible, and you have 
-   configured a singleton client in ``path.to.your.es_client``.
-#. Put a reference to this package in your ``requirements.txt``\ :
-   ``-e git://github.com/HBS-HBX/django-elastic-migrations.git#egg=django_elastic_migrations``
-
-   #. if you like, you can pin to a specific relase:
-      ``-e git://github.com/HBS-HBX/django_elastic_migrations.git@0.5.1#egg=django_elastic_migrations``
-
+#. Put a reference to this package in your ``requirements.txt`` and install the package
+#. Ensure that a valid ``elasticsearch-dsl-py`` version is accessible, and configure
+   the path to your configured Elasticsearch singleton client in your django settings:
+   ``DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "tests.es_config.ES_CLIENT"``.
+   There should only be one ``ES_CLIENT`` instantiated in your application.
 #. Add ``django_elastic_migrations`` to ``INSTALLED_APPS`` in your Django
    settings file
 #. Add the following information to your Django settings file:
@@ -158,7 +154,7 @@ Installation
 
 #. Add your new index to DJANGO_ELASTIC_MIGRATIONS_INDEXES in settings/common.py
 
-#. Run `./manage.py es_list` to see the index as available:
+#. Run ``./manage.py es_list`` to see the index as available:
    ::
 
        ./manage.py es_list
@@ -233,16 +229,23 @@ Deployment
 ^^^^^^^^^^
 
 
-* Creating and updating indexes can happen long in advance of deployment,
-  just use the management commands as above and don't use es_activate
-* During deployment, if ``get_reindex_iterator`` is implemented correctly,
-  it will only reindex those documents that have changed *since the last
-  reindexing*
-* After deployment and before going live, activate the latest index.
-* After activating, be sure to cycle your gunicorn workers.
+* Creating and updating a new index schema can happen before you deploy.
+  For example, if your app servers are running with the ``movies-1`` index activated, and you
+  have a new version of the schema you'd like to pre-index, then log into another
+  server and run ``./manage.py es_create movies`` followed by
+  ``./manage.py es_update movies --newer``. This will update documents in all ``movies``
+  indexes that are newer than the active one.
+* After deploying, you can run
+  ``./manage.py es_activate movies`` to activate the latest version. Be sure to cycle your
+  gunicorn workers to ensure the change is caught by your app servers.
+* During deployment, if ``get_reindex_iterator`` is implemented in such a way as to respond
+  to the datetime of the last reindex date, then you can call
+  ``./manage.py es_update movies --resume``, and it will index *only those documents that have
+  changed since the last reindexing*. This way you can do most of the indexing ahead of time,
+  and only reindex a portion at the time of the deployment.
 
 Django Testing
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 
 #. (optional) update ``DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX`` in
