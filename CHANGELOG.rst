@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+0.7.8 (2018-11-13)
+^^^^^^^^^^^^^^^^^^^^^^
+* fix `#7 Convert Readme to rst for pypi <https://github.com/HBS-HBX/django-elastic-migrations/issues/7>`_
+* first release on PyPI
+* update project dependencies
+
 0.7.7 (2018-09-17)
 ^^^^^^^^^^^^^^^^^^^^^^
 * fix `#41 stack trace when indexing in py3 <https://github.com/HBS-HBX/django-elastic-migrations/issues/41>`_
