@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import datetime
 import json
@@ -13,7 +12,6 @@ from multiprocessing import cpu_count
 
 from django.db import models, transaction, OperationalError
 from django.utils import timezone
-from django.utils.encoding import python_2_unicode_compatible
 from elasticsearch import TransportError
 
 from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexManager, es_client
@@ -25,7 +23,6 @@ from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKER
 logger = get_logger()
 
 
-@python_2_unicode_compatible
 class Index(models.Model):
     """
     Model that retains information about all Elasticsearch indexes
@@ -106,7 +103,6 @@ class Index(models.Model):
         return self._get_other_versions(given_version, prefix, older=False)
 
 
-@python_2_unicode_compatible
 class IndexVersion(models.Model):
     """
     Each IndexVersion corresponds with an Elasticsearch index
@@ -192,7 +188,6 @@ class IndexVersion(models.Model):
         return es_client.indices.exists(index=self.name)
 
 
-@python_2_unicode_compatible
 class IndexAction(models.Model):
     """
     Each Action is a record of a bulk change to a particular
@@ -402,6 +397,7 @@ class IndexAction(models.Model):
         if self.task_kwargs:
             return json.loads(self.task_kwargs)
         return {}
+
 
 """
 ↓ Action Mixins Below ↓

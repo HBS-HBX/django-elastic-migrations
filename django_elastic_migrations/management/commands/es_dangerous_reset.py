@@ -1,11 +1,9 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
 from django.core.management import call_command
 
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
 from django_elastic_migrations.models import Index
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
-
 
 logger = get_logger()
 

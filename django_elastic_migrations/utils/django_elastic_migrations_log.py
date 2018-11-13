@@ -1,9 +1,6 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
 import logging
 
 from multiprocessing_logging import install_mp_handler
-
 
 mp_logging_enabled = False
 

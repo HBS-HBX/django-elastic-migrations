@@ -1,11 +1,8 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
 from django.core.management import BaseCommand, call_command, CommandError
 
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
-
 logger = get_logger()
-
 
 commands = {
     'list': 'List indexes; calls es_list',
@@ -76,7 +73,7 @@ class Command(BaseCommand):
 
     @classmethod
     def get_index_specifying_arguments(
-        cls, parser, include_exact=True, default_all=False, include_older=False, include_newer=False):
+            cls, parser, include_exact=True, default_all=False, include_older=False, include_newer=False):
         messages = cls.get_index_specifying_help_messages()
         parser.add_argument(
             'index', nargs='*',

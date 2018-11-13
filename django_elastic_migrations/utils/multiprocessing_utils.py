@@ -1,30 +1,19 @@
 # coding=utf-8
-from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import time
-
-from django.db import reset_queries
-
-from django_elastic_migrations.utils.django_elastic_migrations_log import start_multiprocessing_logging
-
-try:
-    # python 2
-    # noinspection PyCompatibility
-    from Queue import Empty
-except ImportError:
-    # python 3
-    # noinspection PyUnresolvedReferences,PyCompatibility
-    from queue import Empty
-
-from multiprocessing import Process, cpu_count, Manager
 import traceback
+from multiprocessing import Process, cpu_count, Manager
+# noinspection PyCompatibility
+from queue import Empty
 
 from django import db
 from django.conf import settings
 from django.core.cache import caches
+from django.db import reset_queries
 from elasticsearch_dsl import connections
 
 from django_elastic_migrations import get_logger as get_dem_logger
+from django_elastic_migrations.utils.django_elastic_migrations_log import start_multiprocessing_logging
 
 logger = get_dem_logger()
 

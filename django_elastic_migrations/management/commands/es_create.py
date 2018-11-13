@@ -1,5 +1,3 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
 from django_elastic_migrations import DEMIndexManager
 from django_elastic_migrations.management.commands.es import ESCommand
 
@@ -36,4 +34,3 @@ class Command(ESCommand):
                     force=force,
                     es_only=es_only
                 )
-
