@@ -63,14 +63,6 @@ class Index(models.Model):
         version.save()
         return version
 
-    def deactivate(self):
-        """
-        Remove any active version from this index
-        """
-        if self.active_version:
-            self.active_version = None
-            self.save()
-
     def get_available_versions(self):
         return self.indexversion_set.filter(deleted_time__isnull=True)
 
@@ -216,13 +208,12 @@ class IndexAction(models.Model):
     ACTION_CREATE_INDEX = 'create_index'
     ACTION_UPDATE_INDEX = 'update_index'
     ACTION_ACTIVATE_INDEX = 'activate_index'
-    ACTION_DEACTIVATE_INDEX = 'deactivate_index'
     ACTION_CLEAR_INDEX = 'clear_index'
     ACTION_DROP_INDEX = 'drop_index'
     ACTION_PARTIAL_UPDATE_INDEX = 'partial_update_index'
     ACTIONS_ALL = [
         ACTION_CREATE_INDEX, ACTION_UPDATE_INDEX, ACTION_ACTIVATE_INDEX,
-        ACTION_DEACTIVATE_INDEX, ACTION_CLEAR_INDEX, ACTION_DROP_INDEX, ACTION_PARTIAL_UPDATE_INDEX
+        ACTION_CLEAR_INDEX, ACTION_DROP_INDEX, ACTION_PARTIAL_UPDATE_INDEX
     ]
     ACTIONS_ALL_CHOICES = [(i, i) for i in ACTIONS_ALL]
 
@@ -497,7 +488,6 @@ class ActivateIndexAction(IndexAction):
     DEFAULT_ACTION = IndexAction.ACTION_ACTIVATE_INDEX
 
     def __init__(self, *args, **kwargs):
-        self.deactivate = kwargs.pop('deactivate', False)
         super(ActivateIndexAction, self).__init__(*args, **kwargs)
 
     class Meta:
@@ -513,16 +503,10 @@ class ActivateIndexAction(IndexAction):
             self.index_version = version_model
             index = self.index
 
-            if self.deactivate and index.active_version == version_model:
-                index.active_version = None
-                self.add_log(
-                    "Deactivating index version '{index_version_name}' "
-                    "because you said to do so.".format(**msg_params))
-            else:
-                index.active_version = version_model
-                self.add_log(
-                    "Activating index version '{index_version_name}' "
-                    "because you said to do so.".format(**msg_params))
+            index.active_version = version_model
+            self.add_log(
+                "Activating index version '{index_version_name}' "
+                "because you said to do so.".format(**msg_params))
             index.save()
             # by reinitializing, we ensure this worker knows about the update immediately
             DEMIndexManager.initialize()
@@ -543,22 +527,7 @@ class ActivateIndexAction(IndexAction):
             active_version = self.index.active_version
             msg_params.update({"index_version_name": latest_version.name})
 
-            if self.deactivate:
-                if self.index.active_version:
-                    self.index.active_version = None
-                    self.add_log(
-                        "For index '{index_name}', DEactivating "
-                        "'{index_version_name}' "
-                        "because you said so.".format(
-                            **msg_params))
-                    self.index.save()
-                else:
-                    self.add_log(
-                        "For index '{index_name}', there is no active version; "
-                        "so there is no version to deactivate. \n"
-                        "No action performed.".format(**msg_params)
-                    )
-            elif active_version != latest_version:
+            if active_version != latest_version:
                 self.index.active_version = latest_version
                 self.index.save()
                 # by reinitializing, we ensure this worker knows about the update immediately
@@ -710,70 +679,6 @@ class CreateIndexAction(IndexAction):
                 "index version '{_index_version_name}' in elasticsearch.",
                 use_self_dict_format=True
             )
-
-
-class DeactivateIndexAction(IndexAction):
-    DEFAULT_ACTION = IndexAction.ACTION_DEACTIVATE_INDEX
-
-    class Meta:
-        # https://docs.djangoproject.com/en/2.0/topics/db/models/#proxy-models
-        proxy = True
-
-    def perform_action(self, dem_index, *args, **kwargs):
-        msg_params = {"index_name": self.index.name}
-        if dem_index.get_version_id():
-            # we have instantiated this DEMIndex with a specific IndexVersion
-            version_model = dem_index.get_version_model()
-            msg_params.update({"index_version_name": version_model.name})
-            self.index_version = version_model
-            index = self.index
-
-            index.active_version = None
-            if index.active_version == version_model:
-                self.add_log(
-                    "Deactivating formerly active index version "
-                    "'{index_version_name}' "
-                    "because you said to do so.".format(**msg_params))
-                index.save()
-                # re-initialize so as to ensure this worker gets the message
-                DEMIndexManager.initialize()
-            else:
-                self.add_log(
-                    "There is no need to deactivate '{index_version_name}' "
-                    "because is it not active.".format(**msg_params))
-
-        else:
-            # use the active version of the index if one exists.
-
-            # first, check if *any* version exists.
-            latest_version = self.index.get_latest_version()
-            if not latest_version:
-                raise NoCreatedIndexVersion(
-                    "You must have created a version of the "
-                    "'{index_name}' index to call es_deactivate "
-                    "index.".format(**msg_params)
-                )
-
-            # at least one version is available.
-
-            msg_params.update({"index_version_name": latest_version.name})
-
-            if self.index.active_version:
-                self.index.active_version = None
-                self.add_log(
-                    "For index '{index_name}', DEactivating "
-                    "'{index_version_name}' "
-                    "because you said so.".format(
-                        **msg_params))
-                self.index.save()
-                # re-initialize so as to ensure this worker gets the message
-                DEMIndexManager.initialize()
-            else:
-                self.add_log(
-                    "For index '{index_name}', there is no active version; "
-                    "so there is no version to deactivate. \n"
-                    "No action performed.".format(**msg_params)
-                )
 
 
 class DropIndexAction(OlderModeMixin, IndexAction):

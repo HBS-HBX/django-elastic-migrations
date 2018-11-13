@@ -343,16 +343,6 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def deactivate_index(cls, index_name, exact_mode=False):
-        """
-        Given the named index, activate the latest version of the index
-        """
-        # avoid circular import
-        from django_elastic_migrations.models import DeactivateIndexAction
-        action = DeactivateIndexAction()
-        return cls._start_action_for_indexes(action, index_name, exact_mode)
-
-    @classmethod
     def clear_index(cls, index_name, exact_mode=False, older_mode=False):
         """
         Given the named index, clear the documents from the index

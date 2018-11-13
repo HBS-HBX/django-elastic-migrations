@@ -2,7 +2,7 @@
 Django Elastic Migrations
 =========================
 
-Django Elastic Migrations is a Django app for creating, indexing and changing schemas of Elasticsearch indexes.
+`django-elastic-migrations`_ is a Django app for creating, indexing and changing schemas of Elasticsearch indexes.
 
 
 .. image:: https://travis-ci.com/HBS-HBX/django-elastic-migrations.svg?branch=master
@@ -14,6 +14,7 @@ Django Elastic Migrations is a Django app for creating, indexing and changing sc
    :target: https://codecov.io/gh/HBS-HBX/django-elastic-migrations
    :alt: codecov
 
+.. _django-elastic-migrations: https://pypi.org/project/django-elastic-migrations/
 
 Overview
 --------
@@ -100,7 +101,7 @@ Usage
 Installation
 ~~~~~~~~~~~~
 
-#. ``pip install django-elastic-migrations``
+#. ``pip install django-elastic-migrations``; see `django-elastic-migrations`_ on PyPI
 #. Put a reference to this package in your ``requirements.txt``
 #. Ensure that a valid ``elasticsearch-dsl-py`` version is accessible, and configure
    the path to your configured Elasticsearch singleton client in your django settings:
