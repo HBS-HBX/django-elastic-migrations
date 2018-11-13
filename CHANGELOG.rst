@@ -1,6 +1,14 @@
 Changelog
 ---------
 
+0.8.0 (2018-11-13)
+^^^^^^^^^^^^^^^^^^^^^^
+* fix `#6 support Django 2 <https://github.com/HBS-HBX/django-elastic-migrations/issues/6>`_
+* fix `#43 remove es_deactivate <https://github.com/HBS-HBX/django-elastic-migrations/issues/43>`_
+* fix `#44 add django 1.10 and 1.11 to test matrix <https://github.com/HBS-HBX/django-elastic-migrations/issues/44>`_
+* fix `#45 remove support for python 2 <https://github.com/HBS-HBX/django-elastic-migrations/issues/45>`_
+* In practice, Python 2 may work, but it is removed from the test matrix and won't be updated
+
 0.7.8 (2018-11-13)
 ^^^^^^^^^^^^^^^^^^^^^^
 * fix `#7 Convert Readme to rst for pypi <https://github.com/HBS-HBX/django-elastic-migrations/issues/7>`_
