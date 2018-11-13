@@ -100,8 +100,8 @@ Usage
 Installation
 ~~~~~~~~~~~~
 
-
-#. Put a reference to this package in your ``requirements.txt`` and install the package
+#. ``pip install django-elastic-migrations``
+#. Put a reference to this package in your ``requirements.txt``
 #. Ensure that a valid ``elasticsearch-dsl-py`` version is accessible, and configure
    the path to your configured Elasticsearch singleton client in your django settings:
    ``DJANGO_ELASTIC_MIGRATIONS_ES_CLIENT = "tests.es_config.ES_CLIENT"``.
