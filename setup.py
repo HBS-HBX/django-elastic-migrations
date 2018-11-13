@@ -32,13 +32,13 @@ if sys.argv[-1] == 'tag':
     os.system("git push origin %s" % VERSION)
     sys.exit()
 
-README = open('README.md').read()
+README = open('README.rst').read()
 CHANGELOG = open('CHANGELOG.rst').read()
 
 setup(
     name='django-elastic-migrations',
     version=VERSION,
-    description="""Migrate Elasticsearch Schemas in Django""",
+    description="""Manage Elasticsearch Indexes in Django""",
     long_description=README + '\n\n' + CHANGELOG,
     author='Harvard Business School, HBX Department',
     author_email='pnore@hbs.edu',
