@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 import logging
 from datetime import datetime, timedelta
 from unittest import skip
+from unittest.mock import patch
 
 from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
@@ -137,6 +138,15 @@ class CommonDEMTestUtilsMixin(object):
                     )
                     self.assertEqual(index_action.action, expected_action, expected_msg)
         return index_actions
+
+    @patch('django_elastic_migrations.management.commands.es_list.log')
+    def check_es_list(self, mock_logger, expected_table, scenario_message, es_only=False):
+        call_command('es_list', es_only=es_only)
+        actual_table = mock_logger.info.mock_calls[1][1][0]
+        max_diff_backup = self.maxDiff
+        self.maxDiff = None
+        self.assertEqual(expected_table, actual_table, "\n%s" % scenario_message)
+        self.maxDiff = max_diff_backup
 
 
 class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
@@ -314,7 +324,7 @@ class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase)
             self.assertEqual(partial_action.docs_affected, 10)
             kwargs = partial_action.get_task_kwargs()
             self.assertEqual(kwargs["start_index"], i * 10)
-            self.assertEqual(kwargs["end_index"], min((i+1)*10, 100))
+            self.assertEqual(kwargs["end_index"], min((i + 1) * 10, 100))
 
 
 class TestEsDangerousResetManagementCommand(DEMTestCase):
@@ -547,3 +557,43 @@ class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                 deleted_model = IndexVersion.objects.get(id=available_version_ids[0])
                 expected_msg = "After es_drop, the soft delete flag on the IndexVersion model id {} should be False".format(deleted_model.id)
                 self.assertFalse(deleted_model.is_deleted, expected_msg)
+
+
+class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+    """
+    Test that es_list output is formatted as expected
+    """
+
+    fixtures = ['tests/tests_initial.json']
+
+    def test_basic_invocation_and_es_only(self):
+        index_model, version_model, _ = self.check_basic_setup_and_get_models()
+        self.check_es_list(
+            scenario_message="first call to es_list table should show with zero docs",
+            expected_table="""\
++----------------------+-------------------------------------+---------+--------+-------+-----------+
+|   Index Base Name    |         Index Version Name          | Created | Active | Docs  |    Tag    |
++======================+=====================================+=========+========+=======+===========+
+| movies               | test_movies-1                       | 1       | 1      | 0     |           |
++----------------------+-------------------------------------+---------+--------+-------+-----------+""")
+
+        call_command('es_update', 'movies')
+
+        self.check_es_list(
+            scenario_message="after updating the index, the Docs column should have 2",
+            expected_table="""\
++----------------------+-------------------------------------+---------+--------+-------+-----------+
+|   Index Base Name    |         Index Version Name          | Created | Active | Docs  |    Tag    |
++======================+=====================================+=========+========+=======+===========+
+| movies               | test_movies-1                       | 1       | 1      | 2     |           |
++----------------------+-------------------------------------+---------+--------+-------+-----------+""")
+
+        self.check_es_list(
+            es_only=True,
+            scenario_message="After updating the index, running es_only should show test_movies-1 with Count of 2",
+            expected_table="""\
++---------------+-------+
+|     Name      | Count |
++===============+=======+
+| test_movies-1 | 2     |
++---------------+-------+""")
