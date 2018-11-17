@@ -2,12 +2,14 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import logging
 from datetime import datetime, timedelta
+from typing import NamedTuple, List
 from unittest import skip
 from unittest.mock import patch
 
 from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
 from django.template.defaultfilters import pluralize
+from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager, es_client
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
@@ -21,6 +23,57 @@ log = logging.getLogger(__file__)
 
 def days_ago(d):
     return datetime.now() - timedelta(days=d)
+
+
+"""
+Data model for making a row of the output table from ./manage.py es_list
+"""
+EsListRow = NamedTuple(
+    'EsListRow', [
+        ('index_base_name', str),
+        ('index_version_name', str),
+        ('created', int),
+        ('active', int),
+        ('docs', int),
+        ('Tag', str),
+    ]
+)
+
+"""
+Data model for making a row of the table for ./manage.py es_list --es-only
+"""
+EsOnlyRow = NamedTuple('EsOnlyRow', [('name', str), ('count', int)])
+
+
+def get_es_list_row(index_version: IndexVersion, created: int = 1, active: int = 1, docs: int = 0, tag: str = "") -> EsListRow:
+    return EsListRow(index_version.index.name, index_version.name, created, active, docs, tag)
+
+
+def get_es_list_table(rows: List[EsListRow]) -> str:
+    """
+    Returns the expected table for ./manage.py es_list
+    """
+    table = Texttable(max_width=85)
+    table.header(["Index Base Name", "Index Version Name", "Created", "Active", "Docs", "Tag"])
+    table.set_cols_width([20, 35, 7, 6, 5, 9])
+    for row in rows:
+        table.add_row(row)
+    return table.draw()
+
+
+def get_es_only_row(index_version: IndexVersion, count: int = 0) -> EsOnlyRow:
+    return EsOnlyRow(index_version.name, count)
+
+
+def get_es_only_table(rows: List[EsOnlyRow]) -> str:
+    """
+    Returns the expected table for ./manage.py es_list --es-only
+    """
+    table = Texttable(max_width=85)
+    table.header(["Name", "Count"])
+    for row in rows:
+        table.add_row(row)
+    return table.draw()
 
 
 # noinspection PyUnresolvedReferences
@@ -568,32 +621,20 @@ class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
 
     def test_basic_invocation_and_es_only(self):
         index_model, version_model, _ = self.check_basic_setup_and_get_models()
-        self.check_es_list(
-            scenario_message="first call to es_list table should show with zero docs",
-            expected_table="""\
-+----------------------+-------------------------------------+---------+--------+-------+-----------+
-|   Index Base Name    |         Index Version Name          | Created | Active | Docs  |    Tag    |
-+======================+=====================================+=========+========+=======+===========+
-| movies               | test_movies-1                       | 1       | 1      | 0     |           |
-+----------------------+-------------------------------------+---------+--------+-------+-----------+""")
+
+        scenario = "first call to es_list table should show with zero docs"
+        es_list_row = get_es_list_row(version_model, created=1, active=1, docs=0)
+        expected_table = get_es_list_table([es_list_row])
+        self.check_es_list(scenario_message=scenario, expected_table=expected_table)
 
         call_command('es_update', 'movies')
 
-        self.check_es_list(
-            scenario_message="after updating the index, the Docs column should have 2",
-            expected_table="""\
-+----------------------+-------------------------------------+---------+--------+-------+-----------+
-|   Index Base Name    |         Index Version Name          | Created | Active | Docs  |    Tag    |
-+======================+=====================================+=========+========+=======+===========+
-| movies               | test_movies-1                       | 1       | 1      | 2     |           |
-+----------------------+-------------------------------------+---------+--------+-------+-----------+""")
+        scenario = "after updating the index, the Docs column should have 2"
+        es_list_row = get_es_list_row(version_model, created=1, active=1, docs=2)
+        expected_table = get_es_list_table([es_list_row])
+        self.check_es_list(scenario_message=scenario, expected_table=expected_table)
 
-        self.check_es_list(
-            es_only=True,
-            scenario_message="After updating the index, running es_only should show test_movies-1 with Count of 2",
-            expected_table="""\
-+---------------+-------+
-|     Name      | Count |
-+===============+=======+
-| test_movies-1 | 2     |
-+---------------+-------+""")
+        scenario = "After updating the index, running es_only should show our index with Count of 2"
+        es_only_row = get_es_only_row(version_model, count=2)
+        expected_table = get_es_only_table([es_only_row])
+        self.check_es_list(es_only=True, scenario_message=scenario, expected_table=expected_table)
