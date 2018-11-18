@@ -13,6 +13,7 @@ from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager, es_client
 from django_elastic_migrations.indexes import DEMIndex
+from django_elastic_migrations.management.commands.es_list import EsListRow
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
 from django_elastic_migrations.utils.test_utils import DEMTestCase
 from tests.es_config import ES_CLIENT
@@ -25,20 +26,6 @@ log = logging.getLogger(__file__)
 def days_ago(d):
     return datetime.now() - timedelta(days=d)
 
-
-"""
-Data model for making a row of the output table from ./manage.py es_list
-"""
-EsListRow = NamedTuple(
-    'EsListRow', [
-        ('index_base_name', str),
-        ('index_version_name', str),
-        ('created', int),
-        ('active', int),
-        ('docs', int),
-        ('tag', str),
-    ]
-)
 
 """
 Data model for making a row of the table for ./manage.py es_list --es-only

@@ -1,7 +1,7 @@
 # coding=utf-8
 
 import sys
-from typing import Dict, Iterable
+from typing import Iterable, Dict
 
 import django
 from django.db import ProgrammingError
@@ -91,8 +91,7 @@ class DEMIndexManager(object):
             logger.info("index {} has been deleted in DEMIndexManager.destroy_dem_index")
 
     @classmethod
-    def create_and_activate_version_for_each_index_if_none_is_active(
-        cls, create_versions, activate_versions):
+    def create_and_activate_version_for_each_index_if_none_is_active(cls, create_versions, activate_versions):
         for index_base_name, dem_index in cls.get_indexes_dict().items():
             if not cls.get_active_index_version(index_base_name):
                 if create_versions:
@@ -227,7 +226,7 @@ class DEMIndexManager(object):
 
     @classmethod
     def get_indexes(cls):
-        return cls.instances.values()
+        return list(cls.instances.values())
 
     @classmethod
     def get_indexes_dict(cls):
@@ -380,8 +379,7 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def drop_index(
-        cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False, es_only=False, hard_delete=False):
+    def drop_index(cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False, es_only=False, hard_delete=False):
         """
         Given the named index, drop it from es
         :param index_name: the name of the index to drop
@@ -685,9 +683,7 @@ class DEMDocType(ESDocType):
         return success, failed
 
     @classmethod
-    def batched_bulk_index(
-        cls, queryset=None, workers=0, last_updated_datetime=None, verbosity=1,
-        update_index_action=None, batch_size=None):
+    def batched_bulk_index(cls, queryset=None, workers=0, last_updated_datetime=None, verbosity=1, update_index_action=None, batch_size=None):
 
         qs = queryset
 
