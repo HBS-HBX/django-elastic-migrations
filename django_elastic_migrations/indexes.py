@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import sys
+from typing import Dict, Iterable
 
 import django
 from django.db import ProgrammingError
@@ -56,24 +57,35 @@ class DEMIndexManager(object):
             return cls.get_index_model(base_name, create_on_not_found)
 
     @classmethod
-    def destroy_dem_index(cls, dem_index_instance):
+    def delete_dem_index_from_es(cls, dem_index_instance):
+        """
+        Delete the dem index instance from elasticsearch, ignoring certain
+        known errors that could arise. Called from destroy_dem_index() and tests.
+        """
+        try:
+            dem_index_instance.delete()
+        except AttributeError as ae:
+            if "'NoneType' object has no attribute 'name'" in str(ae):
+                pass
+            elif "'NoneType' object has no attribute 'active_version'" in str(ae):
+                pass
+            else:
+                raise ae
+
+    @classmethod
+    def destroy_dem_index(cls, dem_index_instance, delete_from_es=True):
         """
         Given a DEMIndex instance, permanently delete it from elasticsearch and the database
         Only used during testing when setting up and destroying temporary, mutable indexes
         Used by tests.search.get_new_search_index
+        :param dem_index_instance - the DEMIndex to destroy
+        :param delete_from_es - if True, remove the index from elasticsearch in addition to removing it from the db
         """
         base_name = dem_index_instance.get_base_name()
         index_model = cls.index_models.pop(base_name, None)
         if index_model:
-            try:
-                dem_index_instance.delete()
-            except AttributeError as ae:
-                if "'NoneType' object has no attribute 'name'" in str(ae):
-                    pass
-                elif "'NoneType' object has no attribute 'active_version'" in str(ae):
-                    pass
-                else:
-                    raise ae
+            if delete_from_es:
+                cls.delete_dem_index_from_es(dem_index_instance)
             index_model.delete()
             cls.instances.pop(base_name, None)
             logger.info("index {} has been deleted in DEMIndexManager.destroy_dem_index")
@@ -222,12 +234,26 @@ class DEMIndexManager(object):
         return cls.instances
 
     @classmethod
-    def list_es_created_indexes(cls):
+    def list_es_created_indexes(cls) -> Iterable[str]:
         """
-        Get the names of the available elasticsearch indexes
+        Get the names of the available elasticsearch indexes.
+        Excludes those that start with `.`
         :return: list(str)
         """
-        return [i for i in es_client.indices.get_alias("*")]
+        return [i for i in es_client.indices.get_alias("*") if not i.startswith('.')]
+
+    @classmethod
+    def list_es_doc_counts(cls) -> Dict[str, int]:
+        """
+        Get the names of the available elasticsearch indexes
+        along with their doc counts, excluding those that start with `.`
+        """
+        doc_counts = {}
+        for index_name, index_info in es_client.indices.stats(metric=['docs'])['indices'].items():
+            if not index_name.startswith('.'):
+                doc_count = index_info['total']['docs']['count']
+                doc_counts[index_name] = doc_count
+        return doc_counts
 
     @classmethod
     def post_migrate(cls, sender, **kwargs):

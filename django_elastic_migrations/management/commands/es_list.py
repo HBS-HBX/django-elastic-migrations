@@ -29,20 +29,13 @@ class Command(ESCommand):
 
         table = Texttable(max_width=85)
         if es_only:
-            table.header(["Name", "Count"])
 
-            es_indexes = DEMIndexManager.list_es_created_indexes()
-            for index in es_indexes:
-                count = DEMIndexManager.get_es_index_doc_count(index)
-                table.add_row([
-                    index,
-                    count
-                ])
+            table.header(["Name", "Count"])
+            [table.add_row(row) for row in DEMIndexManager.list_es_doc_counts().items()]
 
         else:
 
-            table.header([
-                "Index Base Name", "Index Version Name", "Created", "Active", "Docs", "Tag"])
+            table.header(["Index Base Name", "Index Version Name", "Created", "Active", "Docs", "Tag"])
             table.set_cols_width([20, 35, 7, 6, 5, 9])
 
             indexes = DEMIndexManager.get_indexes()
@@ -74,7 +67,7 @@ class Command(ESCommand):
                             "",
                             False,
                             False,
-                            dem_index.get_num_docs(),
+                            0,
                             "Current (not created)"])
             except AttributeError:
                 raise FirstMigrationNotRunError()

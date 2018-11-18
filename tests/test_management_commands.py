@@ -2,7 +2,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import logging
 from datetime import datetime, timedelta
-from typing import NamedTuple, List
+from typing import NamedTuple, List, Iterable, Tuple
 from unittest import skip
 from unittest.mock import patch
 
@@ -12,6 +12,7 @@ from django.template.defaultfilters import pluralize
 from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager, es_client
+from django_elastic_migrations.indexes import DEMIndex
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
 from django_elastic_migrations.utils.test_utils import DEMTestCase
 from tests.es_config import ES_CLIENT
@@ -35,7 +36,7 @@ EsListRow = NamedTuple(
         ('created', int),
         ('active', int),
         ('docs', int),
-        ('Tag', str),
+        ('tag', str),
     ]
 )
 
@@ -49,7 +50,11 @@ def get_es_list_row(index_version: IndexVersion, created: int = 1, active: int =
     return EsListRow(index_version.index.name, index_version.name, created, active, docs, tag)
 
 
-def get_es_list_table(rows: List[EsListRow]) -> str:
+def get_blank_es_list_row(index_base_name: str) -> EsListRow:
+    return EsListRow(index_base_name, "", created=0, active=0, docs=0, tag="Current (not created)")
+
+
+def get_es_list_table(rows: Iterable[EsListRow]) -> str:
     """
     Returns the expected table for ./manage.py es_list
     """
@@ -61,8 +66,8 @@ def get_es_list_table(rows: List[EsListRow]) -> str:
     return table.draw()
 
 
-def get_es_only_row(index_version: IndexVersion, count: int = 0) -> EsOnlyRow:
-    return EsOnlyRow(index_version.name, count)
+def get_es_only_row(name: str, count: int = 0) -> EsOnlyRow:
+    return EsOnlyRow(name, count)
 
 
 def get_es_only_table(rows: List[EsOnlyRow]) -> str:
@@ -79,7 +84,8 @@ def get_es_only_table(rows: List[EsOnlyRow]) -> str:
 # noinspection PyUnresolvedReferences
 class CommonDEMTestUtilsMixin(object):
 
-    def check_basic_setup_and_get_models(self, index_name='movies', expected_num_versions=1, pre_message="At test setup"):
+    def check_basic_setup_and_get_models(self, index_name='movies', expected_num_versions=1, pre_message="At test setup") -> \
+            Tuple[Index, IndexVersion, DEMIndex]:
         dem_index = DEMIndexManager.get_dem_index(index_name)
 
         index_model = dem_index.get_index_model()
@@ -193,8 +199,10 @@ class CommonDEMTestUtilsMixin(object):
         return index_actions
 
     @patch('django_elastic_migrations.management.commands.es_list.log')
-    def check_es_list(self, mock_logger, expected_table, scenario_message, es_only=False):
-        call_command('es_list', es_only=es_only)
+    def check_es_list(self, mock_logger, expected_table, scenario_message, es_only=False, args=None):
+        if args is None:
+            args = []
+        call_command('es_list', es_only=es_only, *args)
         actual_table = mock_logger.info.mock_calls[1][1][0]
         max_diff_backup = self.maxDiff
         self.maxDiff = None
@@ -380,7 +388,7 @@ class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase)
             self.assertEqual(kwargs["end_index"], min((i + 1) * 10, 100))
 
 
-class TestEsDangerousResetManagementCommand(DEMTestCase):
+class TestEsDangerousResetManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     """
     Tests ./manage.py es_dangerous_reset
     """
@@ -423,27 +431,41 @@ class TestEsDangerousResetManagementCommand(DEMTestCase):
         num_docs = MovieSearchIndex.get_num_docs()
         self.assertEqual(num_docs, 2, "After updating the index, it should have had two documents in elasticsearch")
 
-        # destroy the indexes as well as the Index, IndexVersion, IndexAction objects
-        call_command('es_dangerous_reset')
+        hidden_index_name = ".hidden-index"
+        with get_new_search_index(hidden_index_name):
+            _, _, dem_index = self.check_basic_setup_and_get_models(hidden_index_name)
+            # simulate the situation where there's a hidden index in elasticsearch
+            # but not in the database, as is the case with .kibana and other utility indexes
 
-        version_model = MovieSearchIndex.get_version_model()
-        self.assertIsNotNone(version_model)
-        new_version_id = version_model.id
-        self.assertGreater(new_version_id, old_version_id, "After es_dangerous_reset, new version id for movie search index should be > old id")
+            # destroy the indexes as well as the Index, IndexVersion, IndexAction objects
+            call_command('es_dangerous_reset')
 
-        index_model = Index.objects.get(name='movies')
-        index_version = index_model.active_version
+            # check that es_dangerous_reset didn't touch the hidden indexes in elasticsearch
+            self.assertTrue(dem_index.exists(), ".hidden-index should still exist after es_dangerous_reset")
+            # since we called destroy_dem_index already, we have to manually cleanup the unused
+            # `.hidden-index` - we only have to do this because we are testing an unusual condition here
+            # see https://github.com/HBS-HBX/django-elastic-migrations/issues/58
+            DEMIndexManager.delete_dem_index_from_es(dem_index)
+            self.assertFalse(es_client.indices.exists(index=hidden_index_name), ".hidden-index should now be deleted")
 
-        # one for create and one for activate
-        num_index_actions = index_version.indexaction_set.all().count()
-        expected_msg = "After es_dangerous_reset, active movies index should have 1 IndexAction, but it had {}".format(1, num_index_actions)
-        self.assertEqual(num_index_actions, 1, expected_msg)
+            version_model = MovieSearchIndex.get_version_model()
+            self.assertIsNotNone(version_model)
+            new_version_id = version_model.id
+            self.assertGreater(new_version_id, old_version_id, "After es_dangerous_reset, new version id for movie search index should be > old id")
 
-        available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
-        self.assertGreaterEqual(len(available_version_ids), 1, "After es_dangerous_reset, the movies index should have one available version")
+            index_model = Index.objects.get(name='movies')
+            index_version = index_model.active_version
 
-        num_docs = MovieSearchIndex.get_num_docs()
-        self.assertEqual(num_docs, 0, "After es_dangerous_reset, no documents should be in elasticsearch")
+            # one for create and one for activate
+            num_index_actions = index_version.indexaction_set.all().count()
+            expected_msg = "After es_dangerous_reset, active movies index should have 1 IndexAction, but it had {}".format(1, num_index_actions)
+            self.assertEqual(num_index_actions, 1, expected_msg)
+
+            available_version_ids = index_model.indexversion_set.all().values_list('id', flat=True)
+            self.assertGreaterEqual(len(available_version_ids), 1, "After es_dangerous_reset, the movies index should have one available version")
+
+            num_docs = MovieSearchIndex.get_num_docs()
+            self.assertEqual(num_docs, 0, "After es_dangerous_reset, no documents should be in elasticsearch")
 
 
 class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
@@ -634,7 +656,58 @@ class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         expected_table = get_es_list_table([es_list_row])
         self.check_es_list(scenario_message=scenario, expected_table=expected_table)
 
-        scenario = "After updating the index, running es_only should show our index with Count of 2"
-        es_only_row = get_es_only_row(version_model, count=2)
-        expected_table = get_es_only_table([es_only_row])
-        self.check_es_list(es_only=True, scenario_message=scenario, expected_table=expected_table)
+    def test_es_list_es_only(self):
+        scenario = "es_list --es_only should only show indexes that do not have a . as the first char"
+        hidden_index_name = ".hidden-index"
+        with get_new_search_index(hidden_index_name):
+            _, _, dem_index = self.check_basic_setup_and_get_models(hidden_index_name)
+            # simulate the situation where there's a hidden index in elasticsearch
+            # but not in the database, as is the case with .kibana and other utility indexes
+            DEMIndexManager.destroy_dem_index(dem_index, delete_from_es=False)
+            # now .hidden-index should be in elasticsearch but not in the database
+
+            rows = []
+            for index_name, index_info in es_client.indices.stats(metric=['docs'])['indices'].items():
+                if not index_name.startswith('.'):
+                    rows.append(get_es_only_row(index_name, count=index_info['total']['docs']['count']))
+
+            expected_table = get_es_only_table(rows)
+            self.check_es_list(es_only=True, scenario_message=scenario, expected_table=expected_table)
+
+            # since we called destroy_dem_index already, we have to manually cleanup the unused
+            # `.hidden-index` - we only have to do this because we are testing an unusual condition here
+            # see https://github.com/HBS-HBX/django-elastic-migrations/issues/58
+            DEMIndexManager.delete_dem_index_from_es(dem_index)
+            self.assertFalse(es_client.indices.exists(index=hidden_index_name), ".hidden-index should now be deleted")
+
+    def test_after_es_create_with_specified_index(self):
+        _, movies_version_model, _ = self.check_basic_setup_and_get_models()
+
+        new_index_name = "moviez"
+        with get_new_search_index(new_index_name):
+            _, moviez_version_model, _ = self.check_basic_setup_and_get_models(new_index_name)
+
+            scenario = "After create, there should be movies and moviez indexes in the es_list table"
+            two_rows = [get_es_list_row(version) for version in (movies_version_model, moviez_version_model)]
+            self.check_es_list(scenario_message=scenario, expected_table=get_es_list_table(two_rows))
+
+            scenario = "When movies and moviez index are available, calling `./manage.py es_list moviez` should only return moviez reusults"
+            self.check_es_list(scenario_message=scenario, expected_table=get_es_list_table(two_rows[1:]), args=['moviez'])
+
+    def test_es_list_blank_row(self):
+        """
+        Checks for the expected output when ./manage.py es_list is called,
+        and no index versions have been created for a particular index.
+        """
+        movies_index_model, _, movies_dem_index = self.check_basic_setup_and_get_models()
+
+        new_index_name = "moviez"
+        with get_new_search_index(new_index_name):
+            _, moviez_version_model, _ = self.check_basic_setup_and_get_models(new_index_name)
+
+            call_command('es_drop', 'movies', force=True)
+
+            scenario = "after deleting movies index and adding moviez index, former should be blank and latter should be created and active"
+            blank_movies_row = get_blank_es_list_row(movies_index_model.name)
+            rows = [blank_movies_row, get_es_list_row(moviez_version_model)]
+            self.check_es_list(scenario_message=scenario, expected_table=get_es_list_table(rows))
