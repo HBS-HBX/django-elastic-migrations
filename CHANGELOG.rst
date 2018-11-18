@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+0.8.1 (2018-11-19)
+^^^^^^^^^^^^^^^^^
+* fix `#50 add test coverage for es_list <https://github.com/HBS-HBX/django-elastic-migrations/issues/50>`_
+* fix `#58 ignore indexes with a dot in name in es_list --es-only and es_dangerous_reset <https://github.com/HBS-HBX/django-elastic-migrations/issues/58>`_
+
 0.8.0 (2018-11-13)
 ^^^^^^^^^^^^^^^^^^^^^^
 * fix `#6 support Django 2 <https://github.com/HBS-HBX/django-elastic-migrations/issues/6>`_
