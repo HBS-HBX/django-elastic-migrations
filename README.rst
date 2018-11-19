@@ -456,3 +456,4 @@ Cutting a New Version
 * `Check it at https://test.pypi.org/project/django-elastic-migrations/ <https://test.pypi.org/project/django-elastic-migrations/>`_
 * ``python3 setup.py tag`` to tag the new version
 * ``twine upload -r pypi dist/django-elastic-migrations-*.tar.gz``
+* `Update new release at https://github.com/HBS-HBX/django-elastic-migrations/releases <https://github.com/HBS-HBX/django-elastic-migrations/releases/>`_
