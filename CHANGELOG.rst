@@ -1,13 +1,17 @@
 Changelog
 ---------
 
+0.8.2 (2018-11-20)
+^^^^^^^^^^^^^^^^^^
+* fix `#59 twine check error in 0.8.1 <https://github.com/HBS-HBX/django-elastic-migrations/issues/59>`_
+
 0.8.1 (2018-11-19)
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^
 * fix `#50 add test coverage for es_list <https://github.com/HBS-HBX/django-elastic-migrations/issues/50>`_
 * fix `#58 ignore indexes with a dot in name in es_list --es-only and es_dangerous_reset <https://github.com/HBS-HBX/django-elastic-migrations/issues/58>`_
 
 0.8.0 (2018-11-13)
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^
 * fix `#6 support Django 2 <https://github.com/HBS-HBX/django-elastic-migrations/issues/6>`_
 * fix `#43 remove es_deactivate <https://github.com/HBS-HBX/django-elastic-migrations/issues/43>`_
 * fix `#44 add django 1.10 and 1.11 to test matrix <https://github.com/HBS-HBX/django-elastic-migrations/issues/44>`_
@@ -15,13 +19,13 @@ Changelog
 * In practice, Python 2 may work, but it is removed from the test matrix and won't be updated
 
 0.7.8 (2018-11-13)
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^
 * fix `#7 Convert Readme to rst for pypi <https://github.com/HBS-HBX/django-elastic-migrations/issues/7>`_
 * first release on PyPI
 * update project dependencies
 
 0.7.7 (2018-09-17)
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^
 * fix `#41 stack trace when indexing in py3 <https://github.com/HBS-HBX/django-elastic-migrations/issues/41>`_
 
 0.7.6 (2018-09-11)
