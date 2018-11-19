@@ -443,12 +443,16 @@ Cutting a New Version
 * optional: run ``make update`` to update dependencies
 * bump version in `django_elastic_migrations/__init__.py <https://github.com/HBS-HBX/django-elastic-migrations/blob/master/django_elastic_migrations/__init__.py#L13>`_.
 * update `CHANGELOG.rst <https://github.com/HBS-HBX/django-elastic-migrations/blob/master/CHANGELOG.rst>`_.
+* ``make clean``
+* ``python3 setup.py sdist bdist_wheel``
+* ``twine check dist/django-elastic-migrations-*.tar.gz`` to see if there are any syntax mistakes before tagging
 * submit PR bumping the version
 * ensure test matrix is passing on travis and merge PR
 * pull changes to master
-* ``python3 setup.py tag`` to tag the new version
 * ``make clean``
 * ``python3 setup.py sdist bdist_wheel``
+* ``twine check dist/django-elastic-migrations-*.tar.gz`` to see if there are any syntax mistakes before tagging
 * ``twine upload -r testpypi dist/django-elastic-migrations-*.tar.gz``
 * `Check it at https://test.pypi.org/project/django-elastic-migrations/ <https://test.pypi.org/project/django-elastic-migrations/>`_
+* ``python3 setup.py tag`` to tag the new version
 * ``twine upload -r pypi dist/django-elastic-migrations-*.tar.gz``
