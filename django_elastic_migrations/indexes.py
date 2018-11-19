@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import sys
+from typing import Iterable, Dict
 
 import django
 from django.db import ProgrammingError
@@ -56,31 +57,41 @@ class DEMIndexManager(object):
             return cls.get_index_model(base_name, create_on_not_found)
 
     @classmethod
-    def destroy_dem_index(cls, dem_index_instance):
+    def delete_dem_index_from_es(cls, dem_index_instance):
+        """
+        Delete the dem index instance from elasticsearch, ignoring certain
+        known errors that could arise. Called from destroy_dem_index() and tests.
+        """
+        try:
+            dem_index_instance.delete()
+        except AttributeError as ae:
+            if "'NoneType' object has no attribute 'name'" in str(ae):
+                pass
+            elif "'NoneType' object has no attribute 'active_version'" in str(ae):
+                pass
+            else:
+                raise ae
+
+    @classmethod
+    def destroy_dem_index(cls, dem_index_instance, delete_from_es=True):
         """
         Given a DEMIndex instance, permanently delete it from elasticsearch and the database
         Only used during testing when setting up and destroying temporary, mutable indexes
         Used by tests.search.get_new_search_index
+        :param dem_index_instance - the DEMIndex to destroy
+        :param delete_from_es - if True, remove the index from elasticsearch in addition to removing it from the db
         """
         base_name = dem_index_instance.get_base_name()
         index_model = cls.index_models.pop(base_name, None)
         if index_model:
-            try:
-                dem_index_instance.delete()
-            except AttributeError as ae:
-                if "'NoneType' object has no attribute 'name'" in str(ae):
-                    pass
-                elif "'NoneType' object has no attribute 'active_version'" in str(ae):
-                    pass
-                else:
-                    raise ae
+            if delete_from_es:
+                cls.delete_dem_index_from_es(dem_index_instance)
             index_model.delete()
             cls.instances.pop(base_name, None)
             logger.info("index {} has been deleted in DEMIndexManager.destroy_dem_index")
 
     @classmethod
-    def create_and_activate_version_for_each_index_if_none_is_active(
-        cls, create_versions, activate_versions):
+    def create_and_activate_version_for_each_index_if_none_is_active(cls, create_versions, activate_versions):
         for index_base_name, dem_index in cls.get_indexes_dict().items():
             if not cls.get_active_index_version(index_base_name):
                 if create_versions:
@@ -215,19 +226,33 @@ class DEMIndexManager(object):
 
     @classmethod
     def get_indexes(cls):
-        return cls.instances.values()
+        return list(cls.instances.values())
 
     @classmethod
     def get_indexes_dict(cls):
         return cls.instances
 
     @classmethod
-    def list_es_created_indexes(cls):
+    def list_es_created_indexes(cls) -> Iterable[str]:
         """
-        Get the names of the available elasticsearch indexes
+        Get the names of the available elasticsearch indexes.
+        Excludes those that start with `.`
         :return: list(str)
         """
-        return [i for i in es_client.indices.get_alias("*")]
+        return [i for i in es_client.indices.get_alias("*") if not i.startswith('.')]
+
+    @classmethod
+    def list_es_doc_counts(cls) -> Dict[str, int]:
+        """
+        Get the names of the available elasticsearch indexes
+        along with their doc counts, excluding those that start with `.`
+        """
+        doc_counts = {}
+        for index_name, index_info in es_client.indices.stats(metric=['docs'])['indices'].items():
+            if not index_name.startswith('.'):
+                doc_count = index_info['total']['docs']['count']
+                doc_counts[index_name] = doc_count
+        return doc_counts
 
     @classmethod
     def post_migrate(cls, sender, **kwargs):
@@ -354,8 +379,7 @@ class DEMIndexManager(object):
         return cls._start_action_for_indexes(action, index_name, exact_mode)
 
     @classmethod
-    def drop_index(
-        cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False, es_only=False, hard_delete=False):
+    def drop_index(cls, index_name, exact_mode=False, force=False, just_prefix=None, older_mode=False, es_only=False, hard_delete=False):
         """
         Given the named index, drop it from es
         :param index_name: the name of the index to drop
@@ -659,9 +683,7 @@ class DEMDocType(ESDocType):
         return success, failed
 
     @classmethod
-    def batched_bulk_index(
-        cls, queryset=None, workers=0, last_updated_datetime=None, verbosity=1,
-        update_index_action=None, batch_size=None):
+    def batched_bulk_index(cls, queryset=None, workers=0, last_updated_datetime=None, verbosity=1, update_index_action=None, batch_size=None):
 
         qs = queryset
 

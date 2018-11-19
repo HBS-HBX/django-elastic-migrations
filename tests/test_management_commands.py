@@ -2,13 +2,18 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import logging
 from datetime import datetime, timedelta
+from typing import NamedTuple, List, Iterable, Tuple
 from unittest import skip
+from unittest.mock import patch
 
 from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
 from django.template.defaultfilters import pluralize
+from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager, es_client
+from django_elastic_migrations.indexes import DEMIndex
+from django_elastic_migrations.management.commands.es_list import EsListRow
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
 from django_elastic_migrations.utils.test_utils import DEMTestCase
 from tests.es_config import ES_CLIENT
@@ -22,10 +27,52 @@ def days_ago(d):
     return datetime.now() - timedelta(days=d)
 
 
+"""
+Data model for making a row of the table for ./manage.py es_list --es-only
+"""
+EsOnlyRow = NamedTuple('EsOnlyRow', [('name', str), ('count', int)])
+
+
+def get_es_list_row(index_version: IndexVersion, created: int = 1, active: int = 1, docs: int = 0, tag: str = "") -> EsListRow:
+    return EsListRow(index_version.index.name, index_version.name, created, active, docs, tag)
+
+
+def get_blank_es_list_row(index_base_name: str) -> EsListRow:
+    return EsListRow(index_base_name, "", created=0, active=0, docs=0, tag="Current (not created)")
+
+
+def get_es_list_table(rows: Iterable[EsListRow]) -> str:
+    """
+    Returns the expected table for ./manage.py es_list
+    """
+    table = Texttable(max_width=85)
+    table.header(["Index Base Name", "Index Version Name", "Created", "Active", "Docs", "Tag"])
+    table.set_cols_width([20, 35, 7, 6, 5, 9])
+    for row in rows:
+        table.add_row(row)
+    return table.draw()
+
+
+def get_es_only_row(name: str, count: int = 0) -> EsOnlyRow:
+    return EsOnlyRow(name, count)
+
+
+def get_es_only_table(rows: List[EsOnlyRow]) -> str:
+    """
+    Returns the expected table for ./manage.py es_list --es-only
+    """
+    table = Texttable(max_width=85)
+    table.header(["Name", "Count"])
+    for row in rows:
+        table.add_row(row)
+    return table.draw()
+
+
 # noinspection PyUnresolvedReferences
 class CommonDEMTestUtilsMixin(object):
 
-    def check_basic_setup_and_get_models(self, index_name='movies', expected_num_versions=1, pre_message="At test setup"):
+    def check_basic_setup_and_get_models(self, index_name='movies', expected_num_versions=1, pre_message="At test setup") -> \
+            Tuple[Index, IndexVersion, DEMIndex]:
         dem_index = DEMIndexManager.get_dem_index(index_name)
 
         index_model = dem_index.get_index_model()
@@ -137,6 +184,17 @@ class CommonDEMTestUtilsMixin(object):
                     )
                     self.assertEqual(index_action.action, expected_action, expected_msg)
         return index_actions
+
+    @patch('django_elastic_migrations.management.commands.es_list.log')
+    def check_es_list(self, mock_logger, expected_table, scenario_message, es_only=False, args=None):
+        if args is None:
+            args = []
+        call_command('es_list', es_only=es_only, *args)
+        actual_table = mock_logger.info.mock_calls[1][1][0]
+        max_diff_backup = self.maxDiff
+        self.maxDiff = None
+        self.assertEqual(expected_table, actual_table, "\n%s" % scenario_message)
+        self.maxDiff = max_diff_backup
 
 
 class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
@@ -314,10 +372,10 @@ class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase)
             self.assertEqual(partial_action.docs_affected, 10)
             kwargs = partial_action.get_task_kwargs()
             self.assertEqual(kwargs["start_index"], i * 10)
-            self.assertEqual(kwargs["end_index"], min((i+1)*10, 100))
+            self.assertEqual(kwargs["end_index"], min((i + 1) * 10, 100))
 
 
-class TestEsDangerousResetManagementCommand(DEMTestCase):
+class TestEsDangerousResetManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     """
     Tests ./manage.py es_dangerous_reset
     """
@@ -360,8 +418,16 @@ class TestEsDangerousResetManagementCommand(DEMTestCase):
         num_docs = MovieSearchIndex.get_num_docs()
         self.assertEqual(num_docs, 2, "After updating the index, it should have had two documents in elasticsearch")
 
+        hidden_index_name = ".hidden-index"
+        es_client.indices.create(hidden_index_name)
+
         # destroy the indexes as well as the Index, IndexVersion, IndexAction objects
         call_command('es_dangerous_reset')
+
+        # check that es_dangerous_reset didn't touch the hidden indexes in elasticsearch
+        self.assertTrue(es_client.indices.exists(index=hidden_index_name), ".hidden-index should still exist after es_dangerous_reset")
+        es_client.indices.delete(hidden_index_name)
+        self.assertFalse(es_client.indices.exists(index=hidden_index_name), ".hidden-index should NOT still exist after deleting it")
 
         version_model = MovieSearchIndex.get_version_model()
         self.assertIsNotNone(version_model)
@@ -547,3 +613,74 @@ class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                 deleted_model = IndexVersion.objects.get(id=available_version_ids[0])
                 expected_msg = "After es_drop, the soft delete flag on the IndexVersion model id {} should be False".format(deleted_model.id)
                 self.assertFalse(deleted_model.is_deleted, expected_msg)
+
+
+class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+    """
+    Test that es_list output is formatted as expected
+    """
+
+    fixtures = ['tests/tests_initial.json']
+
+    def test_basic_invocation_and_es_only(self):
+        index_model, version_model, _ = self.check_basic_setup_and_get_models()
+
+        scenario = "first call to es_list table should show with zero docs"
+        es_list_row = get_es_list_row(version_model, created=1, active=1, docs=0)
+        expected_table = get_es_list_table([es_list_row])
+        self.check_es_list(scenario_message=scenario, expected_table=expected_table)
+
+        call_command('es_update', 'movies')
+
+        scenario = "after updating the index, the Docs column should have 2"
+        es_list_row = get_es_list_row(version_model, created=1, active=1, docs=2)
+        expected_table = get_es_list_table([es_list_row])
+        self.check_es_list(scenario_message=scenario, expected_table=expected_table)
+
+    def test_es_list_es_only(self):
+        scenario = "es_list --es_only should only show indexes that do not have a . as the first char"
+        hidden_index_name = ".hidden-index"
+        es_client.indices.create(hidden_index_name)
+
+        rows = []
+        for index_name, index_info in es_client.indices.stats(metric=['docs'])['indices'].items():
+            if not index_name.startswith('.'):
+                rows.append(get_es_only_row(index_name, count=index_info['total']['docs']['count']))
+
+        expected_table = get_es_only_table(rows)
+        self.check_es_list(es_only=True, scenario_message=scenario, expected_table=expected_table)
+
+        es_client.indices.delete(hidden_index_name)
+        self.assertFalse(es_client.indices.exists(index=hidden_index_name), ".hidden-index should now be deleted")
+
+    def test_after_es_create_with_specified_index(self):
+        _, movies_version_model, _ = self.check_basic_setup_and_get_models()
+
+        new_index_name = "moviez"
+        with get_new_search_index(new_index_name):
+            _, moviez_version_model, _ = self.check_basic_setup_and_get_models(new_index_name)
+
+            scenario = "After create, there should be movies and moviez indexes in the es_list table"
+            two_rows = [get_es_list_row(version) for version in (movies_version_model, moviez_version_model)]
+            self.check_es_list(scenario_message=scenario, expected_table=get_es_list_table(two_rows))
+
+            scenario = "When movies and moviez index are available, calling `./manage.py es_list moviez` should only return moviez reusults"
+            self.check_es_list(scenario_message=scenario, expected_table=get_es_list_table(two_rows[1:]), args=['moviez'])
+
+    def test_es_list_blank_row(self):
+        """
+        Checks for the expected output when ./manage.py es_list is called,
+        and no index versions have been created for a particular index.
+        """
+        movies_index_model, _, movies_dem_index = self.check_basic_setup_and_get_models()
+
+        new_index_name = "moviez"
+        with get_new_search_index(new_index_name):
+            _, moviez_version_model, _ = self.check_basic_setup_and_get_models(new_index_name)
+
+            call_command('es_drop', 'movies', force=True)
+
+            scenario = "after deleting movies index and adding moviez index, former should be blank and latter should be created and active"
+            blank_movies_row = get_blank_es_list_row(movies_index_model.name)
+            rows = [blank_movies_row, get_es_list_row(moviez_version_model)]
+            self.check_es_list(scenario_message=scenario, expected_table=get_es_list_table(rows))

@@ -17,6 +17,7 @@ services:
     environment:
       - "discovery.type=single-node"
       - "transport.host=127.0.0.1"
+      - "xpack.security.enabled=false"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200/_count"]
       interval: 10s
