@@ -25,27 +25,20 @@ def root(*args):
     return join(abspath(dirname(__file__)), *args)
 
 
+if DEBUG:
+   ALLOWED_HOSTS = ['*']
+
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'local.db',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'demuser',
+        'PASSWORD': 'dempass',
+        'HOST': 'localhost',
+        'PORT': 5432
     },
-    'mp_testdb': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'test.db',
-        'TEST': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': 'test.db',
-        }
-    }
 }
-
-if 'test' in sys.argv and '--tag=multiprocessing' in sys.argv:
-    print("detected multiprocessing in sys.argv: {}".format(sys.argv))
-    DATABASES['default'] = DATABASES['mp_testdb']
-    from pprint import pprint
-    pprint(DATABASES['default'])
-
 
 INSTALLED_APPS = (
     'django.contrib.auth',

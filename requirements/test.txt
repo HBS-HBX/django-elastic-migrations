@@ -13,6 +13,7 @@ idna==2.7                 # via requests
 ipaddress==1.0.22         # via elasticsearch-dsl
 multiprocessing-logging==0.2.6
 pluggy==0.8.0             # via tox
+psycopg2==2.7.6.1
 py==1.7.0                 # via tox
 python-dateutil==2.7.5    # via elasticsearch-dsl
 pytz==2018.7              # via django

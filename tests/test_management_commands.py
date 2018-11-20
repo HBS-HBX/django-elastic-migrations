@@ -311,8 +311,7 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         self.assertEqual(num_docs, 2)
 
 
-@skip("Skipped multiprocessing tests until SQLLite can be integrated into test setup")
-# @tag('multiprocessing')
+@skip("Skipped multiprocessing tests until postgres can be integrated into test setup")
 class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     """
     Tests `./manage.py es_update --workers`, which uses multiprocessing.

@@ -23,6 +23,13 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+  db:
+    image: postgres
+    ports:
+    - "5432:5432"
+    environment:
+      POSTGRES_USER: "demuser"
+      POSTGRES_PASSWORD: "dempass"
 
 # uncomment to get kibana, which can be useful for analyzing index contents
 # this is currently not a required part of testing infrastructure, just left here for convenience
