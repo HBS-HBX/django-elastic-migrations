@@ -25,6 +25,7 @@ services:
       retries: 10
   db:
     image: postgres
+    restart: always
     ports:
     - "5432:5432"
     environment:
