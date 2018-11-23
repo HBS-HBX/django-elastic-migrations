@@ -32,9 +32,9 @@ if DEBUG:
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'demuser',
-        'USER': 'demuser',
-        'PASSWORD': 'dempass',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
         'HOST': 'localhost',
         'PORT': 5432
     },
@@ -116,4 +116,4 @@ DJANGO_ELASTIC_MIGRATIONS_INDEXES = [
     "tests.search.MovieSearchIndex",
 ]
 
-DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = "test_"
+# DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = "test_"

@@ -321,7 +321,7 @@ to see the available ``make`` targets.
 Elasticsearch Docker Compose
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``docker-compose -f local.yml up``
+``docker-compose up``
 
 `See docs/docker_setup for more info <./docs/docker_setup.rst>`_
 

@@ -7,7 +7,7 @@ class DEMTestCase(TestCase):
 
     def setUp(self):
         DEMIndexManager.test_pre_setup()
-        super(DEMTestCase, self)._pre_setup()
+        super(DEMTestCase, self).setUp()
 
     def tearDown(self):
         DEMIndexManager.test_post_teardown()
