@@ -49,7 +49,7 @@ To run in a detached (background) mode, just::
 
 To run the psql shell for postgres::
 
-    $ docker-compose exec -u postgres postgres psql
+    $ docker-compose exec -u postgres db psql
 
 
 Tips & Tricks
