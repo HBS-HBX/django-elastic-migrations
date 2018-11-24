@@ -14,3 +14,8 @@ class DEMTestCaseMixin(object):
     def tearDown(self):
         DEMIndexManager.test_pre_teardown()
         super(DEMTestCaseMixin, self).tearDown()
+
+    @classmethod
+    def tearDownClass(cls):
+        DEMIndexManager.test_post_teardown()
+        super().tearDownClass()

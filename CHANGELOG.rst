@@ -10,7 +10,6 @@ Changelog
 * fix ``DEMIndexManager.initialize()`` not updating ``DEMDocType`` to point to new active version after ``es_activate``
 * document ``DEMTestCaseMixin`` as the recommended way to support ``django-elastic-migrations`` in tests
 * deprecate ``DEMIndexManager.test_pre_setup``; will be removed in future version
-* deprecate ``DEMIndexManager.test_post_teardown``; will be removed in future version
 
 0.8.2 (2018-11-20)
 ^^^^^^^^^^^^^^^^^^

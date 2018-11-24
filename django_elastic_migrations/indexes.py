@@ -297,12 +297,6 @@ class DEMIndexManager(object):
 
     @classmethod
     def test_post_teardown(cls):
-        """
-        Called *BEFORE* teardown in DEMTestCase; this method will be removed in favor of test_pre_teardown()
-        """
-        logger.warning("DEMIndexManager.test_post_teardown is deprecated in 0.9.0 and will be removed "
-                       "in a future version. Please update your code to use DEMIndexManager.test_pre_teardown() "
-                       "instead.")
         cls.test_pre_teardown()
 
     @classmethod
