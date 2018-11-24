@@ -36,6 +36,7 @@ install: pip install -r requirements/travis.txt
 before_script:
   - psql -c "CREATE DATABASE pgdb;" -U postgres
   - psql -c "CREATE USER pguser WITH PASSWORD 'pgpass';" -U postgres
+  - psql -c "ALTER USER pguser CREATEDB;" -U postgres
   # sleep for elasticsearch
   - sleep 10
 
