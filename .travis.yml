@@ -12,6 +12,11 @@ branches:
 services:
   - postgresql
 
+# by default travis uses postgres 9.2, and django 2.1 dropped support for it
+# this enables 9.4
+addons:
+  postgresql: "9.4"
+
 matrix:
   include:
     - env: TOX_ENV=py35-django110-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
