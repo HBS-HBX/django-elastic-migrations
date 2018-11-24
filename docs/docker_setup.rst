@@ -23,7 +23,7 @@ Build the Stack (currently unnecessary)
 Currently, the dev stack consists of prebuilt images. In the future,
 if custom docker images are added to the compose file, this may be necessary::
 
-    $ docker-compose -f local.yml build
+    $ docker-compose build --no-cache
 
 
 Run the Stack
@@ -33,19 +33,11 @@ This brings up Elasticsearch. The first time it is run it might take a while to 
 
 Open a terminal at the project root and run the following for local development::
 
-    $ docker-compose -f local.yml up
-
-You can also set the environment variable ``COMPOSE_FILE`` pointing to ``local.yml`` like this::
-
-    $ export COMPOSE_FILE=local.yml
-
-And then run::
-
     $ docker-compose up
 
-To run in a detached (background) mode, just::
+To rebuild the stack after ``docker-compose build --no-cache``, run this first::
 
-    $ docker-compose up -d
+    $ docker-compose down
 
 To run the psql shell for postgres::
 
