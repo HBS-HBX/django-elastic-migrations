@@ -28,13 +28,13 @@ matrix:
     - env: TOX_ENV=py35-django21-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
       python: 3.5
     - env: TOX_ENV=py36-django110-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
+      python: 3.6
     - env: TOX_ENV=py36-django111-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
+      python: 3.6
     - env: TOX_ENV=py36-django20-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
+      python: 3.6
     - env: TOX_ENV=py36-django21-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
+      python: 3.6
 
 before_install:
   - pip install --upgrade pip

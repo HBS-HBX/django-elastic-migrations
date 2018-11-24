@@ -249,14 +249,6 @@ Django Testing
 ^^^^^^^^^^^^^^
 
 
-#. (optional) update ``DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX`` in
-   your Django settings. The default test prefix is ``test_``.  Every
-   test will create its own indexes.
-   ::
-
-       if 'test' in sys.argv:
-           DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = 'test_'
-
 #. Override ``TestCase`` to provide test isolation when search indexes are involved
    ::
 

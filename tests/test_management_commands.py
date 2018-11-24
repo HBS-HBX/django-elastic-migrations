@@ -11,6 +11,7 @@ from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
 from django.template.defaultfilters import pluralize
 from django.test import TestCase, TransactionTestCase
+from elasticsearch import RequestError
 from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager, es_client
@@ -478,7 +479,13 @@ class TestEsDangerousResetManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase
         self.assertEqual(num_docs, 2, "After updating the index, it should have had two documents in elasticsearch")
 
         hidden_index_name = ".hidden-index"
-        es_client.indices.create(hidden_index_name)
+        try:
+            es_client.indices.create(hidden_index_name)
+        except RequestError as ex:
+            if ex.status_code == 400 and ex.error == "resource_already_exists_exception":
+                pass
+            else:
+                raise ex
 
         # destroy the indexes as well as the Index, IndexVersion, IndexAction objects
         call_command('es_dangerous_reset')
@@ -699,7 +706,13 @@ class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCaseMixin, Tes
     def test_es_list_es_only(self):
         scenario = "es_list --es_only should only show indexes that do not have a . as the first char"
         hidden_index_name = ".hidden-index"
-        es_client.indices.create(hidden_index_name)
+        try:
+            es_client.indices.create(hidden_index_name)
+        except RequestError as ex:
+            if ex.status_code == 400 and ex.error == "resource_already_exists_exception":
+                pass
+            else:
+                raise ex
 
         rows = []
         for index_name, index_info in es_client.indices.stats(metric=['docs'])['indices'].items():
