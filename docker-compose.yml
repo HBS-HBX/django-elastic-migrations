@@ -29,9 +29,9 @@ services:
     ports:
     - "5432:5432"
     environment:
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "postgres"
-      POSTGRES_DB: "postgres"
+      POSTGRES_USER: "pguser"
+      POSTGRES_PASSWORD: "pgpass"
+      POSTGRES_DB: "pgdb"
 
 # uncomment to get kibana, which can be useful for analyzing index contents
 # this is currently not a required part of testing infrastructure, just left here for convenience

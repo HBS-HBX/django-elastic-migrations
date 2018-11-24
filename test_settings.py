@@ -32,9 +32,9 @@ if DEBUG:
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
+        'NAME': 'pgdb',
+        'USER': 'pguser',
+        'PASSWORD': 'pgpass',
         'HOST': 'localhost',
         'PORT': 5432
     },
