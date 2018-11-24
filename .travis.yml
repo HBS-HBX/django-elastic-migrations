@@ -34,7 +34,6 @@ before_install:
 install: pip install -r requirements/travis.txt
 
 before_script:
-  - psql -c "CREATE DATABASE postgres;" -U postgres
   - psql -c "CREATE USER postgres WITH PASSWORD 'postgres';" -U postgres
   # sleep for elasticsearch
   - sleep 10
