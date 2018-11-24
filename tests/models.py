@@ -2,10 +2,8 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 
 
-@python_2_unicode_compatible
 class Movie(models.Model):
     title = models.CharField(max_length=500, unique=True)
     year = models.IntegerField()
