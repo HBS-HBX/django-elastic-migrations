@@ -97,8 +97,9 @@ class MovieSearchDoc(GenericDocType):
     @classmethod
     def get_model_full_text(cls, model):
         full_text = ""
-        for field in ['genere', 'director', 'writer', 'actors', 'plot', 'production', 'title']:
-            full_text = "{} {}".format(full_text, field)
+        for field in ['genre', 'director', 'writer', 'actors', 'plot', 'production', 'title']:
+            value = getattr(model, field)
+            full_text = "{} {}".format(full_text, value)
         return full_text
 
     @classmethod

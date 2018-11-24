@@ -9,12 +9,12 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 from elasticsearch import TransportError
 from elasticsearch_dsl.exceptions import IllegalOperation
 
-from django_elastic_migrations.utils.test_utils import DEMTestCase
+from django_elastic_migrations.utils.test_utils import DEMTestCaseMixin
 from tests.es_config import ES_CLIENT
 from tests.search import MovieSearchIndex
 
 
-class TestDEMIndex(DEMTestCase):
+class TestDEMIndex(DEMTestCaseMixin):
     """
     Tests of the Index model.
     """

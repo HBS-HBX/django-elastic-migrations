@@ -257,21 +257,16 @@ Django Testing
        if 'test' in sys.argv:
            DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = 'test_'
 
-#. Override TestCase - ``test_utilities.py``
+#. Override ``TestCase`` to provide test isolation when search indexes are involved
+   ::
 
-   .. code-block::
+       from django_elastic_migrations.utils.test_utils import DEMTestCaseMixin
 
-       from django_elastic_migrations import DEMIndexManager
+       class MyTestCase(DEMTestCaseMixin, TestCase):
+           """
+           Set up and tear down temporary elasticsearch test indexes for each test
+           """
 
-       class MyTestCase(TestCase):
-
-           def _pre_setup(self):
-               DEMIndexManager.test_pre_setup()
-               super(MyTestCase, self)._pre_setup()
-
-           def _post_teardown(self):
-               DEMIndexManager.test_post_teardown()
-               super(MyTestCase, self)._post_teardown()
 
 Excluding from Django's ``dumpdata`` command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

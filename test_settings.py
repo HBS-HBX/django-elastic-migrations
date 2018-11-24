@@ -115,5 +115,3 @@ DJANGO_ELASTIC_MIGRATIONS_CLOSE_CONNECTIONS = "tests.es_config.dem_close_service
 DJANGO_ELASTIC_MIGRATIONS_INDEXES = [
     "tests.search.MovieSearchIndex",
 ]
-
-# DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = "test_"

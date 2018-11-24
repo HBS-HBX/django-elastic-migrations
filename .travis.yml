@@ -9,6 +9,9 @@ branches:
   only:
     - master
 
+services:
+  - postgresql
+
 matrix:
   include:
     - env: TOX_ENV=py35-django110-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
@@ -30,8 +33,10 @@ before_install:
 
 install: pip install -r requirements/travis.txt
 
-# sleep for elasticsearch
 before_script:
+  - psql -c "CREATE DATABASE postgres;" -U postgres
+  - psql -c "CREATE USER postgres WITH PASSWORD 'postgres';" -U postgres
+  # sleep for elasticsearch
   - sleep 10
 
 # command to run tests

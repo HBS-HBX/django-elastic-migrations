@@ -103,7 +103,8 @@ class DEMIndexManager(object):
     @classmethod
     def initialize(cls, create_versions=False, activate_versions=False):
         """
-        Configure DEMIndexManager, loading settings from the database.
+        Configure DEMIndexManager.index_models and DEMIndexManager.instances,
+        index_models from the database, and loading instances from the django settings
         :param create_versions: if True, create a version if settings
                have been changed.
         :param activate_versions: if True, activate the latest version
@@ -282,11 +283,30 @@ class DEMIndexManager(object):
 
     @classmethod
     def test_pre_setup(cls):
+        """
+        Called *AFTER* setup in DEMTestCase; this method will be removed in favor of test_pre_teardown()
+        """
+        logger.warning("DEMIndexManager.test_pre_setup is deprecated in 0.9.0 and will be removed in a future version. "
+                       "Please update your code to use DEMIndexManager.test_post_setup() instead.")
+        cls.test_post_setup()
+
+    @classmethod
+    def test_post_setup(cls):
         cls.test_post_teardown()
         DEMIndexManager.initialize(create_versions=True, activate_versions=True)
 
     @classmethod
     def test_post_teardown(cls):
+        """
+        Called *BEFORE* teardown in DEMTestCase; this method will be removed in favor of test_pre_teardown()
+        """
+        logger.warning("DEMIndexManager.test_post_teardown is deprecated in 0.9.0 and will be removed "
+                       "in a future version. Please update your code to use DEMIndexManager.test_pre_teardown() "
+                       "instead.")
+        cls.test_pre_teardown()
+
+    @classmethod
+    def test_pre_teardown(cls):
         try:
             DEMIndexManager.drop_index(
                 'all', force=True, just_prefix=es_test_prefix, hard_delete=True)
@@ -849,21 +869,28 @@ class DEMIndex(ESIndex):
         if index_version:
             index_version.delete()
 
-    def doc_type(self, doc_type=None):
+    def doc_type(self, doc_type=None) -> DEMDocType:
         """
-        Overrides elasticsearch_dsl.Index.doc_type().
-        Associates a DEMDocType with this DEMIndex, which is a bidirectional
-        association.
+        Overrides elasticsearch_dsl.Index.doc_type() and called during DEMIndexManager.initialize().
 
-        In the case that this DEMIndex has been instantiated
-        as DEMIndex(name, version_id) and attempting to retrieve a doc_type:
-        IF the index version requires a different version of the codebase,
-        this method will raise DEMIndexVersionCodebaseMismatchError.
+        Associates a DEMDocType with this DEMIndex, so that commands
+        directed to this DEMIndex always go to the active index version by
+        querying the DEMIndexManager.
+
+        Sets the active index version name into the DEMDocType, so that
+        DEMDocType.search() queries the active index version.
 
         :returns DEMDocType associated with this DEMIndex (if any)
         """
         if doc_type:
             self.__doc_type = doc_type
+            active_version_name = self.get_active_version_index_name()
+
+            # set the active index version name into the DEMDocType,
+            # so DEMDocType.search() is directed to the active index in elasticsearch
+            if active_version_name and self.__doc_type._doc_type:
+                self.__doc_type._doc_type.index = active_version_name
+
             return super(DEMIndex, self).doc_type(doc_type)
         else:
             if self.get_version_id() and not self.__doc_type:
