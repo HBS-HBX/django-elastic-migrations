@@ -9,6 +9,14 @@ branches:
   only:
     - master
 
+services:
+  - postgresql
+
+# by default travis uses postgres 9.2, and django 2.1 dropped support for it
+# this enables 9.4
+addons:
+  postgresql: "9.4"
+
 matrix:
   include:
     - env: TOX_ENV=py35-django110-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
@@ -19,6 +27,14 @@ matrix:
       python: 3.5
     - env: TOX_ENV=py35-django21-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
       python: 3.5
+    - env: TOX_ENV=py36-django110-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.6
+    - env: TOX_ENV=py36-django111-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.6
+    - env: TOX_ENV=py36-django20-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.6
+    - env: TOX_ENV=py36-django21-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.6
 
 before_install:
   - pip install --upgrade pip
@@ -30,8 +46,11 @@ before_install:
 
 install: pip install -r requirements/travis.txt
 
-# sleep for elasticsearch
 before_script:
+  - psql -c "CREATE DATABASE pgdb;" -U postgres
+  - psql -c "CREATE USER pguser WITH PASSWORD 'pgpass';" -U postgres
+  - psql -c "ALTER USER pguser CREATEDB;" -U postgres
+  # sleep for elasticsearch
   - sleep 10
 
 # command to run tests

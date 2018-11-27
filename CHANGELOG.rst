@@ -1,6 +1,16 @@
 Changelog
 ---------
 
+0.9.0 (2018-11-27)
+^^^^^^^^^^^^^^^^^^
+* added postgres to docker-compose and travis, and started using postgres for all tests instead of sqlite
+* fix `#30 multiprocessing tests <https://github.com/HBS-HBX/django-elastic-migrations/issues/30>`_
+* fix ``tests.search.MovieSearchDoc.get_model_full_text()`` not indexing non-title fields
+* fix ``./manage.py es_update -v=3`` not respecting the verbosity flag
+* fix ``DEMIndexManager.initialize()`` not updating ``DEMDocType`` to point to new active version after ``es_activate``
+* document ``DEMTestCaseMixin`` as the recommended way to support ``django-elastic-migrations`` in tests
+* deprecate ``DEMIndexManager.test_pre_setup``; will be removed in future version
+
 0.8.2 (2018-11-20)
 ^^^^^^^^^^^^^^^^^^
 * fix `#59 twine check error in 0.8.1 <https://github.com/HBS-HBX/django-elastic-migrations/issues/59>`_

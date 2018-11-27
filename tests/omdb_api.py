@@ -4,15 +4,9 @@ import os
 from pprint import pprint
 
 import requests
-from six import python_2_unicode_compatible
 
-try:
-    # py3
-    # noinspection PyCompatibility
-    from urllib.parse import urlencode as encoder
-except ImportError:
-    # py2
-    from urllib import urlencode as encoder
+# noinspection PyCompatibility
+from urllib.parse import urlencode as encoder
 
 
 class OmdbAPIError(Exception):
@@ -27,7 +21,6 @@ class OmdbAPIMovieNotFoundError(OmdbAPIError):
     """
 
 
-@python_2_unicode_compatible
 class OmdbAPIQuery(object):
     BASE_URL = "http://www.omdbapi.com"
     DEFAULT_API_KEY = 'Get your own from https://www.omdbapi.com/apikey.aspx'

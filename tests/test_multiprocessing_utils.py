@@ -6,7 +6,7 @@ from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiPro
 
 
 def add_1(num):
-    return { 'job_id': num, 'result': num + 1 }
+    return {'job_id': num, 'result': num + 1}
 
 
 class TestMultiprocessingUtils(TestCase):

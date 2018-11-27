@@ -35,6 +35,7 @@ packaging==18.0           # via caniusepython3
 pip-tools==3.1.0
 pkginfo==1.4.2            # via twine
 pluggy==0.8.0             # via tox
+psycopg2==2.7.6.1
 py==1.7.0                 # via tox
 pycodestyle==2.4.0
 pydocstyle==3.0.0
@@ -54,11 +55,12 @@ snowballstemmer==1.2.1    # via pydocstyle
 texttable==1.5.0
 toml==0.10.0              # via tox
 tox-battery==0.5.1
+tox-pyenv==1.1.0
 tox==3.5.3
 tqdm==4.28.1              # via twine
 twine==1.12.1
 urllib3==1.24.1           # via elasticsearch, requests
 virtualenv==16.1.0        # via tox
 webencodings==0.5.1       # via bleach
-wheel==0.32.2
+wheel==0.32.3
 wrapt==1.10.11            # via astroid

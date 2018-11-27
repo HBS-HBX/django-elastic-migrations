@@ -249,29 +249,16 @@ Django Testing
 ^^^^^^^^^^^^^^
 
 
-#. (optional) update ``DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX`` in
-   your Django settings. The default test prefix is ``test_``.  Every
-   test will create its own indexes.
+#. Override ``TestCase`` to provide test isolation when search indexes are involved
    ::
 
-       if 'test' in sys.argv:
-           DJANGO_ELASTIC_MIGRATIONS_ENVIRONMENT_PREFIX = 'test_'
+       from django_elastic_migrations.utils.test_utils import DEMTestCaseMixin
 
-#. Override TestCase - ``test_utilities.py``
+       class MyTestCase(DEMTestCaseMixin, TestCase):
+           """
+           Set up and tear down temporary elasticsearch test indexes for each test
+           """
 
-   .. code-block::
-
-       from django_elastic_migrations import DEMIndexManager
-
-       class MyTestCase(TestCase):
-
-           def _pre_setup(self):
-               DEMIndexManager.test_pre_setup()
-               super(MyTestCase, self)._pre_setup()
-
-           def _post_teardown(self):
-               DEMIndexManager.test_post_teardown()
-               super(MyTestCase, self)._post_teardown()
 
 Excluding from Django's ``dumpdata`` command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -321,7 +308,7 @@ to see the available ``make`` targets.
 Elasticsearch Docker Compose
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``docker-compose -f local.yml up``
+``docker-compose up``
 
 `See docs/docker_setup for more info <./docs/docker_setup.rst>`_
 

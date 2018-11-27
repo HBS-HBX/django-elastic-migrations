@@ -1,21 +1,24 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import logging
+import re
 from datetime import datetime, timedelta
+from random import random, sample
 from typing import NamedTuple, List, Iterable, Tuple
-from unittest import skip
 from unittest.mock import patch
 
 from django.contrib.humanize.templatetags.humanize import ordinal
 from django.core.management import call_command
 from django.template.defaultfilters import pluralize
+from django.test import TestCase, TransactionTestCase
+from elasticsearch import RequestError
 from texttable import Texttable
 
 from django_elastic_migrations import DEMIndexManager, es_client
 from django_elastic_migrations.indexes import DEMIndex
 from django_elastic_migrations.management.commands.es_list import EsListRow
 from django_elastic_migrations.models import Index, IndexVersion, IndexAction
-from django_elastic_migrations.utils.test_utils import DEMTestCase
+from django_elastic_migrations.utils.test_utils import DEMTestCaseMixin
 from tests.es_config import ES_CLIENT
 from tests.models import Movie
 from tests.search import MovieSearchIndex, MovieSearchDoc, get_new_search_index, alternate_textfield, DefaultNewSearchDocTypeMixin
@@ -197,7 +200,7 @@ class CommonDEMTestUtilsMixin(object):
         self.maxDiff = max_diff_backup
 
 
-class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCaseMixin, TestCase):
     """
     Tests ./manage.py es_update
     """
@@ -205,7 +208,12 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     fixtures = ['tests/tests_initial.json']
 
     def test_basic_invocation(self):
-        self.check_basic_setup_and_get_models()
+        index_model, _, _ = self.check_basic_setup_and_get_models()
+
+        # ensure that the active version is one of those queried with MovieSearchDoc.search()
+        self.assertIn(index_model.active_version.name, MovieSearchDoc.search()._index)
+        # ensure that the active version is the only one queried in MovieSearchDoc.search()
+        self.assertEqual(len(MovieSearchDoc.search()._index), 1)
 
         num_docs = MovieSearchIndex.get_num_docs()
         self.assertEqual(num_docs, 0)
@@ -311,37 +319,52 @@ class TestEsUpdateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
         self.assertEqual(num_docs, 2)
 
 
-@skip("Skipped multiprocessing tests until SQLLite can be integrated into test setup")
-# @tag('multiprocessing')
-class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCaseMixin, TransactionTestCase):
     """
     Tests `./manage.py es_update --workers`, which uses multiprocessing.
+    Uses TransactionTestCase instead of TestCase because TestCase wraps the test in an atomic() block,
+    and multiprocessing requires disconnecting the database connection, which is obviously
+    not something you can do within an atomic() block.
     """
 
     fixtures = ['tests/100films.json']
 
     def test_workers_and_batch_size_flags(self):
+
         index_model, _, _ = self.check_basic_setup_and_get_models()
+
+        # ensure that the active version is one of those queried with MovieSearchDoc.search()
+        self.assertIn(index_model.active_version.name, MovieSearchDoc.search()._index)
+        # ensure that the active version is the only one queried in MovieSearchDoc.search()
+        self.assertEqual(len(MovieSearchDoc.search()._index), 1)
 
         num_docs_indexed = MovieSearchIndex.get_num_docs()
         expected_docs = "Expected the movies index to have zero docs to start, instead, it had {}".format(num_docs_indexed)
         self.assertEqual(num_docs_indexed, 0, expected_docs)
 
         expected_num_movies = 100
-        num_movies = Movie.objects.all().count()
+        movie_ids = list(Movie.objects.all().values_list('id', flat=True))
+        num_movies = len(movie_ids)
         self.assertEqual(num_movies, expected_num_movies)
 
-        es_update_cmd = "es_update movies --workers --batch-size=10"
+        es_update_cmd = "es_update movies --workers --batch-size=10 --verbosity=3"
         call_command(*es_update_cmd.split())
 
         num_docs_indexed = MovieSearchIndex.get_num_docs()
         self.assertEqual(num_docs_indexed, 100)
 
-        movie_title = "Melancholia"
-        movie = Movie.objects.get(title=movie_title)
-        results = MovieSearchDoc.get_search(movie_title).execute()
-        first_result = results[0]
-        self.assertEqual(str(movie.id), first_result.meta.id)
+        # pick 10 movies out at random and search for title, writer, and director
+        # assert that our result is one of the choices returned from elasticsearch
+        failed_msg = "searched for {title}'s {field} ({value}), but the movie wasn't in search results: '{results}'"
+        for movie in Movie.objects.filter(id__in=sample(movie_ids, 10)):
+            for field in ['title', 'writer', 'director']:
+                value = getattr(movie, field)
+                if value:
+                    value_without_parens = re.sub(r'\([^)]*\)', '', value)
+                    search_val = " ".join(value_without_parens.split()[:2])
+                    results = MovieSearchDoc.get_search(search_val).execute()
+                    msg = failed_msg.format(field=field, value=search_val, title=movie.title, results=str(results))
+                    self.assertIn(str(movie.id), [r.meta.id for r in results], msg)
 
         after_phrase = "After `{}`,".format(es_update_cmd)
         last_actions = self.check_last_index_actions(
@@ -366,7 +389,39 @@ class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase)
         update_index_action = last_actions[0]
         self.assertEqual(update_index_action.docs_affected, 100)
 
+        # check
+        expected_logs = [
+            "All child tasks are completed successfully",
+            "Completed updating index {}:".format(index_model.active_version.name),
+            " # successful updates: 100",
+            " # failed updates: 0",
+            " # total docs attempted to update: 100",
+            " # batch size: 10",
+            " # batch avg num docs: 10.0",
+            " # batch avg runtime: ",
+            " # total runtime: ",
+            " # docs per second: ",
+            " # workers: ",
+            " # verbosity: 3",
+        ]
+        for expected_log in expected_logs:
+            self.assertIn(expected_log, update_index_action.log)
+
+        # the rest of this test verifies items about the child actions - the PartialUpdateIndexActions.
+
         partial_index_update_actions = last_actions[1:]
+
+        expected_logs = [
+            "# batch successful updates: 10",
+            "# batch failed updates: 0",
+            "# batch docs attempted to update: 10",
+            "# batch runtime: ",
+            "# parent total docs updated: ",
+            "# parent total docs expected: 100",
+            "# parent total docs remaining: ",
+            "# parent estimated runtime remaining: ",
+            "# num workers: "
+        ]
 
         for i, partial_action in enumerate(partial_index_update_actions):
             self.assertEqual(partial_action.docs_affected, 10)
@@ -374,8 +429,13 @@ class TestEsUpdateWorkersManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase)
             self.assertEqual(kwargs["start_index"], i * 10)
             self.assertEqual(kwargs["end_index"], min((i + 1) * 10, 100))
 
+            if random() < 0.25:
+                # spot check 25% of the records for expected log messages
+                for expected_log in expected_logs:
+                    self.assertIn(expected_log, partial_action.log)
 
-class TestEsDangerousResetManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+
+class TestEsDangerousResetManagementCommand(CommonDEMTestUtilsMixin, DEMTestCaseMixin, TestCase):
     """
     Tests ./manage.py es_dangerous_reset
     """
@@ -419,7 +479,13 @@ class TestEsDangerousResetManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase
         self.assertEqual(num_docs, 2, "After updating the index, it should have had two documents in elasticsearch")
 
         hidden_index_name = ".hidden-index"
-        es_client.indices.create(hidden_index_name)
+        try:
+            es_client.indices.create(hidden_index_name)
+        except RequestError as ex:
+            if ex.status_code == 400 and ex.error == "resource_already_exists_exception":
+                pass
+            else:
+                raise ex
 
         # destroy the indexes as well as the Index, IndexVersion, IndexAction objects
         call_command('es_dangerous_reset')
@@ -449,7 +515,7 @@ class TestEsDangerousResetManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase
         self.assertEqual(num_docs, 0, "After es_dangerous_reset, no documents should be in elasticsearch")
 
 
-class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCaseMixin, TestCase):
     """
     Tests ./manage.py es_create
     """
@@ -539,7 +605,7 @@ class TestEsCreateManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                 self.assertEqual(available_versions_num, 2, expected_msg)
 
 
-class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCaseMixin, TestCase):
     """
     Tests ./manage.py es_drop
     """
@@ -615,7 +681,7 @@ class TestEsDropManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
                 self.assertFalse(deleted_model.is_deleted, expected_msg)
 
 
-class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
+class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCaseMixin, TestCase):
     """
     Test that es_list output is formatted as expected
     """
@@ -640,7 +706,13 @@ class TestEsListManagementCommand(CommonDEMTestUtilsMixin, DEMTestCase):
     def test_es_list_es_only(self):
         scenario = "es_list --es_only should only show indexes that do not have a . as the first char"
         hidden_index_name = ".hidden-index"
-        es_client.indices.create(hidden_index_name)
+        try:
+            es_client.indices.create(hidden_index_name)
+        except RequestError as ex:
+            if ex.status_code == 400 and ex.error == "resource_already_exists_exception":
+                pass
+            else:
+                raise ex
 
         rows = []
         for index_name, index_info in es_client.indices.stats(metric=['docs'])['indices'].items():

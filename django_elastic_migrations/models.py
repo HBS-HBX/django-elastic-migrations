@@ -248,7 +248,7 @@ class IndexAction(models.Model):
     def __init__(self, *args, **kwargs):
         action = self._meta.get_field('action')
         action.default = self.DEFAULT_ACTION
-        self.verbosity = kwargs.pop('verbosity', 1)
+        self.verbosity = getattr(self, 'verbosity', None) or kwargs.pop('verbosity', 1)
         super(IndexAction, self).__init__(*args, **kwargs)
 
     def __str__(self):
@@ -848,6 +848,7 @@ class UpdateIndexAction(NewerModeMixin, IndexAction):
             'workers': 0,
             'batch_size': 0,
             'start_date': None,
+            'verbosity': 1
         }
         self.self_kwargs = {}
         # loop through each expected kwarg, and fill in self.resume_mode, etc
@@ -1214,7 +1215,7 @@ class PartialUpdateIndexAction(UpdateIndexAction):
                 " # parent total docs expected: {_total_docs_expected}\n"
                 " # parent total docs remaining: {_total_docs_remaining} ({_total_docs_remaining_pct}%)\n"
                 " # parent estimated runtime remaining: {_expected_parent_runtime}\n"
-                " # num workers {_workers}\n"
+                " # num workers: {_workers}\n"
                 " # pid: {_pid}\n"
                 " # IndexAction id: {id}\n"
             ),
