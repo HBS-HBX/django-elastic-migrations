@@ -12,36 +12,19 @@ branches:
 services:
   - postgresql
 
-# by default travis uses postgres 9.2, and django 2.1 dropped support for it
-# this enables 9.4
-addons:
-  postgresql: "9.4"
-
 matrix:
   include:
-    - env: TOX_ENV=py35-django110-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
-    - env: TOX_ENV=py35-django111-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
-    - env: TOX_ENV=py35-django20-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
-    - env: TOX_ENV=py35-django21-es60 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.5
-    - env: TOX_ENV=py36-django110-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
-    - env: TOX_ENV=py36-django111-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
-    - env: TOX_ENV=py36-django20-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
-    - env: TOX_ENV=py36-django21-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
     - env: TOX_ENV=py38-django22-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.8
+    - env: TOX_ENV=py38-django30-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.8
+    - env: TOX_ENV=py38-django31-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
       python: 3.8
 
 
 
 before_install:
-  - pip install pip==9.0.1
+  - pip install pip==21.0.1
   # work around https://github.com/travis-ci/travis-ci/issues/8363
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
   - echo "deb $ES_APT_URL stable main" | sudo tee -a /etc/apt/sources.list.d/elk.list
