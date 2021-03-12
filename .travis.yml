@@ -1,9 +1,9 @@
 # Config file for automatic testing at travis-ci.org
 
 language: python
-python: 3.6
+python: 3.8
 
-dist: trusty
+dist: focal
 
 branches:
   only:
@@ -35,6 +35,10 @@ matrix:
       python: 3.6
     - env: TOX_ENV=py36-django21-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
       python: 3.6
+    - env: TOX_ENV=py38-django22-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.8
+
+
 
 before_install:
   - pip install pip==9.0.1
