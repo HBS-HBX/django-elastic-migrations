@@ -50,7 +50,7 @@ setup(
     include_package_data=True,
     install_requires=[
         # TBD: GH issue #3 includes support for elasticsearch-dsl>=6.2.0
-        "Django>=1.8,<=2.2", "elasticsearch-dsl>=6.0.0,<6.2.0", "texttable>=1.2.1",
+        "Django>=1.8,<=3.1", "elasticsearch-dsl>=6.0.0,<6.2.0", "texttable>=1.2.1",
         "multiprocessing-logging>=0.2.6"
     ],
     zip_safe=False,
