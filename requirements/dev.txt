@@ -4,63 +4,70 @@
 #
 #    pip-compile --output-file requirements/dev.txt requirements/base.in requirements/dev.in requirements/quality.in
 #
-argparse==1.4.0           # via caniusepython3
-astroid==1.5.3            # via edx-lint, pylint, pylint-celery
-backports.functools-lru-cache==1.5  # via caniusepython3
-bleach==3.0.2             # via readme-renderer
-caniusepython3==7.0.0
-certifi==2018.10.15       # via requests
-chardet==3.0.4            # via requests
-click-log==0.1.8          # via edx-lint
-click==7.0                # via click-log, edx-lint, pip-tools
-diff-cover==1.0.5
-distlib==0.2.8            # via caniusepython3
-django==2.1.3
-docutils==0.14            # via readme-renderer
+astroid==1.5.3
+    # via
+    #   edx-lint
+    #   pylint
+    #   pylint-celery
+backports.functools-lru-cache==1.6.1
+    # via caniusepython3
+caniusepython3==7.3.0
+    # via -r requirements/quality.in
+certifi==2018.10.15
+    # via requests
+chardet==3.0.4
+    # via requests
+click-log==0.1.8
+    # via edx-lint
+click==7.0
+    # via
+    #   click-log
+    #   edx-lint
+distlib==0.3.1
+    # via caniusepython3
 edx-lint==0.6.0
-elasticsearch-dsl==6.1.0
-elasticsearch==6.3.1      # via elasticsearch-dsl
-filelock==3.0.10          # via tox
-idna==2.7                 # via requests
-inflect==2.1.0            # via jinja2-pluralize
-ipaddress==1.0.22         # via elasticsearch-dsl
+    # via -r requirements/quality.in
+idna==2.7
+    # via requests
 isort==4.3.4
-jinja2-pluralize==0.3.0   # via diff-cover
-jinja2==2.10              # via diff-cover, jinja2-pluralize
-lazy-object-proxy==1.3.1  # via astroid
-markupsafe==1.1.0         # via jinja2
-mccabe==0.6.1             # via pylint
-multiprocessing-logging==0.2.6
-packaging==18.0           # via caniusepython3
-pip-tools==3.1.0
-pkginfo==1.4.2            # via twine
-pluggy==0.8.0             # via tox
-psycopg2==2.7.6.1
-py==1.7.0                 # via tox
-pycodestyle==2.4.0
-pydocstyle==3.0.0
-pygments==2.2.0           # via diff-cover, readme-renderer
-pylint-celery==0.3        # via edx-lint
-pylint-django==0.7.2      # via edx-lint
-pylint-plugin-utils==0.4  # via pylint-celery, pylint-django
-pylint==1.7.6             # via edx-lint, pylint-celery, pylint-django, pylint-plugin-utils
-pyparsing==2.3.0          # via packaging
-python-dateutil==2.7.5    # via elasticsearch-dsl
-pytz==2018.7              # via django
-readme-renderer==24.0     # via twine
-requests-toolbelt==0.8.0  # via twine
-requests==2.20.1          # via caniusepython3, requests-toolbelt, twine
-six==1.11.0               # via astroid, bleach, diff-cover, edx-lint, elasticsearch-dsl, packaging, pip-tools, pydocstyle, pylint, python-dateutil, readme-renderer, tox
-snowballstemmer==1.2.1    # via pydocstyle
-texttable==1.5.0
-toml==0.10.0              # via tox
-tox-battery==0.5.1
-tox-pyenv==1.1.0
-tox==3.5.3
-tqdm==4.28.1              # via twine
-twine==1.12.1
-urllib3==1.24.1           # via elasticsearch, requests
-virtualenv==16.1.0        # via tox
-webencodings==0.5.1       # via bleach
-wheel==0.32.3
-wrapt==1.10.11            # via astroid
+    # via
+    #   -r requirements/quality.in
+    #   pylint
+lazy-object-proxy==1.3.1
+    # via astroid
+mccabe==0.6.1
+    # via pylint
+packaging==20.9
+    # via caniusepython3
+pycodestyle==2.7.0
+    # via -r requirements/quality.in
+pydocstyle==5.1.1
+    # via -r requirements/quality.in
+pylint-celery==0.3
+    # via edx-lint
+pylint-django==0.7.2
+    # via edx-lint
+pylint-plugin-utils==0.4
+    # via
+    #   pylint-celery
+    #   pylint-django
+pylint==1.7.6
+    # via
+    #   edx-lint
+    #   pylint-celery
+    #   pylint-django
+pyparsing==2.4.7
+    # via packaging
+requests==2.20.1
+    # via caniusepython3
+six==1.11.0
+    # via
+    #   astroid
+    #   edx-lint
+    #   pylint
+snowballstemmer==2.1.0
+    # via pydocstyle
+urllib3==1.24.1
+    # via requests
+wrapt==1.10.11
+    # via astroid
