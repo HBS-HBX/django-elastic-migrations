@@ -63,3 +63,6 @@ requirements/private.txt
 
 # Development task artifacts
 default.db
+
+# Environments
+.venv/*
