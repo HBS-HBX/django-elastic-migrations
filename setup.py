@@ -36,7 +36,7 @@ README = open('README.rst').read()
 CHANGELOG = open('CHANGELOG.rst').read()
 
 setup(
-    name='django-elastic-migrations',
+    name='django-elastic-migrations-local',
     version=VERSION,
     description="""Manage Elasticsearch Indexes in Django""",
     long_description=README + '\n\n' + CHANGELOG,
