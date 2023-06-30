@@ -37,8 +37,6 @@ platformdirs==3.8.0
     # via virtualenv
 pluggy==1.2.0
     # via tox
-psycopg2==2.9.6
-    # via -r requirements/test.in
 py==1.11.0
     # via tox
 python-dateutil==2.8.2

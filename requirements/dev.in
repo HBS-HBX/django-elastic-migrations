@@ -1,7 +1,7 @@
 # Additional requirements for development of this application
 
 edx-lint                  # includes pylint, pylint-django, etc; configured use pylintrc
-psycopg2-binary                  # for postgres
+# psycopg2-binary                  # for postgres
 diff-cover                # Changeset diff test coverage
 pip-tools                 # Requirements file management
 tox<4                       # virtualenv management for tests

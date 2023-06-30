@@ -4,18 +4,12 @@
 #
 #    pip-compile --output-file=requirements/travis.txt requirements/travis.in
 #
-cachetools==5.3.1
-    # via tox
 certifi==2023.5.7
     # via requests
-chardet==5.1.0
-    # via tox
 charset-normalizer==3.1.0
     # via requests
 codecov==2.1.13
     # via -r requirements/travis.in
-colorama==0.4.6
-    # via tox
 coverage==7.2.7
     # via codecov
 distlib==0.3.6
@@ -27,26 +21,20 @@ filelock==3.12.2
 idna==3.4
     # via requests
 packaging==23.1
-    # via
-    #   pyproject-api
-    #   tox
+    # via tox
 platformdirs==3.8.0
-    # via
-    #   tox
-    #   virtualenv
+    # via virtualenv
 pluggy==1.2.0
     # via tox
-psycopg2-binary==2.9.6
-    # via -r requirements/travis.in
-pyproject-api==1.5.2
+py==1.11.0
     # via tox
 requests==2.31.0
     # via codecov
+six==1.16.0
+    # via tox
 tomli==2.0.1
-    # via
-    #   pyproject-api
-    #   tox
-tox==4.6.3
+    # via tox
+tox==3.28.0
     # via
     #   -r requirements/travis.in
     #   tox-battery

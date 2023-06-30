@@ -111,8 +111,6 @@ pluggy==1.2.0
     # via
     #   diff-cover
     #   tox
-psycopg2-binary==2.9.6
-    # via -r requirements/dev.in
 py==1.11.0
     # via tox
 pycodestyle==2.10.0

@@ -29,15 +29,22 @@ if DEBUG:
    ALLOWED_HOSTS = ['*']
 
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'pgdb',
+#         'USER': 'pguser',
+#         'PASSWORD': 'pgpass',
+#         'HOST': 'localhost',
+#         'PORT': 5432
+#     },
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pgdb',
-        'USER': 'pguser',
-        'PASSWORD': 'pgpass',
-        'HOST': 'localhost',
-        'PORT': 5432
-    },
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": "memory"
+    }
 }
 
 INSTALLED_APPS = (
