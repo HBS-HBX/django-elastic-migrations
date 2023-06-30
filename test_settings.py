@@ -1,4 +1,3 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
 """
 These settings are here to use during tests, because django requires them.
 
@@ -26,8 +25,7 @@ def root(*args):
 
 
 if DEBUG:
-   ALLOWED_HOSTS = ['*']
-
+    ALLOWED_HOSTS = ['*']
 
 # DATABASES = {
 #     'default': {
@@ -111,6 +109,8 @@ LOGGING = {
     },
 }
 logging_config.dictConfig(LOGGING)
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # logger = logging.getLogger(__name__)
 # logger.debug("using cwd {}".format(root()))
