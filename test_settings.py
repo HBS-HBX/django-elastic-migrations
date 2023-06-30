@@ -110,7 +110,7 @@ LOGGING = {
 }
 logging_config.dictConfig(LOGGING)
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # logger = logging.getLogger(__name__)
 # logger.debug("using cwd {}".format(root()))
