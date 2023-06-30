@@ -6,18 +6,12 @@
 #
 asgiref==3.7.2
     # via django
-cachetools==5.3.1
-    # via tox
 certifi==2023.5.7
     # via requests
-chardet==5.1.0
-    # via tox
 charset-normalizer==3.1.0
     # via requests
 codecov==2.1.13
     # via -r requirements/test.in
-colorama==0.4.6
-    # via tox
 coverage==7.2.7
     # via
     #   -r requirements/test.in
@@ -38,18 +32,14 @@ ipaddress==1.0.23
 multiprocessing-logging==0.3.4
     # via -r requirements/base.in
 packaging==23.1
-    # via
-    #   pyproject-api
-    #   tox
+    # via tox
 platformdirs==3.8.0
-    # via
-    #   tox
-    #   virtualenv
+    # via virtualenv
 pluggy==1.2.0
     # via tox
 psycopg2==2.9.6
     # via -r requirements/test.in
-pyproject-api==1.5.2
+py==1.11.0
     # via tox
 python-dateutil==2.8.2
     # via elasticsearch-dsl
@@ -59,15 +49,14 @@ six==1.16.0
     # via
     #   elasticsearch-dsl
     #   python-dateutil
+    #   tox
 sqlparse==0.4.4
     # via django
 texttable==1.6.7
     # via -r requirements/base.in
 tomli==2.0.1
-    # via
-    #   pyproject-api
-    #   tox
-tox==4.6.3
+    # via tox
+tox==3.28.0
     # via
     #   -r requirements/test.in
     #   tox-battery

@@ -3,5 +3,5 @@
 codecov        # for https://codecov.io/ github integration
 coverage       # for quick, one-off coverage tests
 psycopg2       # for postgres
-tox            # virtualenv management for tests
+tox<4          # virtualenv management for tests
 tox-battery    # Makes tox aware of requirements file changes

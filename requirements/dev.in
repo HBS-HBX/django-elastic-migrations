@@ -4,7 +4,7 @@ edx-lint                  # includes pylint, pylint-django, etc; configured use 
 psycopg2-binary                  # for postgres
 diff-cover                # Changeset diff test coverage
 pip-tools                 # Requirements file management
-tox                       # virtualenv management for tests
+tox<4                       # virtualenv management for tests
 tox-battery               # Makes tox aware of requirements file changes
 tox-pyenv                 # be able to run multiple pyenv versions with tox
 twine                     # uploading new versions to pypi

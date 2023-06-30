@@ -2,5 +2,5 @@
 
 codecov                   # Code coverage reporting
 psycopg2-binary                  # for postgres
-tox                       # Virtualenv management for tests
+tox<4                       # Virtualenv management for tests
 tox-battery               # Makes tox aware of requirements file changes
