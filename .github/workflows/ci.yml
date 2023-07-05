@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - master
+  # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
   pull_request:
     branches:
       - master
-  pull_request_target:
-    branches:
-      - master
+  # disabled because of https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+  #  pull_request_target:
+  #    branches:
+  #      - master
   workflow_dispatch:
 
 jobs:
