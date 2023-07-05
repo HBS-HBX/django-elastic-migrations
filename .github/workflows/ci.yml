@@ -40,9 +40,10 @@ jobs:
           "6.4",
           #          "7.4"
         ]
+        # the version of elasticsearch server to run, not the version of elasticsearch-py to install
         es-version: [
           "6.8.2"
-          #          "7.13.4"
+          "7.13.4"
         ]
 
 
