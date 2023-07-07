@@ -85,6 +85,6 @@ jobs:
           TOX_ENV=$(echo "py${{ matrix.python-version }}-django-${{ matrix.django-version }}-es${{ matrix.es-dsl-version }}" | tr -d .)
           echo -e "TOX_ENV: $TOX_ENV"
           python -m tox -e $TOX_ENV
-#
-#      - name: Publish Coverage Report
-#        uses: codecov/codecov-action@v1
+
+      - name: Publish Coverage Report
+        uses: codecov/codecov-action@v3

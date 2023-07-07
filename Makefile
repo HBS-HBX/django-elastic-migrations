@@ -1,5 +1,5 @@
 .PHONY: clean coverage help \
-	quality requirements selfcheck syncdb load test test-all upgrade validate pylintrc
+	quality requirements selfcheck syncdb load test test-all upgrade validate pylintrc validate_cover
 
 .DEFAULT_GOAL := help
 
@@ -74,3 +74,6 @@ selfcheck: ## check that the Makefile is well-formed
 
 pylintrc: ## check that the Makefile is well-formed
 	edx_lint write pylintrc
+
+validate_cover:
+	curl --data-binary @codecov.yml https://codecov.io/validate
