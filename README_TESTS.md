@@ -2,10 +2,11 @@
 
 ## Running Tests Locally with one version of python on mac
 
-### install postgres - [deprecated / optional for now]
+### [OPTIONAL / deprecated for now] install postgres - 
 * _This is deprecated because for now we are using sqlite for testing_
 * _In time, we may add this back_
-* we need `pg_config` to be installed in order to use python locally
+* we need `pg_config` to be installed in order to install python locally,
+  (that's the only reason we need postgres installed; docker-compose serves postgres for testing)
 * `brew install postgresql`
   * you may need to do `brew tap homebrew/core` first
 
