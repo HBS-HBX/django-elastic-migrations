@@ -74,3 +74,8 @@ selfcheck: ## check that the Makefile is well-formed
 
 pylintrc: ## check that the Makefile is well-formed
 	edx_lint write pylintrc
+
+nuke:
+	@echo "Removing containers, networks, and data... 🧨"
+	@echo
+	docker compose down -v

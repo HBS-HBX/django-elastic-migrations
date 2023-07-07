@@ -1,4 +1,4 @@
-# Running Tests
+# Running Tests and experimenting locally
 
 ## Running Tests Locally with one version of python on mac
 
@@ -24,4 +24,12 @@
 * `make test` to run tests
 
 ## Running Tests Locally with multiple versions of python on mac
+TBD
 
+## Running Elasticsearch and Kibana locally
+* `docker compose up` should bring up kibana as long as it's uncommented
+  * It will take a while to start up
+* run `make test` to run tests, which should create the schema in elasticsearch
+* run `./manage.py es_update all` to update all the indexes
+  * At some point you'll see `"message":"Server running at http://0:5601"}` in kibana service logs
+  * When kibana is ready, you should see `test_movies-1` schema at http://0.0.0.0:5601/ in kibana under `discover`

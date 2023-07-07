@@ -24,7 +24,13 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
-# commented out because right now we're not using postgres for tests
+    volumes:
+      # for normal elasticsearch:
+      # - elasticsearch:/usr/share/elasticsearch/data
+      # for webhippie/elasticsearch:
+      - elasticsearch:/var/lib/elasticsearch
+
+  # commented out because right now we're not using postgres for tests
 # comment back in if we need it for multiprocessing tests
 #  db:
 #    image: postgres
@@ -38,19 +44,21 @@ services:
 
 # uncomment to get kibana, which can be useful for analyzing index contents
 # this is currently not a required part of testing infrastructure, just left here for convenience
-#  kibana:
-#    image: docker.elastic.co/kibana/kibana:6.0.1
-#    depends_on:
-#      elastic:
-#        condition: service_healthy
-#    links:
-#      - elastic
-#    ports:
-#      - 5601:5601
-#    environment:
-#      - "ELASTICSEARCH_URL=http://elastic:9200"
-#    healthcheck:
-#        test: ["CMD", "curl", "-f", "http://localhost:5601"]
-#        interval: 10s
-#        timeout: 10s
-#        retries: 10
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.4.3
+    depends_on:
+      elastic:
+        condition: service_healthy
+    links:
+      - elastic
+    ports:
+      - 5601:5601
+    environment:
+      - "ELASTICSEARCH_URL=http://elastic:9200"
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:5601"]
+        interval: 10s
+        timeout: 10s
+        retries: 10
+volumes:
+    elasticsearch:
