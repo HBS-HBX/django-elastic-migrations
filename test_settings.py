@@ -28,7 +28,7 @@ if DEBUG:
     ALLOWED_HOSTS = ['*']
 
 # commented out because right now we're not using postgres for tests
-# comment back in here and in in docker-compose if we need it for multiprocessing tests
+# comment back in here and in docker-compose if we need it for multiprocessing tests
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
