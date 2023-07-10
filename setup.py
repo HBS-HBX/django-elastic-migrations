@@ -49,7 +49,7 @@ setup(
     license='MIT',
     include_package_data=True,
     install_requires=[
-        "Django>=1.8", "elasticsearch-dsl>=6.4.0<7.0.0", "texttable>=1.2.1",
+        "Django>=1.8", "elasticsearch-dsl>=6.4.0,<7.0.0", "texttable>=1.2.1",
         "multiprocessing-logging>=0.2.6"
     ],
     zip_safe=False,
