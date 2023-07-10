@@ -79,3 +79,42 @@ nuke:
 	@echo "Removing containers, networks, and data... 🧨"
 	@echo
 	docker compose down -v
+
+es-health-local-api:
+	@echo "Assuming you've got docker up, getting health of elasticsearch... 📄"
+	@echo
+	curl 'localhost:9200/_cat/health?format=json&pretty=true'
+	@echo
+
+es-list-indexes-local-api:
+	@echo "Assuming you've got docker up, getting elasticsearch indexes via API call... 📄"
+	curl 'localhost:9200/_cat/indices?format=json&pretty=true'
+
+es-print-java-env:
+	@echo "printing runtime value of ES_JAVA_OPTS"
+	docker-compose run --rm elastic printenv ES_JAVA_OPTS
+
+up: ## check coding style with pycodestyle and pylint
+	@echo "Bringing up elastic 6 in docker 🚀"
+	docker compose up -d --remove-orphans
+
+down:
+	@echo "Destroying local containers, but keeping data volumes intact... 😴"
+	docker compose down
+
+es7up:
+	@echo "Bringing up elastic 7 in docker 🚀"
+	docker compose -f docker-compose-es7.yml up -d --remove-orphans
+
+es7down:
+	@echo "Destroying local containers, but keeping data volumes intact... 😴"
+	docker compose -f docker-compose-es7.yml down
+
+#es7up2:
+#	@echo "Bringing up elastic 7 in docker 🚀"
+#	docker compose -f docker-compose-es7-2.yml up -d --remove-orphans
+#
+#es7down2:
+#	@echo "Destroying local containers, but keeping data volumes intact... 😴"
+#	docker compose -f docker-compose-es7-2.yml down
+

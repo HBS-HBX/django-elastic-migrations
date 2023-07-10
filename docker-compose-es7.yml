@@ -1,0 +1,42 @@
+version: "3.0"
+services:
+  elastic:
+    container_name: es-container
+    # ARM build for M1 Macs # linux/arm/v7
+    #    image: elasticsearch/elasticsearch-oss:7.10.2-arm64
+    # https://hub.docker.com/layers/library/elasticsearch/7.10.1/images/sha256-a7b465c42780a7e92892878ea30941b427d691698a100454dee7296140cdb889?context=explore
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2 # linux/arm64/v8
+    # image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2 # linux/arm64/v8
+    environment:
+      - xpack.security.enabled=false
+      - "discovery.type=single-node"
+      - bootstrap.system_call_filter=false
+    networks:
+      - es-net
+    ports:
+      - "9200:9200"
+    volumes:
+      # for normal elasticsearch:
+      - elasticsearch:/usr/share/elasticsearch/data
+  kibana:
+    container_name: kb-container
+    #    image: kibana/kibana-oss:7.10.2
+    # ARM build for M1 Macs
+    #    image: jamesgarside/kibana:7.10.2
+    #     linux/arm64
+    # image: kibana:7.17.10
+    image: docker.elastic.co/kibana/kibana:7.10.2
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-container:9200
+    networks:
+      - es-net
+    depends_on:
+      - elastic
+    ports:
+      - "5601:5601"
+networks:
+  es-net:
+    driver: bridge
+volumes:
+  elasticsearch:
+    driver: local
