@@ -1,6 +1,6 @@
 # Core requirements for using this application
 
 Django                    # Web application framework
-elasticsearch-dsl==6.1.0  # For interacting with Elaticsearch
+elasticsearch-dsl>=7.0.0,<8.0.0  # For interacting with Elaticsearch
 texttable                 # Printing tabular data from management commands
 multiprocessing-logging   # for logging in ./manage.py es_update --workers
