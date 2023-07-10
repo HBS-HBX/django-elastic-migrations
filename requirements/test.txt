@@ -8,7 +8,7 @@ asgiref==3.7.2
     # via django
 certifi==2023.5.7
     # via requests
-charset-normalizer==3.1.0
+charset-normalizer==3.2.0
     # via requests
 codecov==2.1.13
     # via -r requirements/test.in
@@ -27,13 +27,11 @@ filelock==3.12.2
     #   virtualenv
 idna==3.4
     # via requests
-ipaddress==1.0.23
-    # via elasticsearch-dsl
 multiprocessing-logging==0.3.4
     # via -r requirements/base.in
 packaging==23.1
     # via tox
-platformdirs==3.8.0
+platformdirs==3.8.1
     # via virtualenv
 pluggy==1.2.0
     # via tox
@@ -60,7 +58,7 @@ tox==3.28.0
     #   tox-battery
 tox-battery==0.6.1
     # via -r requirements/test.in
-typing-extensions==4.7.0
+typing-extensions==4.7.1
     # via asgiref
 urllib3==2.0.3
     # via
