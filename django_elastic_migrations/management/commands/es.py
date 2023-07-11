@@ -122,7 +122,7 @@ class Command(BaseCommand):
         if apply_all and indexes:
             logger.warning(
                 "Received --all along with index names: '{indexes}'."
-                "Noramlly you would not specify names of indexes "
+                "Normally you would not specify names of indexes "
                 "with --all, since --all covers all the indexes. "
                 "The --all has been canceled; operating on just '{indexes}'."
                 "To clear *all* the indexes, just use --all.".format(
