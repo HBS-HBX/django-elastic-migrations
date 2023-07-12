@@ -7,7 +7,7 @@ import django
 from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch.helpers import expand_action, bulk
-from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
+from elasticsearch_dsl import Index as ESIndex, Document as ESDocument, Q as ESQ, Search
 
 from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger, codebase_id
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
@@ -478,7 +478,7 @@ class _DEMDocTypeIndexHandler(object):
         return None
 
 
-class DEMDocType(ESDocType):
+class DEMDocType(ESDocument):
     """
     Django users subclass DEMDocType instead of Elasticsearch's DocType
     to use Django Elastic Migrations. All documentation from their class
@@ -770,6 +770,24 @@ class DEMDocType(ESDocType):
                     num_successes += result_successes
                     num_failures += result_failures
         return num_successes, num_failures
+
+    def _get_index(self, index=None, required=True):
+        """
+        We have chosen to override this method to allow for the use of
+        a dynamic index at runtime. This is necessary to support the
+        key use case of Django Elastic Migrations: being able to index
+        into a new index version while the old index version is still
+        being used by the application.
+
+        A future version of DEM may instead elect to use a different
+        technique to supply this information. The inheritance hierarchy
+        for elasticsearch-dsl-py is not very friendly to overriding.
+        """
+        if index is None:
+            index = self.get_dem_index().get_es_index_name()
+        if index is None:
+            index = super(DEMDocType, self)._get_index(index, required)
+        return index
 
 
 class DEMIndex(ESIndex):
