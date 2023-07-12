@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from django.conf import settings
 from elasticsearch_dsl import Text, Q, analyzer, token_filter, tokenizer
 
-from django_elastic_migrations.indexes import DEMIndex, DEMDocType, DEMIndexManager
+from django_elastic_migrations.indexes import DEMIndex, DEMDocument, DEMIndexManager
 from tests.models import Movie
 
 basic_analyzer = analyzer(
@@ -16,7 +16,7 @@ basic_analyzer = analyzer(
 alternate_textfield = Text(analyzer=basic_analyzer, search_analyzer=basic_analyzer)
 
 
-class GenericDocType(DEMDocType):
+class GenericDocument(DEMDocument):
     full_text = Text(required=True)
     full_text_boosted = Text(required=True)
 
@@ -85,7 +85,7 @@ MovieSearchIndex.settings(**settings.ELASTICSEARCH_INDEX_SETTINGS)
 
 
 @MovieSearchIndex.doc_type
-class MovieSearchDoc(GenericDocType):
+class MovieSearchDoc(GenericDocument):
 
     @classmethod
     def get_queryset(cls, last_updated_datetime=None):
@@ -107,7 +107,7 @@ class MovieSearchDoc(GenericDocType):
         return model.title
 
 
-class DefaultNewSearchDocTypeMixin(GenericDocType):
+class DefaultNewSearchDocTypeMixin(GenericDocument):
     """
     Used by get_new_search_index() in the case that doc_type_mixin is not supplied
     """
@@ -133,7 +133,7 @@ def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True, de
     :param cls: parameters of GenericDocType to override
     :param doc_type_mixin: a class to mix in to the generated doctype
     :param create_and_activate: if True, call DEMIndexManager.initialize(True, True) before returning
-    :return: DEMIndex, DEMDocType
+    :return: DEMIndex, DEMDocument
     """
     if name == "movies":
         raise ValueError("Don't use the movies index for testing; it will interfere with the fixture")
@@ -146,7 +146,7 @@ def get_new_search_index(name, doc_type_mixin=None, create_and_activate=True, de
         my_new_index = DEMIndex(name)
         my_new_index.settings(**settings.ELASTICSEARCH_INDEX_SETTINGS)
 
-    class MyNewSearchDocType(doc_type_mixin, GenericDocType):
+    class MyNewSearchDocType(doc_type_mixin, GenericDocument):
         pass
 
     my_new_index.doc_type(MyNewSearchDocType)

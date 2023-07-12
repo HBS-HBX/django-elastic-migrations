@@ -63,22 +63,22 @@ class IndexNamePropertyCannotBeSet(DjangoElasticMigrationsException):
     """
 
 
-class DEMDocTypeRequiresGetReindexIterator(DjangoElasticMigrationsException):
+class DEMDocumentRequiresGetReindexIterator(DjangoElasticMigrationsException):
     """
-    Raised when ./manage.py es_update tries to call DEMDocType.get_reindex_iterator()
+    Raised when ./manage.py es_update tries to call DEMDocument.get_reindex_iterator()
     on a subclass, but the subclass has not implemented this.
     """
     message = ("To run ./manage.py es_update my_index, my_index needs to "
-               "implement DEMDocType.get_reindex_iterator(self, last_updated_datetime=None)")
+               "implement DEMDocument.get_reindex_iterator(self, last_updated_datetime=None)")
 
 
-class DEMDocTypeRequiresGetQueryset(DjangoElasticMigrationsException):
+class DEMDocumentRequiresGetQueryset(DjangoElasticMigrationsException):
     """
-    Raised when ./manage.py es_update tries to call DEMDocType.get_queryset()
+    Raised when ./manage.py es_update tries to call DEMDocument.get_queryset()
     on a subclass, but the subclass has not implemented this.
     """
     message = ("To run ./manage.py es_update my_index, my_index needs to "
-               "implement DEMDocType.get_queryset()")
+               "implement DEMDocument.get_queryset()")
 
 
 class DEMIndexVersionCodebaseMismatchError(DjangoElasticMigrationsException):
