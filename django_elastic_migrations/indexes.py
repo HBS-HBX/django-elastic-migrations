@@ -7,11 +7,11 @@ import django
 from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch.helpers import expand_action, bulk
-from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
+from elasticsearch_dsl import Index as ESIndex, Document as ESDocument, Q as ESQ, Search
 
 from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger, codebase_id
-from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
-    IllegalDEMIndexState, NoActiveIndexVersion, DEMDocTypeRequiresGetQueryset
+from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocumentRequiresGetReindexIterator, \
+    IllegalDEMIndexState, NoActiveIndexVersion, DEMDocumentRequiresGetQueryset
 from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
 from django_elastic_migrations.utils.loading import import_module_element
 from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiProcess, USE_ALL_WORKERS
@@ -273,7 +273,7 @@ class DEMIndexManager(object):
         After our django-elastic-migrations app is ready
         to talk to the DB and find out the names of the indexes,
         go through and reinitialize each ES Index subclass instance
-        as well as their associated ES DocType subclasses
+        as well as their associated ES Document subclasses
         with the appropriate index names
         """
         for index_base_name, instance in cls.instances.items():
@@ -442,7 +442,7 @@ class DEMIndexManager(object):
         raise DEMIndexNotFound()
 
 
-class _DEMDocTypeIndexHandler(object):
+class _DEMDocumentIndexHandler(object):
     """
     Internally, Elasticsearch-dsl-py uses a string stored in the
     DocType to determine which index to write to. This class is
@@ -478,12 +478,12 @@ class _DEMDocTypeIndexHandler(object):
         return None
 
 
-class DEMDocType(ESDocType):
+class DEMDocument(ESDocument):
     """
-    Django users subclass DEMDocType instead of Elasticsearch's DocType
+    Django users should subclass DEMDocument instead of elasticsearch-dsl-py's Document
     to use Django Elastic Migrations. All documentation from their class
     applies here.
-    https://elasticsearch-dsl.readthedocs.io/en/latest/api.html#elasticsearch_dsl.DocType
+    https://elasticsearch-dsl.readthedocs.io/en/latest/api.html#elasticsearch_dsl.Document
 
     Change from Elasticsearch: we manage the doc type's index name to
     make it the activated version of the index by default.
@@ -507,29 +507,29 @@ class DEMDocType(ESDocType):
     MAX_RETRIES = 5
 
     def __init__(self, *args, **kwargs):
-        super(DEMDocType, self).__init__(*args, **kwargs)
+        super(DEMDocument, self).__init__(*args, **kwargs)
         # super.__init__ creates the self._doc_type property that we
         # modify here
-        self._doc_type = _DEMDocTypeIndexHandler(
+        self._doc_type = _DEMDocumentIndexHandler(
             getattr(self, '_doc_type', None))
 
     @classmethod
     def get_reindex_iterator(cls, queryset):
         """
         Django users override this method. It must return an iterator
-        or generator of instantiated DEMDocType subclasses, ready
+        or generator of instantiated DEMDocument subclasses, ready
         for inserting into Elasticsearch. For example:
 
-        class UsersDocType(DEMDocType)
+        class UsersDocument(DEMDocument)
 
             @classmethod
             def get_reindex_iterator(cls, queryset):
                 return [cls.getDocForUser(u) for user in queryset]
 
         :param queryset: queryset of objects to index; result of get_queryset()
-        :return: iterator / generator of *DEMDocType instances*
+        :return: iterator / generator of *DEMDocument instances*
         """
-        raise DEMDocTypeRequiresGetReindexIterator()
+        raise DEMDocumentRequiresGetReindexIterator()
 
     @classmethod
     def get_queryset(cls, last_updated_datetime=None):
@@ -539,7 +539,7 @@ class DEMDocType(ESDocType):
         :param last_updated_datetime:
         :return:
         """
-        raise DEMDocTypeRequiresGetQueryset()
+        raise DEMDocumentRequiresGetQueryset()
 
     @classmethod
     def get_db_objects_by_id(cls, ids):
@@ -547,7 +547,7 @@ class DEMDocType(ESDocType):
 
     @classmethod
     def get_dem_index(cls):
-        # TODO: what should happen if DEMDocType instance has no active version?
+        # TODO: what should happen if DEMDocument instance has no active version?
         # currently, if this exact version is not found, it will return None
         return DEMIndexManager.get_dem_index(cls._doc_type.index, exact_mode=True)
 
@@ -686,7 +686,7 @@ class DEMDocType(ESDocType):
         """
         Execute Elasticsearch's bulk indexing helper, passing in the result of
         cls.get_bulk_indexing_kwargs()
-        :param reindex_iterator: an iterator of DocType instances from cls.get_reindex_iterator()
+        :param reindex_iterator: an iterator of Document instances from cls.get_reindex_iterator()
         :return: (num_success, num_failed)
         """
         kwargs = cls.get_bulk_indexing_kwargs()
@@ -770,6 +770,28 @@ class DEMDocType(ESDocType):
                     num_successes += result_successes
                     num_failures += result_failures
         return num_successes, num_failures
+
+    def _get_index(self, index=None, required=True):
+        """
+        We have chosen to override this method to allow for the use of
+        a dynamic index at runtime. This is necessary to support the
+        key use case of Django Elastic Migrations: being able to index
+        into a new index version while the old index version is still
+        being used by the application.
+
+        A future version of DEM may instead elect to use a different
+        technique to supply this information. The inheritance hierarchy
+        for elasticsearch-dsl-py is not very friendly to overriding.
+        """
+        if index is None:
+            index = self.get_dem_index().get_es_index_name()
+        if index is None:
+            index = super(DEMDocument, self)._get_index(index, required)
+        return index
+
+
+# until we can support only elasticsearch 7.x, we need to support both DocType and Document
+DEMDocType = DEMDocument
 
 
 class DEMIndex(ESIndex):
@@ -863,25 +885,25 @@ class DEMIndex(ESIndex):
         if index_version:
             index_version.delete()
 
-    def doc_type(self, doc_type=None) -> DEMDocType:
+    def doc_type(self, doc_type=None) -> DEMDocument:
         """
         Overrides elasticsearch_dsl.Index.doc_type() and called during DEMIndexManager.initialize().
 
-        Associates a DEMDocType with this DEMIndex, so that commands
+        Associates a DEMDocument with this DEMIndex, so that commands
         directed to this DEMIndex always go to the active index version by
         querying the DEMIndexManager.
 
-        Sets the active index version name into the DEMDocType, so that
-        DEMDocType.search() queries the active index version.
+        Sets the active index version name into the DEMDocument, so that
+        DEMDocument.search() queries the active index version.
 
-        :returns DEMDocType associated with this DEMIndex (if any)
+        :returns DEMDocument associated with this DEMIndex (if any)
         """
         if doc_type:
             self.__doc_type = doc_type
             active_version_name = self.get_active_version_index_name()
 
-            # set the active index version name into the DEMDocType,
-            # so DEMDocType.search() is directed to the active index in elasticsearch
+            # set the active index version name into the DEMDocument,
+            # so DEMDocument.search() is directed to the active index in elasticsearch
             if active_version_name and self.__doc_type._doc_type:
                 self.__doc_type._doc_type.index = active_version_name
 
@@ -900,7 +922,7 @@ class DEMIndex(ESIndex):
                     our_tag = codebase_id
                     msg = (
                         "DEMIndex.doc_type received a request to use an elasticsearch index whose exact "
-                        "schema / DEMDocType was not accessible in this codebase. "
+                        "schema / DEMDocument was not accessible in this codebase. "
                         "This may lead to undefined behavior (for example if this codebase searches or indexes "
                         "a field that has changed in the requested index, it may not return correctly). "
                         "\n - requested index: {version_name} "

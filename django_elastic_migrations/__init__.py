@@ -8,7 +8,7 @@ import sys
 from django_elastic_migrations.utils import loading
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
 
-__version__ = '0.9.0'
+__version__ = '0.10.0'
 
 default_app_config = 'django_elastic_migrations.apps.DjangoElasticMigrationsConfig'  # pylint: disable=invalid-name
 

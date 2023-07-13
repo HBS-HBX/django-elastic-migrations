@@ -15,7 +15,7 @@ class Command(ESCommand):
         parser.add_argument(
             '--resume', action='store_true',
             help=("Only update documents that have changed since "
-                  "the last ./manage.py es_update. NOTE: DEMDocType subclass "
+                  "the last ./manage.py es_update. NOTE: DEMDocument subclass "
                   "needs to implement this.")
         )
         parser.add_argument(

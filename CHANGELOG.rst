@@ -1,6 +1,15 @@
 Changelog
 ---------
 
+0.10.0 (2023-07-12)
+^^^^^^^^^^^^^^^^^^
+* support elasticsearch-dsl 6.4 - closes `#3 support elasticsearch-dsl-py v6.4`
+* fix `#90 Convert to GitHub Actions`
+* fix `#96 es_list doesn't list all indexes`
+* open up django to anything > 1.10
+* rename DEMDocType to DEMDocument, following elasticsearch-dsl-py
+  * DEMDocType will be removed in 1.X
+
 0.9.0 (2018-11-27)
 ^^^^^^^^^^^^^^^^^^
 * added postgres to docker-compose and travis, and started using postgres for all tests instead of sqlite

@@ -64,7 +64,6 @@ class Command(ESCommand):
                 for dem_index in indexes:
                     dem_index_model = dem_index.get_index_model()
                     index_versions = dem_index_model.get_available_versions_with_prefix()
-                    row = None
                     if index_versions:
                         for index_version in index_versions:
                             num_docs = DEMIndexManager.get_es_index_doc_count(index_version.name)
@@ -74,9 +73,9 @@ class Command(ESCommand):
                                             index_version.is_active or 0,
                                             num_docs,
                                             index_version.tag)
+                            rows.append(row)
                     else:
                         row = EsListRow(dem_index.get_base_name(), "", False, False, 0, "Current (not created)")
-                    if row:
                         rows.append(row)
             except AttributeError:
                 raise FirstMigrationNotRunError()

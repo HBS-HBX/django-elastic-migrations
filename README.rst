@@ -32,12 +32,11 @@ Django Elastic Migrations adapts these tools into a Django app which also:
 * Implements concurrent bulk indexing powered by python ``multiprocessing``
 * Gives Django test hooks for Elasticsearch
 * Records a history of all actions that change Elasticsearch indexes
-* Supports AWS Elasticsearch 6.0, 6.1 (6.2 TBD; see `#3 support elasticsearch-dsl 6.2`_)
+* Supports elasticsearch-dsl-py>=6.4 (support for 7.10.2 is in progress)
 * Enables having two or more servers share the same Elasticsearch cluster
 
 .. _elasticsearch-py: https://github.com/elastic/elasticsearch-py
 .. _elasticsearch-dsl-py: https://github.com/elastic/elasticsearch-dsl-py
-.. _#3 support elasticsearch-dsl 6.2: https://github.com/HBS-HBX/django-elastic-migrations/issues/3
 
 
 Models
@@ -123,7 +122,7 @@ Installation
 #. Create an ``DEMIndex``:
    ::
 
-       from django_elastic_migrations.indexes import DEMIndex, DEMDocType
+       from django_elastic_migrations.indexes import DEMIndex, DEMDocument
        from .models import Movie
        from elasticsearch_dsl import Text
 
@@ -131,7 +130,7 @@ Installation
 
 
        @MoviesIndex.doc_type
-       class MovieSearchDoc(DEMDocType):
+       class MovieSearchDoc(DEMDocument):
            text = TEXT_COMPLEX_ENGLISH_NGRAM_METAPHONE
 
            @classmethod
@@ -292,11 +291,11 @@ Tuning Bulk Indexing Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, ``/.manage.py es_update`` will divide the result of 
-``DEMDocType.get_queryset()`` into batches of size ``DocType.BATCH_SIZE``. 
+``DEMDocument.get_queryset()`` into batches of size ``DocType.BATCH_SIZE``.
 Override this number to change the batch size. 
 
 There are many configurable paramters to Elasticsearch's `bulk updater <https://elasticsearch-py.readthedocs.io/en/master/helpers.html?highlight=bulk#elasticsearch.helpers.streaming_bulk>`_.
-To provide a custom value, override ``DEMDocType.get_bulk_indexing_kwargs()``
+To provide a custom value, override ``DEMDocument.get_bulk_indexing_kwargs()``
 and return the kwargs you would like to customize.
 
 Development
