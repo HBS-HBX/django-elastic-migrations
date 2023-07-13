@@ -1,5 +1,5 @@
 .PHONY: clean coverage help \
-	quality requirements selfcheck syncdb load test test-all upgrade validate pylintrc
+	quality requirements selfcheck syncdb load test test-all upgrade validate pylintrc validate_cover
 
 .DEFAULT_GOAL := help
 
@@ -102,3 +102,6 @@ down:
 	docker compose down
 
 
+
+validate_cover:
+	curl --data-binary @codecov.yml https://codecov.io/validate
