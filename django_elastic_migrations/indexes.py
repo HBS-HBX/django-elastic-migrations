@@ -1,18 +1,20 @@
 # coding=utf-8
+from __future__ import annotations
 
 import sys
-from typing import Iterable, Dict
+from typing import Iterable, Dict, Optional, TYPE_CHECKING
 
 import django
 from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch.helpers import expand_action, bulk
 from elasticsearch_dsl import Index as ESIndex, Document as ESDocument, Q as ESQ, Search
+from elasticsearch_dsl.document import IndexMeta as ESIndexMeta
 
 from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger, codebase_id
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocumentRequiresGetReindexIterator, \
     IllegalDEMIndexState, NoActiveIndexVersion, DEMDocumentRequiresGetQueryset
-from django_elastic_migrations.utils.es_utils import get_index_hash_and_json
+from django_elastic_migrations.utils.es_utils import get_index_hash_and_json, get_hash
 from django_elastic_migrations.utils.loading import import_module_element
 from django_elastic_migrations.utils.multiprocessing_utils import DjangoMultiProcess, USE_ALL_WORKERS
 
@@ -28,6 +30,10 @@ Module Conventions
 logger = get_logger()
 
 
+if TYPE_CHECKING:
+    from .models import IndexVersion, Index
+
+
 class DEMIndexManager(object):
     """
     API for interacting with a collection of DEMIndexes.
@@ -41,20 +47,21 @@ class DEMIndexManager(object):
     DEMIndex base name ⤵
         django_elastic_migrations.models.Index instance
     """
-    index_models = {}
+    index_models: Dict[str, Index] = {}
 
     """
     DEMIndex base name ⤵ 
         active DEMIndex instance
     """
-    instances = {}
+    instances: Dict[str, DEMIndex] = {}
 
     @classmethod
-    def add_index(cls, dem_index_instance, create_on_not_found=True):
+    def add_index(cls, dem_index_instance: DEMIndex, create_on_not_found=True) -> Optional[Index]:
         base_name = dem_index_instance.get_base_name()
         cls.instances[base_name] = dem_index_instance
         if cls.db_ready:
             return cls.get_index_model(base_name, create_on_not_found)
+        return None
 
     @classmethod
     def delete_dem_index_from_es(cls, dem_index_instance):
@@ -91,9 +98,13 @@ class DEMIndexManager(object):
             logger.info("index {} has been deleted in DEMIndexManager.destroy_dem_index")
 
     @classmethod
-    def create_and_activate_version_for_each_index_if_none_is_active(cls, create_versions, activate_versions):
+    def create_and_activate_version_for_each_index_if_none_is_active(cls, create_versions, activate_versions, just_base_name: Optional[str]=None):
         for index_base_name, dem_index in cls.get_indexes_dict().items():
+            if just_base_name and index_base_name != just_base_name:
+                continue
             if not cls.get_active_index_version(index_base_name):
+                if not index_base_name:
+                    raise DEMIndexNotFound(index_base_name)
                 if create_versions:
                     # by default this will not create if not changed
                     cls.create_index(index_base_name)
@@ -133,7 +144,7 @@ class DEMIndexManager(object):
                 )
 
     @classmethod
-    def create_index_model(cls, base_name):
+    def create_index_model(cls, base_name) -> Optional[Index]:
         if cls.db_ready:
             from django_elastic_migrations.models import Index as DEMIndexModel
             try:
@@ -142,6 +153,7 @@ class DEMIndexManager(object):
             except (ProgrammingError, django.db.utils.OperationalError):
                 # the app is starting up and the database isn't available
                 pass
+        return cls.index_models.get(base_name)
 
     @classmethod
     def delete_es_created_index(cls, full_index_version_name, **kwargs):
@@ -154,7 +166,7 @@ class DEMIndexManager(object):
         return es_client.indices.delete(index=full_index_version_name, **kwargs)
 
     @classmethod
-    def get_active_index_version(cls, index_base_name):
+    def get_active_index_version(cls, index_base_name) -> Optional[IndexVersion]:
         model_version = cls.get_index_model(index_base_name)
         if model_version:
             active_version = model_version.active_version
@@ -163,14 +175,14 @@ class DEMIndexManager(object):
         return None
 
     @classmethod
-    def get_active_index_version_name(cls, index_base_name):
+    def get_active_index_version_name(cls, index_base_name) -> str:
         active_version = cls.get_active_index_version(index_base_name)
         if active_version:
             return active_version.name
         return ""
 
     @classmethod
-    def get_dem_index(cls, index_name, exact_mode=False):
+    def get_dem_index(cls, index_name, exact_mode=False) -> Optional[DEMIndex]:
         """
         Get the DEMIndex instance associated with `index_name`.
         :param index_name: Name of index
@@ -180,7 +192,12 @@ class DEMIndexManager(object):
         """
         version_number = None
         if exact_mode and index_name:
+            # what to do if the index name has a `-` in it?
             separator_index = index_name.rindex("-")
+            try:
+                int(index_name[separator_index + 1:])
+            except ValueError:
+                raise DEMIndexNotFound(index_name)
             base_name = index_name[:separator_index]
             if environment_prefix and base_name.startswith(environment_prefix):
                 # strip the environment prefix, which isn't in the indexes dict
@@ -188,8 +205,8 @@ class DEMIndexManager(object):
                 base_name = new_base_name
             version_number = index_name[separator_index + 1:]
             index_name = base_name
-        if version_number:
-            return DEMIndex(index_name, version_id=version_number)
+            if version_number:
+                return DEMIndex(index_name, version_id=version_number)
         return cls.get_indexes_dict().get(index_name, None)
 
     @classmethod
@@ -200,11 +217,10 @@ class DEMIndexManager(object):
         except TransportError as ex:
             if ex.status_code == 404:
                 return 0
-            else:
-                raise ex
+            raise ex
 
     @classmethod
-    def get_index_model(cls, base_name, create_on_not_found=True):
+    def get_index_model(cls, base_name, create_on_not_found=True) -> Optional[Index]:
         """
         Retrieves the Index Model for the given index base name from
         the DB. The Index Model is the Django Model that stores info
@@ -217,12 +233,13 @@ class DEMIndexManager(object):
                Index Versions, which are the concrete indexes in ES.
         :return: django_elastic_migrations.models.Index
         """
-        index_model = cls.index_models.get(base_name)
-        if not index_model:
+        if not base_name:
+            return None
+        if not (index_model := cls.index_models.get(base_name)):
             cls.update_index_models()
             index_model = cls.index_models.get(base_name)
             if not index_model and create_on_not_found:
-                cls.create_index_model(base_name)
+                index_model = cls.create_index_model(base_name)
         return index_model
 
     @classmethod
@@ -230,7 +247,7 @@ class DEMIndexManager(object):
         return list(cls.instances.values())
 
     @classmethod
-    def get_indexes_dict(cls):
+    def get_indexes_dict(cls) -> Dict[str, DEMIndex]:
         return cls.instances
 
     @classmethod
@@ -442,43 +459,333 @@ class DEMIndexManager(object):
         raise DEMIndexNotFound()
 
 
-class _DEMDocumentIndexHandler(object):
+class DEMIndex(ESIndex):
     """
-    Internally, Elasticsearch-dsl-py uses a string stored in the
-    DocType to determine which index to write to. This class is
-    added to our subclass of DocType below in order to make it so
-    that the .index property gets redirected to the value of the
-    active index version for that doc type. All other attributes
-    are handled by the original DocTypeOptions class.
-    Not meant to be used directly outside of this module.
+    Django users subclass DEMIndex instead of elasticsearch-dsl-py's Index
+    to use Django Elastic Migrations. Most documentation from their class
+    applies here.
     """
 
-    def __init__(self, es_doc_type):
-        self.__es_doc_type = es_doc_type
+    def __init__(self, name, using=es_client, version_id=None):
+        """
+        :param name: the name of this index
+        :param using: the elasticsearch client to use
+        """
+        prefixed_name = "{}{}".format(environment_prefix, name)
+        super().__init__(prefixed_name, using=using)
+        self.__prefixed_name = prefixed_name
+        self.__base_name = name
+        self.__doc_type = None
+        self.__version_id = version_id
+        self.__version_model = None
 
-    def __getattribute__(self, item):
-        try:  # get attribute from this class
-            return object.__getattribute__(self, item)
-        except AttributeError as e:
-            try:  # get attribute from Elasticsearch's DocTypeOptions class
-                caught_item = object.__getattribute__(self.__es_doc_type, item)
-                if item == 'index':
-                    # if we're trying to get the `index` from DocTypeOptions,
-                    # the value would be the "base name" of the index, which
-                    # we use to look up the specific version of the index we
-                    # have activated.
-                    index_base_name = caught_item
-                    if index_base_name:
-                        active_index_name = DEMIndexManager.get_active_index_version_name(index_base_name)
-                        if active_index_name:
-                            return active_index_name
-                return caught_item
-            except AttributeError:
-                pass
+        # if this DEMIndex has a version_id, and .doc_type() has been called,
+        # then this property will be filled in with a reference to the
+        # original DEMIndex, the one in the codebase.
+        # it's not used outside of .doc_type().
+        self.__base_dem_index = None
+
+        if name and not version_id:
+            # ensure every base index calls home to our manager
+            DEMIndexManager.register_dem_index(self)
+
+    # def set_from_index_version(self, index_version):
+    #     """
+    #     Sets the version_id and version_model properties of this DEMIndex
+    #     from the given IndexVersion instance.
+    #     """
+    #     self.__version_id = index_version.id
+    #     self.__version_model = index_version
+
+    def clear(self):
+        """
+        Remove all the documents in this index.
+        """
+        self.search().query(ESQ('match_all')).delete()
+
+    def create(self, **kwargs) -> IndexVersion:
+        """
+        Overrides elasticsearch_dsl.Index.create().
+        Creates a new IndexVersion record, adding the json schema
+        of the new index to it. Then calls create on the new
+        index for elasticsearch.
+        :returns new django_elastic_migrations.models.IndexVersion
+        :see also https://elasticsearch-dsl.readthedocs.io/en/latest/api.html#elasticsearch_dsl.Index.create
+        """
+        if not (index_model := self.get_index_model()):
+            # add the index model if it doesn't exist
+            if not (index_model := DEMIndexManager.add_index(self)):
+                raise ValueError(f"DEMIndex.create couldn't create {self.get_base_name()}")
+        index_version = index_model.get_new_version(self)
+        # self.set_from_index_version(index_version)
+        # self.__version_id = index_version.id
+        try:
+            index = index_version.name
+            body = self.to_dict()
+            self.connection.indices.create(index=index, body=body, **kwargs)
+        except Exception as ex:
+            if isinstance(ex, TransportError):
+                if ex.status_code == 400:
+                    # "resource_already_exists_exception"
+                    return index_version
+            index_version.delete()
+            raise ex
+        return index_version
+
+    def create_if_not_in_es(self, body=None, **kwargs):
+        """
+        Create the index if it doesn't already exist in elasticsearch.
+        :param body: the body to pass to elasticsearch create action
+        :param kwargs: kwargs to pass to elasticsearch create action
+        :return: True if created
+        """
+        try:
+            index = self.get_es_index_name()
+            if body is None:
+                body = self.to_dict()
+            self.connection.indices.create(index=index, body=body, **kwargs)
+        except Exception as ex:
+            if isinstance(ex, TransportError):
+                if ex.status_code == 400:
+                    # "resource_already_exists_exception"
+                    return False
+            raise ex
+        return True
+
+    def delete(self, **kwargs):
+        index_version = self.get_version_model()
+        DEMIndexManager.delete_es_created_index(index_version.name, ignore=[400, 404])
+        if index_version:
+            index_version.delete()
+
+    def document(self, document=None) -> DEMDocument:
+        """
+        Overrides elasticsearch_dsl.Index.document() and called during DEMIndexManager.initialize().
+
+        Associates a DEMDocument with this DEMIndex, so that commands
+        directed to this DEMIndex always go to the active index version by
+        querying the DEMIndexManager.
+
+        Sets the active index version name into the DEMDocument, so that
+        DEMDocument.search() queries the active index version.
+
+        :returns DEMDocument associated with this DEMIndex (if any)
+        """
+        if document:
+            # set this index's name to be the "active" version
+            self.__doc_type = document
+            active_version_name = self.get_active_version_index_name()
+
+            # set the active index version name into the DEMDocument,
+            # so DEMDocument.search() is directed to the active index in elasticsearch
+            if active_version_name:
+                if document._doc_type:
+                    document._doc_type.index = active_version_name
+                if document._index and not document._index._name:
+                    document._index._name = active_version_name
+
+            doc = super().document(document)
+            if not doc._index._name:
+                document._index = self
+            return doc
+        else:
+            if self.get_version_id() and not self.__doc_type:
+                # if this instance of DEMIndex was instantiated with a version id
+                # but it doesn't yet have a document / __doc_type, then we're initializing
+                # an exact version of the schema.
+                version_model = self.get_version_model()
+                self.__base_dem_index = DEMIndexManager.get_dem_index(self.get_base_name())
+                doc_type = self.__base_dem_index.document()
+                doc_type_index_backup = doc_type.get_dem_index().get_es_index_name()
+                doc_type._index._name = version_model.name
+                doc_type._index.version_id = version_model.id
+                self.__doc_type = super().document(doc_type)
+                if not self.schema_matches(version_model):
+                    # replace the original name
+                    our_hash, our_json = self.get_index_hash_and_json()
+                    our_tag = codebase_id
+                    msg = (
+                        "DEMIndex.document received a request to use an elasticsearch index whose exact "
+                        "schema / DEMDocument was not accessible in this codebase. "
+                        "This may lead to undefined behavior (for example if this codebase searches or indexes "
+                        "a field that has changed in the requested index, it may not return correctly). "
+                        f"\n - requested index: {version_model.name} "
+                        f"\n - requested spec: {version_model.json} "
+                        f"\n - our spec:       {our_json} "
+                        f"\n - requested hash: {version_model.json_md5} "
+                        f"\n - our hash:       {our_hash} "
+                        f"\n - requested tag: {version_model.tag} "
+                        f"\n - our tag:       {our_tag} "
+                    )
+                    logger.warning(msg)
+            # return the cached reference to the doc type that was set above
+            return self.__doc_type
+    doc_type = document
+
+    def exists(self, using=None, **kwargs):
+        name = self.get_es_index_name()
+        if name:
+            return es_client.indices.exists(index=name)
+        return False
+
+    def get_active_version_index_name(self):
+        return DEMIndexManager.get_active_index_version_name(self.__base_name)
+
+    def get_es_index_name(self) -> Optional[str]:
+        index_version = self.get_version_model()
+        if index_version:
+            return index_version.name
         return None
 
+    def get_base_name(self):
+        return self.__base_name
 
-class DEMDocument(ESDocument):
+    def get_index_hash_and_json(self):
+        """
+        Get the schema json for this index and its hash for this index.
+        Note: the schema only contains the base name, even though it
+        will be accessed through an index version.
+        :return: (md5 str, json string)
+        """
+        es_index = self.clone(name=self.__base_name, using=es_client)
+        return get_index_hash_and_json(es_index)
+
+    def get_index_model(self) -> Optional[Index]:
+        return DEMIndexManager.get_index_model(self.__base_name, create_on_not_found=False)
+
+    def get_num_docs(self):
+        return self.search().query(ESQ('match_all')).count()
+
+    def get_version_id(self):
+        return self.__version_id or 0
+
+    def get_version_model(self) -> Optional[IndexVersion]:
+        """
+        If this index was instantiated with an id, return the IndexVersion associated
+        with it. If not, return the active version index name
+        :return:
+        """
+        if self.get_version_id():
+            if not self.__version_model:
+                # importing here to avoid circular imports
+                from django_elastic_migrations.models import IndexVersion
+                self.__version_model = IndexVersion.objects.filter(
+                    id=self.get_version_id()
+                ).first()
+            return self.__version_model
+        if (optional_model := self.get_index_model()):
+            return optional_model.active_version
+        return None
+
+    def schema_matches(self, their_version: IndexVersion) -> bool:
+        our_index_hash, our_index_json = self.get_index_hash_and_json()
+        their_index_json = their_version.get_normalized_schema_body()
+        if our_index_json == their_index_json:
+            their_json_hash = get_hash(their_index_json)
+            if their_json_hash != their_version.json_md5:
+                logger.warning(
+                    f"Django Elastic Migrations IndexVersion {self} "
+                    "has a schema json that isn't sorted."
+                    "Re-saving their version to fix this. "
+                    f" - their json before: {their_version.json}"
+                    f" - their json_md5 before: {their_version.json_md5}"
+                    f" - our json: {our_index_json}"
+                    f" - our json_md5: {our_index_hash}"
+                )
+                their_version.json = their_index_json
+                their_version.json_md5 = their_json_hash
+                their_version.save()
+            return True
+        return False
+
+    def save(self, using=None):
+        if using is None:
+            using = es_client
+        try:
+            super(DEMIndex, self).save(using=using)
+        except TypeError as te:
+            if "unexpected keyword argument 'using'" in str(te):
+                super(DEMIndex, self).save()
+        except ValueError as ex:
+            if "Empty value" in ex.message and not self.get_active_version_index_name():
+                msg = (
+                    "{base_name} does not have an activated index version. "
+                    "Please activate one to save a document. "
+                    "\n sample command: ./manage.py es_activate {base_name}"
+                    "\n original error message: {err_msg}".format(
+                        base_name=self.get_base_name(),
+                        err_msg=ex.message
+                    )
+                )
+                raise NoActiveIndexVersion(msg)
+
+    @property
+    def _name(self):
+        """
+        Override Elasticsearch's super._name attribute, which determines
+        which ES index is written to, with our dynamic name that
+        takes into account the active index version. This property
+        is read in the superclass.
+        """
+        version_id = self.get_version_id()
+        if version_id:
+            version_model = self.get_version_model()
+            if version_model:
+                return version_model.name
+            raise IllegalDEMIndexState("No associated version found in the database for {}-{}".format(
+                self.get_base_name(), version_id))
+        return self.get_active_version_index_name()
+
+    @_name.setter
+    def _name(self, value):
+        """
+        Override Elasticsearch's super._name attribute, which determines
+        which ES index is written to, with our dynamic name
+        This property is written to by the superclass.
+        """
+        self.__base_name = value
+
+    def get_es_index_doc_count(self):
+        return DEMIndexManager.get_es_index_doc_count(self.get_es_index_name())
+
+
+
+class DEMIndexMeta(ESIndexMeta):
+
+    # _dem_document_initialized = False
+
+    # def __new__(cls, name, bases, attrs):
+    #     new_cls = super().__new__(cls, name, bases, attrs)
+    #     if cls._dem_document_initialized:
+    #         index_opts = attrs.pop('Index', None)
+    #         index = cls.construct_index(index_opts, bases)
+    #         new_cls._index = index
+    #         index.document(new_cls)
+    #     cls._dem_document_initialized = True
+    #     return new_cls
+
+    @classmethod
+    def construct_index(cls, opts, bases):
+        if opts is None:
+            for b in bases:
+                if hasattr(b, '_index'):
+                    return b._index
+
+            # Set None as Index name so it will set _all while making the query
+            return DEMIndex(name=None)
+
+        i = DEMIndex(
+            getattr(opts, 'name', '*'),
+            using=getattr(opts, 'using', 'default')
+        )
+        i.settings(**getattr(opts, 'settings', {}))
+        i.aliases(**getattr(opts, 'aliases', {}))
+        for a in getattr(opts, 'analyzers', ()):
+            i.analyzer(a)
+        return i
+
+
+class DEMDocument(ESDocument, metaclass=DEMIndexMeta):
     """
     Django users should subclass DEMDocument instead of elasticsearch-dsl-py's Document
     to use Django Elastic Migrations. All documentation from their class
@@ -506,12 +813,17 @@ class DEMDocument(ESDocument):
     """
     MAX_RETRIES = 5
 
-    def __init__(self, *args, **kwargs):
-        super(DEMDocument, self).__init__(*args, **kwargs)
-        # super.__init__ creates the self._doc_type property that we
-        # modify here
-        self._doc_type = _DEMDocumentIndexHandler(
-            getattr(self, '_doc_type', None))
+    @classmethod
+    def init(cls, index=None, using=None):
+        """
+        Create the index and populate the mappings in elasticsearch.
+        """
+        if index is None:
+            index = cls.get_dem_index()
+        base_name = index.get_base_name()
+        DEMIndexManager.create_and_activate_version_for_each_index_if_none_is_active(True, True, base_name)
+        index_name = index.get_active_version_index_name()
+        super().init(index=index_name, using=using)
 
     @classmethod
     def get_reindex_iterator(cls, queryset):
@@ -546,10 +858,10 @@ class DEMDocument(ESDocument):
         return cls.get_queryset().filter(**{"{}__in".format(cls.PK_ATTRIBUTE): ids})
 
     @classmethod
-    def get_dem_index(cls):
+    def get_dem_index(cls) -> DEMIndex:
         # TODO: what should happen if DEMDocument instance has no active version?
         # currently, if this exact version is not found, it will return None
-        return DEMIndexManager.get_dem_index(cls._doc_type.index, exact_mode=True)
+        return cls._index
 
     @classmethod
     def get_index_model(cls):
@@ -784,7 +1096,9 @@ class DEMDocument(ESDocument):
         for elasticsearch-dsl-py is not very friendly to overriding.
         """
         if index is None:
-            index = self.get_dem_index().get_es_index_name()
+            index = self.get_dem_index()
+            if index:
+                index = index.get_active_version_index_name()
         if index is None:
             index = super(DEMDocument, self)._get_index(index, required)
         return index
@@ -792,260 +1106,3 @@ class DEMDocument(ESDocument):
 
 # until we can support only elasticsearch 7.x, we need to support both DocType and Document
 DEMDocType = DEMDocument
-
-
-class DEMIndex(ESIndex):
-    """
-    Django users subclass DEMIndex instead of elasticsearch-dsl-py's Index
-    to use Django Elastic Migrations. Most documentation from their class
-    applies here.
-    """
-
-    def __init__(self, name, using=es_client, version_id=None):
-        """
-        :param name: the name of this index
-        :param using: the elasticsearch client to use
-        """
-        prefixed_name = "{}{}".format(environment_prefix, name)
-        super(DEMIndex, self).__init__(prefixed_name, using=using)
-        self.__prefixed_name = prefixed_name
-        self.__base_name = name
-        self.__doc_type = None
-        self.__version_id = version_id
-        self.__version_model = None
-
-        # if this DEMIndex has a version_id, and .doc_type() has been called,
-        # then this property will be filled in with a reference to the
-        # original DEMIndex, the one in the codebase.
-        # it's not used outside of .doc_type().
-        self.__base_dem_index = None
-
-        if not version_id:
-            # ensure every index calls home to our manager
-            DEMIndexManager.register_dem_index(self)
-
-    def clear(self):
-        """
-        Remove all of the documents in this index.
-        """
-        self.search().query(ESQ('match_all')).delete()
-
-    def create(self, **kwargs):
-        """
-        Overrides elasticsearch_dsl.Index.create().
-        Creates a new IndexVersion record, adding the json schema
-        of the new index to it. Then calls create on the new
-        index for elasticsearch.
-        :returns new django_elastic_migrations.models.IndexVersion
-        :see also https://elasticsearch-dsl.readthedocs.io/en/latest/api.html#elasticsearch_dsl.Index.create
-        """
-        index_model = self.get_index_model()
-        if not index_model:
-            index_model = DEMIndexManager.add_index(self)
-            if not index_model:
-                raise ValueError("DEMIndex.create couldn't create {}".format(
-                    self.get_base_name()))
-        index_version = index_model.get_new_version(self)
-        try:
-            index = index_version.name
-            body = self.to_dict()
-            self.connection.indices.create(index=index, body=body, **kwargs)
-        except Exception as ex:
-            if isinstance(ex, TransportError):
-                if ex.status_code == 400:
-                    # "resource_already_exists_exception"
-                    return index_version
-            index_version.delete()
-            raise ex
-        return index_version
-
-    def create_if_not_in_es(self, body=None, **kwargs):
-        """
-        Create the index if it doesn't already exist in elasticsearch.
-        :param body: the body to pass to elasticsearch create action
-        :param kwargs: kwargs to pass to elasticsearch create action
-        :return: True if created
-        """
-        try:
-            index = self.get_es_index_name()
-            if body is None:
-                body = self.to_dict()
-            self.connection.indices.create(index=index, body=body, **kwargs)
-        except Exception as ex:
-            if isinstance(ex, TransportError):
-                if ex.status_code == 400:
-                    # "resource_already_exists_exception"
-                    return False
-            raise ex
-        return True
-
-    def delete(self, **kwargs):
-        index_version = self.get_version_model()
-        DEMIndexManager.delete_es_created_index(index_version.name, ignore=[400, 404])
-        if index_version:
-            index_version.delete()
-
-    def doc_type(self, doc_type=None) -> DEMDocument:
-        """
-        Overrides elasticsearch_dsl.Index.doc_type() and called during DEMIndexManager.initialize().
-
-        Associates a DEMDocument with this DEMIndex, so that commands
-        directed to this DEMIndex always go to the active index version by
-        querying the DEMIndexManager.
-
-        Sets the active index version name into the DEMDocument, so that
-        DEMDocument.search() queries the active index version.
-
-        :returns DEMDocument associated with this DEMIndex (if any)
-        """
-        if doc_type:
-            self.__doc_type = doc_type
-            active_version_name = self.get_active_version_index_name()
-
-            # set the active index version name into the DEMDocument,
-            # so DEMDocument.search() is directed to the active index in elasticsearch
-            if active_version_name and self.__doc_type._doc_type:
-                self.__doc_type._doc_type.index = active_version_name
-
-            return super(DEMIndex, self).doc_type(doc_type)
-        else:
-            if self.get_version_id() and not self.__doc_type:
-                version_model = self.get_version_model()
-                self.__base_dem_index = DEMIndexManager.get_dem_index(self.get_base_name())
-                doc_type = self.__base_dem_index.doc_type()
-                doc_type_index_backup = doc_type._doc_type.index
-                doc_type._doc_type.index = version_model.name
-                self.__doc_type = super(DEMIndex, self).doc_type(doc_type)
-                if not self.hash_matches(version_model.json_md5):
-                    doc_type._doc_type.index = doc_type_index_backup
-                    our_hash, our_json = self.get_index_hash_and_json()
-                    our_tag = codebase_id
-                    msg = (
-                        "DEMIndex.doc_type received a request to use an elasticsearch index whose exact "
-                        "schema / DEMDocument was not accessible in this codebase. "
-                        "This may lead to undefined behavior (for example if this codebase searches or indexes "
-                        "a field that has changed in the requested index, it may not return correctly). "
-                        "\n - requested index: {version_name} "
-                        "\n - requested spec: {version_spec} "
-                        "\n - our spec:       {our_spec} "
-                        "\n - requested hash: {version_hash} "
-                        "\n - our hash:       {our_hash} "
-                        "\n - requested tag: {version_tag} "
-                        "\n - our tag:       {our_tag} "
-                        "".format(
-                            version_name=version_model.name,
-                            version_tag=version_model.tag,
-                            our_tag=our_tag,
-                            version_hash=version_model.json_md5,
-                            our_hash=our_hash,
-                            version_spec=version_model.json,
-                            our_spec=our_json,
-                        )
-                    )
-                    logger.warning(msg)
-            return self.__doc_type
-
-    def exists(self):
-        name = self.get_es_index_name()
-        if name:
-            return es_client.indices.exists(index=name)
-        return False
-
-    def get_active_version_index_name(self):
-        return DEMIndexManager.get_active_index_version_name(self.__base_name)
-
-    def get_es_index_name(self):
-        index_version = self.get_version_model()
-        if index_version:
-            return index_version.name
-        return None
-
-    def get_base_name(self):
-        return self.__base_name
-
-    def get_index_hash_and_json(self):
-        """
-        Get the schema json for this index and its hash for this index.
-        Note: the schema only contains the base name, even though it
-        will be accessed through an index version.
-        :return: (md5 str, json string)
-        """
-        es_index = self.clone(name=self.__base_name, using=es_client)
-        return get_index_hash_and_json(es_index)
-
-    def get_index_model(self):
-        return DEMIndexManager.get_index_model(self.__base_name, create_on_not_found=False)
-
-    def get_num_docs(self):
-        return self.search().query(ESQ('match_all')).count()
-
-    def get_version_id(self):
-        return self.__version_id or 0
-
-    def get_version_model(self):
-        """
-        If this index was instantiated with an id, return the IndexVersion associated
-        with it. If not, return the active version index name
-        :return:
-        """
-        version_id = self.get_version_id()
-        if version_id:
-            if not self.__version_model:
-                # importing here to avoid circular imports
-                from django_elastic_migrations.models import IndexVersion
-                self.__version_model = IndexVersion.objects.filter(
-                    id=self.get_version_id()
-                ).first()
-            return self.__version_model
-        return self.get_index_model().active_version
-
-    def hash_matches(self, their_index_hash):
-        our_index_hash, _ = self.get_index_hash_and_json()
-        return our_index_hash == their_index_hash
-
-    def save(self, using=None):
-        if using is None:
-            using = es_client
-        try:
-            super(DEMIndex, self).save(using=using)
-        except TypeError as te:
-            if "unexpected keyword argument 'using'" in str(te):
-                super(DEMIndex, self).save()
-        except ValueError as ex:
-            if "Empty value" in ex.message and not self.get_active_version_index_name():
-                msg = (
-                    "{base_name} does not have an activated index version. "
-                    "Please activate one to save a document. "
-                    "\n sample command: ./manage.py es_activate {base_name}"
-                    "\n original error message: {err_msg}".format(
-                        base_name=self.get_base_name(),
-                        err_msg=ex.message
-                    )
-                )
-                raise NoActiveIndexVersion(msg)
-
-    @property
-    def _name(self):
-        """
-        Override Elasticsearch's super._name attribute, which determines
-        which ES index is written to, with our dynamic name that
-        takes into account the active index version. This property
-        is read in the superclass.
-        """
-        version_id = self.get_version_id()
-        if version_id:
-            version_model = self.get_version_model()
-            if version_model:
-                return version_model.name
-            raise IllegalDEMIndexState("No associated version found in the database for {}-{}".format(
-                self.get_base_name(), version_id))
-        return self.get_active_version_index_name()
-
-    @_name.setter
-    def _name(self, value):
-        """
-        Override Elasticsearch's super._name attribute, which determines
-        which ES index is written to, with our dynamic name
-        This property is written to by the superclass.
-        """
-        self.__base_name = value

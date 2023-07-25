@@ -18,6 +18,7 @@ from django_elastic_migrations import codebase_id, environment_prefix, DEMIndexM
 from django_elastic_migrations.exceptions import NoActiveIndexVersion, NoCreatedIndexVersion, IllegalDEMIndexState, \
     CannotDropActiveVersionWithoutForceArg, IndexVersionRequired, CannotDropOlderIndexesWithoutForceArg
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
+from django_elastic_migrations.utils.es_utils import get_hash
 from django_elastic_migrations.utils.multiprocessing_utils import USE_ALL_WORKERS
 
 logger = get_logger()
@@ -179,6 +180,10 @@ class IndexVersion(models.Model):
     def get_schema_body(self):
         body = json.loads(self.json)
         return body
+
+    def get_normalized_schema_body(self):
+        body = self.get_schema_body()
+        return json.dumps(body, sort_keys=True)
 
     def get_indented_schema_body(self):
         body = self.get_schema_body()
@@ -645,7 +650,7 @@ class CreateIndexAction(IndexAction):
                     # TODO: check if schema matches and raise an exception if it does not
                     self.add_log("{_index_version_name} was already created in Elasticsearch; did not create a new index.", use_self_dict_format=True)
 
-        elif latest_version and dem_index.hash_matches(latest_version.json_md5):
+        elif latest_version and dem_index.schema_matches(latest_version):
             self.index_version = latest_version
             self._index_version_name = self.index_version.name
             if self.force:

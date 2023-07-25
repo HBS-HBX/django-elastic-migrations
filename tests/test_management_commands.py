@@ -90,6 +90,8 @@ class CommonDEMTestUtilsMixin(object):
         expected_msg = "The {} index should already exist in elasticsearch.".format(version_model.name)
         self.assertTrue(version_model.exists_in_es(), expected_msg)
 
+        self.assertEqual(dem_index.get_es_index_doc_count(), 0)
+
         return index_model, version_model, dem_index
 
     def check_num_available_versions(self, index_model, pre_message, expected_num_available):

@@ -54,7 +54,7 @@ setup(
     ],
     zip_safe=False,
     keywords='Django Elasticsearch',
-    python_requires=">=3.6, <=4.0",
+    python_requires=">=3.8, <=4.0",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Framework :: Django',

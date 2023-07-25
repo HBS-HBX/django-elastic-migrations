@@ -9,6 +9,7 @@ Changelog
 * open up django to anything > 1.10
 * rename DEMDocType to DEMDocument, following elasticsearch-dsl-py
   * DEMDocType will be removed in 1.X
+* drop support for Python 3.6 and 3.7
 
 0.9.0 (2018-11-27)
 ^^^^^^^^^^^^^^^^^^
