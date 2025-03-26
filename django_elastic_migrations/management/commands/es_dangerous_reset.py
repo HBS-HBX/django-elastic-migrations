@@ -1,6 +1,7 @@
 from django.core.management import call_command
 
 from django_elastic_migrations import DEMIndexManager
+from django_elastic_migrations import es_client
 from django_elastic_migrations.management.commands.es import ESCommand
 from django_elastic_migrations.models import Index
 from django_elastic_migrations.utils.django_elastic_migrations_log import get_logger
@@ -30,6 +31,9 @@ class Command(ESCommand):
 
     def handle(self, *args, **options):
         es_only = options.get('es_only')
+
+        if not es_client or not es_client.ping():
+            return
 
         if es_only:
             msg = "Dangerously resetting Elasticsearch indexes from database in ./manage.py es_dangerous_reset --es-only!"
