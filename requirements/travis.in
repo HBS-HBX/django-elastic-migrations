@@ -1,6 +1,6 @@
 # Requirements for running tests in Travis
 
 codecov                   # Code coverage reporting
-psycopg2                  # for postgres
-tox                       # Virtualenv management for tests
+# psycopg2-binary                  # for postgres
+tox<4                       # Virtualenv management for tests
 tox-battery               # Makes tox aware of requirements file changes

@@ -1,4 +1,3 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
 """
 These settings are here to use during tests, because django requires them.
 
@@ -26,18 +25,24 @@ def root(*args):
 
 
 if DEBUG:
-   ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = ['*']
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'pgdb',
+#         'USER': 'pguser',
+#         'PASSWORD': 'pgpass',
+#         'HOST': 'localhost',
+#         'PORT': 5432
+#     },
+# }
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pgdb',
-        'USER': 'pguser',
-        'PASSWORD': 'pgpass',
-        'HOST': 'localhost',
-        'PORT': 5432
-    },
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": "memory"
+    }
 }
 
 INSTALLED_APPS = (
@@ -104,6 +109,8 @@ LOGGING = {
     },
 }
 logging_config.dictConfig(LOGGING)
+
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # logger = logging.getLogger(__name__)
 # logger.debug("using cwd {}".format(root()))

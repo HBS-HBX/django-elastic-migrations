@@ -1,9 +1,9 @@
 # Config file for automatic testing at travis-ci.org
 
 language: python
-python: 3.6
+python: 3.9
 
-dist: trusty
+dist: focal
 
 branches:
   only:
@@ -19,17 +19,17 @@ addons:
 
 matrix:
   include:
-    - env: TOX_ENV=py36-django110-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
-    - env: TOX_ENV=py36-django111-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
-    - env: TOX_ENV=py36-django20-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
-    - env: TOX_ENV=py36-django21-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
-      python: 3.6
+    - env: TOX_ENV=py38-django32-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+      python: 3.9
+#    - env: TOX_ENV=py36-django111-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+#      python: 3.6
+#    - env: TOX_ENV=py36-django20-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+#      python: 3.6
+#    - env: TOX_ENV=py36-django21-es61 ES_APT_URL=https://artifacts.elastic.co/packages/6.x/apt
+#      python: 3.6
 
 before_install:
-  - pip install pip==9.0.1
+#  - pip install pip==9.0.1
   # work around https://github.com/travis-ci/travis-ci/issues/8363
   - wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
   - echo "deb $ES_APT_URL stable main" | sudo tee -a /etc/apt/sources.list.d/elk.list

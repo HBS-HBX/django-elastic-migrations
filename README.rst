@@ -307,6 +307,7 @@ to see the available ``make`` targets.
 
 Elasticsearch Docker Compose
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This will enable you to serve elasticsearch via docker:
 
 ``docker-compose up``
 
@@ -411,6 +412,7 @@ There are already 100 films available using ``loaddata`` as follows:
 
 Running Tests Locally
 ^^^^^^^^^^^^^^^^^^^^^
+See `README_TESTS.md` for more information. High level summary:
 
 Run ``make test``. To run all tests and quality checks locally,
 run ``make test-all``.
