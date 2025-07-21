@@ -49,13 +49,13 @@ setup(
     license='MIT',
     include_package_data=True,
     install_requires=[
-        # TBD: GH issue #3 includes support for elasticsearch-dsl>=6.2.0
-        "Django>=1.8", "elasticsearch-dsl>=6.0.0,<6.2.0", "texttable>=1.2.1",
+        # Updated to support Django 5.2.1 and elasticsearch-dsl 7.x
+        "Django>=1.8", "elasticsearch-dsl>=7.0.0,<8.0.0", "texttable>=1.2.1",
         "multiprocessing-logging>=0.2.6"
     ],
     zip_safe=False,
     keywords='Django Elasticsearch',
-    python_requires=">=3.6, <=4.0",
+    python_requires=">=3.8, <4.0",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Framework :: Django',
@@ -63,10 +63,23 @@ setup(
         'Framework :: Django :: 2.0',
         'Framework :: Django :: 2.1',
         'Framework :: Django :: 2.2',
+        'Framework :: Django :: 3.0',
+        'Framework :: Django :: 3.1',
+        'Framework :: Django :: 3.2',
+        'Framework :: Django :: 4.0',
+        'Framework :: Django :: 4.1',
+        'Framework :: Django :: 4.2',
+        'Framework :: Django :: 5.0',
+        'Framework :: Django :: 5.1',
+        'Framework :: Django :: 5.2',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
 )
