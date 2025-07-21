@@ -7,7 +7,7 @@ import django
 from django.db import ProgrammingError
 from elasticsearch import TransportError
 from elasticsearch.helpers import expand_action, bulk
-from elasticsearch_dsl import Index as ESIndex, DocType as ESDocType, Q as ESQ, Search
+from elasticsearch_dsl import Index as ESIndex, Document as ESDocType, Q as ESQ, Search
 
 from django_elastic_migrations import es_client, environment_prefix, es_test_prefix, dem_index_paths, get_logger, codebase_id
 from django_elastic_migrations.exceptions import DEMIndexNotFound, DEMDocTypeRequiresGetReindexIterator, \
@@ -885,7 +885,8 @@ class DEMIndex(ESIndex):
             if active_version_name and self.__doc_type._doc_type:
                 self.__doc_type._doc_type.index = active_version_name
 
-            return super(DEMIndex, self).doc_type(doc_type)
+            # Return the doc_type directly since newer elasticsearch-dsl versions don't have doc_type method
+            return self.__doc_type
         else:
             if self.get_version_id() and not self.__doc_type:
                 version_model = self.get_version_model()
@@ -893,7 +894,8 @@ class DEMIndex(ESIndex):
                 doc_type = self.__base_dem_index.doc_type()
                 doc_type_index_backup = doc_type._doc_type.index
                 doc_type._doc_type.index = version_model.name
-                self.__doc_type = super(DEMIndex, self).doc_type(doc_type)
+                # Use doc_type directly since newer elasticsearch-dsl versions don't have doc_type method
+                self.__doc_type = doc_type
                 if not self.hash_matches(version_model.json_md5):
                     doc_type._doc_type.index = doc_type_index_backup
                     our_hash, our_json = self.get_index_hash_and_json()
